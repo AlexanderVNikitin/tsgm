@@ -1,0 +1,8 @@
+numpy
+tensorflow
+tensorflow_probability
+networkx
+seaborn
+sklearn
+prettytable
+tqdm

@@ -1,0 +1,10 @@
+black==20.8b1
+codecov
+click==8.0.2
+flake8==3.8.4
+isort==5.6.4
+mypy==0.770
+pytest
+pytest-cov
+pytest-random-order
+pytest-mock

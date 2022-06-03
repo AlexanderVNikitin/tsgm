@@ -1,0 +1,89 @@
+import abc
+import typing
+import numpy as np
+import tensorflow_probability as tfp
+
+import tsgm
+
+
+class BaseSimulator(abc.ABC):
+    @abc.abstractmethod
+    def generate(self, num_samples: int, *args) -> tsgm.dataset.Dataset:
+        pass
+
+    @abc.abstractmethod
+    def dump(self):
+        pass
+
+
+class Simulator(BaseSimulator):
+    def __init__(self, data: tsgm.dataset.DatasetProperties, driver: typing.Optional[tsgm.types.Model] = None):
+        self._data = data
+        self._driver = driver
+
+    def train(self):
+        self._driver.train(self._data)
+
+    def generate(self, time):
+        raise NotImplementedError
+
+    def dump(self, path, format="csv"):
+        raise NotImplementedError
+
+
+class NNSimulator(Simulator):
+    pass
+
+
+class ModelBasedSimulator(Simulator):
+    def __init__(self, data: tsgm.dataset.DatasetProperties):
+        super().__init__(data)
+
+    def params(self):
+        params = self.__dict__
+        del params["data"]
+        return params
+
+    def set_params(self, params: dict) -> None:
+        for param_name, param_value in params.items():
+            self.__dict__[param_name] = param_value
+
+    @abc.abstractmethod
+    def generate(self, num_samples: int):
+        raise NotImplementedError
+
+
+class SineConstSimulator(ModelBasedSimulator):
+    def __init__(self, data: tsgm.dataset.DatasetProperties, max_scale: float = 10.0, max_const: float = 5.0):
+        super().__init__(data)
+
+        self.set_params(max_scale, max_const)
+
+    def set_params(self, max_scale, max_const):
+        self._scale = tfp.distributions.Uniform(0, max_scale)
+        self._const = tfp.distributions.Uniform(0, max_const)
+        self._shift = tfp.distributions.Uniform(0, 2)
+
+        self._max_scale = max_scale
+        self._max_const = max_const
+
+    def params(self):
+        return {
+            "max_scale": self._max_scale,
+            "max_const": self._max_const,
+        }
+
+    def generate(self, num_samples: int) -> tsgm.dataset.Dataset:
+        result_X, result_y = [], []
+        for i in range(num_samples):
+            scales = self._scale.sample(self._data.D)
+            consts = self._const.sample(self._data.D)
+            shifts = self._shift.sample(self._data.D)
+            if np.random.random() < 0.5:
+                times = np.repeat(np.arange(0, self._data.T, 1)[:, None], self._data.D, axis=1) / 10
+                result_X.append(np.sin(times + shifts) * scales)
+                result_y.append(0)
+            else:
+                result_X.append(np.tile(consts, (self._data.T, 1)))
+                result_y.append(1)
+        return tsgm.dataset.Dataset(x=np.array(result_X), y=np.array(result_y))
