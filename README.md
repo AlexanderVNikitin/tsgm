@@ -4,8 +4,8 @@
 
 # Time Series Generative Modeling Framework (TSGM)
 
-[Documentation](https://github.com/AlexanderVNikitin/tsgm/docs) |
-[Tutorials](https://github.com/AlexanderVNikitin/tsgm/tutorials)
+[Documentation](https://tsgm.readthedocs.io/en/latest/) |
+[Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials)
 
 ## About TSGM
 
@@ -20,8 +20,8 @@ The framework can be used for:
 ## Getting started
 
 We provide:
-* [Documentation](https://github.com/AlexanderVNikitin/tsgm/docs) where we give complete overview of the implemented methods,
-* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tutorials) with tutorials that describe practical use-cases of the framework.
+* [Documentation](https://tsgm.readthedocs.io/en/latest/) where we give complete overview of the implemented methods,
+* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) with tutorials that describe practical use-cases of the framework.
 
 
 ## Install TSGM

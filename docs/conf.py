@@ -94,7 +94,7 @@ latex_elements = {
 
 html_theme = 'sphinx_rtd_theme'
 
-html_logo = "_static/logo.png"
+html_logo = "_static/logo_docs.png"
 
 
 # theme-specific options. see theme docs for more info

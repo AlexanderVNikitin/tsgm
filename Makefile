@@ -27,7 +27,8 @@ install:  ## Install repo for developement
 
 docs:  ## Build the documentation
 	@echo "\n=== pip install doc requirements =============="
-	pip install -r requirements/docs_requirements.txt
+	pip install -r requirements/docs_requirements.txt \
+		-e .
 	@echo "\n=== install pandoc =============="
 ifeq ("$(UNAME_S)", "Linux")
 	$(eval TEMP_DEB=$(shell mktemp))
