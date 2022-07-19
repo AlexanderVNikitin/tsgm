@@ -34,6 +34,9 @@ class GANMonitor(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if self._mode in ["clf", "reg"]:
             random_latent_vectors = tf.random.normal(shape=(self._num_samples, self._latent_dim))
+        elif self._mode == "temporal":
+            raise NotImplementedError
+            # random_latent_vectors = tf.random.normal(shape=(self._num_classes * self._num_samples, self._latent_dim))
         else:
             raise ValueError("Invalid `mode` in GANMonitor: ", self._mode)
  
