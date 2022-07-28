@@ -74,7 +74,6 @@ def test_consistency_metric():
     )
     model_results = consistency_metric._apply_models(D1)
     assert len(model_results) == n_models
-
     assert consistency_metric(D1, D2) == 1.0
 
 

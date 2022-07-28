@@ -28,7 +28,6 @@ def test_ganmonitor():
     gan_monitor.model =  MagicMock()  # mock the model
     gan_monitor.model.generator.side_effect = lambda x: x[:, None]
 
-    import pdb; pdb.set_trace()
     gan_monitor.on_epoch_end(epoch=100)
 
 

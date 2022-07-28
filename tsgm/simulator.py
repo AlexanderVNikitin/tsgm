@@ -1,4 +1,5 @@
 import abc
+import copy
 import typing
 import numpy as np
 import tensorflow_probability as tfp
@@ -12,7 +13,7 @@ class BaseSimulator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def dump(self):
+    def dump(self, path: str, format: str = "csv"):
         pass
 
 
@@ -21,18 +22,25 @@ class Simulator(BaseSimulator):
         self._data = data
         self._driver = driver
 
-    def train(self):
-        self._driver.train(self._data)
+    def fit(self, **kwargs):
+        if self._data.y is not None:
+            self._driver.fit(self._data.X, self._data.y, **kwargs)
+        else:
+            self._driver.fit(self._data.X, **kwargs)
 
-    def generate(self, time):
+    def generate(self, num_samples: int, *args):
         raise NotImplementedError
 
-    def dump(self, path, format="csv"):
+    def dump(self, path: str, format: str = "csv"):
         raise NotImplementedError
+
+    def clone(self):
+        return NNSimulator(copy.deepcopy(self._data))
 
 
 class NNSimulator(Simulator):
-    pass
+    def clone(self):
+        return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
 
 
 class ModelBasedSimulator(Simulator):
@@ -49,7 +57,7 @@ class ModelBasedSimulator(Simulator):
             self.__dict__[param_name] = param_value
 
     @abc.abstractmethod
-    def generate(self, num_samples: int):
+    def generate(self, num_samples: int, *args):
         raise NotImplementedError
 
 
@@ -73,7 +81,7 @@ class SineConstSimulator(ModelBasedSimulator):
             "max_const": self._max_const,
         }
 
-    def generate(self, num_samples: int) -> tsgm.dataset.Dataset:
+    def generate(self, num_samples: int, *args) -> tsgm.dataset.Dataset:
         result_X, result_y = [], []
         for i in range(num_samples):
             scales = self._scale.sample(self._data.D)
@@ -87,3 +95,8 @@ class SineConstSimulator(ModelBasedSimulator):
                 result_X.append(np.tile(consts, (self._data.T, 1)))
                 result_y.append(1)
         return tsgm.dataset.Dataset(x=np.array(result_X), y=np.array(result_y))
+
+    def clone(self) -> "SineConstSimulator":
+        copy_simulator = SineConstSimulator(self._data)
+        copy_simulator.set_params(**self.params())
+        return copy_simulator

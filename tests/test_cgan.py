@@ -26,7 +26,7 @@ def _gen_cond_dataset(seq_len: int, batch_size: int):
 
     dataset = tf.data.Dataset.from_tensor_slices((X_train, y))
     dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-    return dataset
+    return dataset, y
 
 
 def _gen_t_cond_dataset(seq_len: int, batch_size: int):
@@ -38,7 +38,7 @@ def _gen_t_cond_dataset(seq_len: int, batch_size: int):
 
     dataset = tf.data.Dataset.from_tensor_slices((X_train, y))
     dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-    return dataset
+    return dataset, y
 
 
 def test_gan():
@@ -51,7 +51,7 @@ def test_gan():
     dataset = _gen_dataset(seq_len, feature_dim, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=output_dim)
+        latent_dim=latent_dim, num_classes=0)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     gan = tsgm.models.cgan.GAN(
@@ -79,7 +79,7 @@ def test_cgan():
     seq_len = 256
     batch_size = 48
 
-    dataset = _gen_cond_dataset(seq_len, batch_size)
+    dataset, labels = _gen_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
         latent_dim=latent_dim, num_classes=num_classes)
@@ -95,7 +95,7 @@ def test_cgan():
     )
     
     cbk = tsgm.models.monitors.GANMonitor(
-        num_samples=3, latent_dim=latent_dim, num_classes=2, save=True)
+        num_samples=3, latent_dim=latent_dim, labels=labels, save=True)
     cond_gan.fit(dataset, epochs=1, callbacks=[cbk])
 
     assert cond_gan.generator is not None
@@ -113,7 +113,7 @@ def test_cgan_seq_len_123():
     seq_len = 123
     batch_size = 48
 
-    dataset = _gen_cond_dataset(seq_len, batch_size)
+    dataset, labels = _gen_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
         latent_dim=latent_dim, num_classes=num_classes)
@@ -129,7 +129,7 @@ def test_cgan_seq_len_123():
     )
 
     cbk = tsgm.models.monitors.GANMonitor(
-        num_samples=3, latent_dim=latent_dim, num_classes=2, save=True, save_path="./tmp/gan_test_log")
+        num_samples=3, latent_dim=latent_dim, labels=labels, save=True, save_path="./tmp/gan_test_log")
     cond_gan.fit(dataset, epochs=1, callbacks=[cbk])
 
     assert cond_gan.generator is not None
@@ -148,7 +148,7 @@ def test_temporal_cgan():
     seq_len = 256
     batch_size = 48
 
-    dataset = _gen_t_cond_dataset(seq_len, batch_size)
+    dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
         latent_dim=latent_dim, num_classes=num_classes)
@@ -179,7 +179,7 @@ def test_temporal_cgan_seq_len_123():
     seq_len = 123
     batch_size = 48
 
-    dataset = _gen_t_cond_dataset(seq_len, batch_size)
+    dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
         latent_dim=latent_dim, num_classes=num_classes)
@@ -193,7 +193,6 @@ def test_temporal_cgan_seq_len_123():
         g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
         loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
     )
-    
     cond_gan.fit(dataset, epochs=1)
     assert cond_gan.generator is not None
     assert cond_gan.discriminator is not None

@@ -1,4 +1,3 @@
-import copy
 import itertools
 import typing
 import tqdm
@@ -42,7 +41,7 @@ class RejectionSampler(ABCAlgorithm):
         :type prior: dict
         """
         self._epsilon = epsilon
-        self._simulator = copy.deepcopy(simulator)
+        self._simulator = simulator.clone()
         self._data = data
         self._statistics = statistics
         self._discrepancy = discrepancy
@@ -50,7 +49,7 @@ class RejectionSampler(ABCAlgorithm):
 
         self._data_stats = self._calc_statistics(self._data)
 
-    def _calc_statistics(self, data: tsgm.dataset.Dataset) -> list:
+    def _calc_statistics(self, data: tsgm.dataset.Dataset) -> tsgm.types.Tensor:
         # TODO measure both X & y
         return np.array(list(itertools.chain.from_iterable(s(data.X) for s in self._statistics)))
 
@@ -64,7 +63,7 @@ class RejectionSampler(ABCAlgorithm):
         :return: A list of samples. Each sample is represent as dict.
         :rtype: typing.List[typing.Dict]
         """
-        cur_sim = copy.deepcopy(self._simulator)
+        cur_sim = self._simulator.clone()
 
         samples: typing.List[typing.Dict] = []
         for i in tqdm.tqdm(range(n_samples)):

@@ -1,7 +1,12 @@
 import typing
+import logging
 import numpy as np
 
 import tsgm.types
+
+
+logger = logging.getLogger('dataset')
+logging.basicConfig(level=logging.DEBUG)
 
 
 class DatasetProperties:
@@ -30,7 +35,7 @@ class Dataset(DatasetProperties):
     """
     Wrapper for time-series datasets. Additional information is stored in `metadata` field.
     """
-    def __init__(self, x: np.array, y: np.array, metadata: typing.Optional[typing.Dict] = None):
+    def __init__(self, x: tsgm.types.Tensor, y: tsgm.types.Tensor, metadata: typing.Optional[typing.Dict] = None):
         """
         :param x: The matrix of time series with dimensions NxDxT
         :type x: tsgm.types.Tensor
@@ -82,7 +87,7 @@ class Dataset(DatasetProperties):
             if self._y.shape[1] == 1:
                 return np.concatenate((self._x, np.repeat(self._y[:, :, None], self._x.shape[1], axis=1)), axis=2)
             else:
-                return np.conat((self._x, self._y[:, :, None]), axis=2)
+                return np.concatenate((self._x, self._y[:, :, None]), axis=2)
         else:
             raise ValueError("X & y are not compatible for Xy_concat operation")
 
@@ -92,7 +97,7 @@ class Dataset(DatasetProperties):
         else:
             return False
 
-    def _merge_meta(self, other_meta: dict) -> bool:
+    def _merge_meta(self, other_meta: dict) -> dict:
         return {**self._metadata, **other_meta}
 
     def __add__(self, other_ds: "Dataset") -> "Dataset":
@@ -138,7 +143,7 @@ class Dataset(DatasetProperties):
         """
         num_classes = len(set(self.y))
         if num_classes > len(self.y) * 0.5:
-            print("[WARNING]: either the number of classes if huge or it is not a classification dataset")
+            logger.warning("either the number of classes if huge or it is not a classification dataset")
         return len(set(self.y))
 
 

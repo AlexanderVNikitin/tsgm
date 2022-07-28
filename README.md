@@ -37,5 +37,8 @@ Run tests:
 make test
 ```
 
+## Contributing
+We appreciate all contributions. To learn more, please check [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 [Apache License 2.0](LICENSE)

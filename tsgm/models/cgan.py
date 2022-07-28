@@ -116,6 +116,11 @@ class GAN(keras.Model):
         random_vector_labels = self._get_random_vector_labels(batch_size=num)
         return self.generator(random_vector_labels)
 
+    def clone(self) -> "GAN":
+        copy_model = GAN(self.discriminator, self.generator, latent_dim=self.latent_dim)
+        copy_model = copy_model.set_weights(self.get_weights())
+        return copy_model
+
 
 class ConditionalGAN(keras.Model):
     """

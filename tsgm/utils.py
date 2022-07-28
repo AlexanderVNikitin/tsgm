@@ -1,6 +1,7 @@
 import os
 import glob
 import typing
+import logging
 
 import sklearn
 import sklearn.manifold
@@ -18,6 +19,9 @@ import matplotlib.pyplot as plt
 import tsgm.types
 import tsgm.dataset
 
+
+logger = logging.getLogger('utils')
+logging.basicConfig(level=logging.DEBUG)
 
 EPS = 1e-18
 
@@ -40,11 +44,7 @@ def visualize_dataset(dataset: tsgm.dataset.Dataset, obj_id: int = 0, path: str 
     plt.xlabel("Time")
     plt.ylabel("Absolute value (measurements)")
 
-    ax2 = plt.twinx()
     print([int(el) for el in dataset.y[obj_id]])
-    sns.lineplot(
-        np.arange(0, T, 1), dataset.survival_history[obj_id],
-        ax=ax2, label="Target value", linewidth=3)
     plt.ylabel("Target value(y)")
     plt.title("Generated data")
 
@@ -75,7 +75,7 @@ def visualize_tsne(X: tsgm.types.Tensor, y: tsgm.types.Tensor, X_gen: tsgm.types
     plt.savefig(path)
 
 
-def _graph_convolve(node_value: float, neighbor_values: np.array) -> float:
+def _graph_convolve(node_value: float, neighbor_values: tsgm.types.Tensor) -> float:
     return (node_value + np.mean(neighbor_values)) / 2
 
 
@@ -169,7 +169,7 @@ def gen_sine_const_switch_dataset(N, T, D, max_value=10, const=0, frequency_swit
 
             result_y[-1].append(cur_y)
             if cur_y == 1:
-                result_X[-1].append(scales * np.sin(t/10 + shifts))
+                result_X[-1].append(scales * np.sin(t / 10 + shifts))
             else:
                 result_X[-1].append(scales)
     return np.array(result_X), np.array(result_y)
@@ -321,7 +321,7 @@ class UCRDataManager:
         if self.y_all is not None:
             return {k: v / len(self.y_all) for k, v in collections.Counter(self.y_all).items()}
         else:
-            # TODO add warning messages
+            logger.warning("y_all is None, cannot get classes distribution")
             return {}
 
     def summary(self) -> None:
@@ -370,7 +370,7 @@ def get_eeg() -> tuple:
     path = os.path.join(cur_path, "../data/EEG Eye State.arff")
     df = _load_arff(path)
     X = df.drop("eyeDetection", axis=1).to_numpy()
-    y = df["eyeDetection"].astype(np.int).to_numpy()
+    y = df["eyeDetection"].astype(np.int64).to_numpy()
     return X, y
 
 

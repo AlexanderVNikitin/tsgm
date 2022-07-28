@@ -228,8 +228,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(1, 1, activation="tanh")(x)
-
+        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 

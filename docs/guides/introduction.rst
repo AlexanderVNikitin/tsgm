@@ -1,7 +1,7 @@
 Introduction
 =======================
 
-`Time Series Generative Modeling (TSGM) <https://github.com/TODO>`_ is a generative modeling framework for synthetic time series data. It builds on open-source libraries and implements various methods, such as GANs, VAEs, or ABC, for synthetic time series simulation. Moreover, *TSGM* provides many approaches for evaluating synthetic time series data. It is built on top of `TensorFlow <https://www.tensorflow.org/>`.
+`Time Series Generative Modeling (TSGM) <https://github.com/AlexanderVNikitin/tsgm>`_ is a generative modeling framework for synthetic time series data. It builds on open-source libraries and implements various methods, such as GANs, VAEs, or ABC, for synthetic time series simulation. Moreover, *TSGM* provides many approaches for evaluating synthetic time series data. It is built on top of `TensorFlow <https://www.tensorflow.org/>`_.
 
 
 Citing
@@ -51,7 +51,7 @@ Combined generators
 --------------------------
 The combined simulators generate data based on an underlying model, but allow to inference parameters using, for example, approximate Bayesian computation.
 
-Example, of the use of a combined simulator is provided in `github.com/TODO`.
+Example, of the use of a combined simulator is provided in `https://github.com/AlexanderVNikitin/tsgm/blob/main/tests/test_abc.py`.
 
 
 Dataset

@@ -1,4 +1,5 @@
 import os
+import logging
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras
@@ -8,6 +9,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import tsgm
+
+
+logger = logging.getLogger('monitors')
+logging.basicConfig(level=logging.DEBUG)
 
 
 class GANMonitor(keras.callbacks.Callback):
@@ -25,10 +30,11 @@ class GANMonitor(keras.callbacks.Callback):
 
         if self._save and self._save_path is None:
             self._save_path = "/tmp/"
-            print("[WARNING]: save_path is not specified. Using `/tmp` as the default save_path")
+            logger.warning("save_path is not specified. Using `/tmp` as the default save_path")
 
-        if self._save is False and self._save_path is not None:
-            print("[WARNING]: save_path is specified, but save is False.")
+        if self._save_path is not None:
+            if self._save is False:
+                logger.warning("save_path is specified, but save is False.")
             os.makedirs(self._save_path, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
@@ -39,17 +45,17 @@ class GANMonitor(keras.callbacks.Callback):
             # random_latent_vectors = tf.random.normal(shape=(self._num_classes * self._num_samples, self._latent_dim))
         else:
             raise ValueError("Invalid `mode` in GANMonitor: ", self._mode)
- 
+
         labels = self._labels[:self._num_samples]
-    
+
         generator_input = tf.concat([random_latent_vectors, labels], 1)
         generated_samples = self.model.generator(generator_input)
 
         for i in range(generated_samples.shape[0]):
-            label = np.argmax(labels[i])
+            label = np.argmax(labels[i][None, :], axis=1)
             tsgm.utils.visualize_ts_lineplot(
                 generated_samples[i][None, :],
-                np.argmax(labels[i][None, :], axis=1), 1)  # TODO: update visualize_ts API
+                label, 1)  # TODO: update visualize_ts API
 
             if self._save:
                 plt.savefig(os.path.join(self._save_path, "epoch_{}_sample_{}".format(epoch, i)))

@@ -8,7 +8,7 @@ from tensorflow import keras
 
 
 def test_abc_rejection_sampler_nn_simulator():
-    ts = np.array([[[0, 2], [1, 0], [1, 2]]])
+    ts = np.array([[[0, 2], [1, 0], [1, 2], [3, 4]]]).astype(np.float32)
     num_samples, seq_len, feature_dim = ts.shape
     latent_dim = 2
     output_dim = 0
@@ -28,7 +28,8 @@ def test_abc_rejection_sampler_nn_simulator():
         g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
         loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
     )
-    simulator = tsgm.simulator.NNSimulator(data=data, model=gan, epochs=1)
+    simulator = tsgm.simulator.NNSimulator(data=data, driver=gan)
+    simulator.fit(epochs=1)
 
     discrepancy = lambda x, y: np.linalg.norm(x - y)
     sampler = tsgm.optimization.abc.RejectionSampler(

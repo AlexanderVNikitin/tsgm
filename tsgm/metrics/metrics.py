@@ -60,9 +60,12 @@ class SimilarityMetric(Metric):
 
         :returns: similarity metric between D1 & D2.
         """
-        assert isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset) or\
-               isinstance(D1, tsgm.types.Tensor.__args__) and isinstance(D2, tsgm.types.Tensor.__args__)
-        if isinstance(D1, tsgm.dataset.Dataset):
+
+        #  TODO: check compatibility of this check in different versions of python
+        #  typing.get_args() can be used instead
+        #  assert isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset) or\
+        #      isinstance(D1, tsgm.types.Tensor.__args__) and isinstance(D2, tsgm.types.Tensor.__args__)
+        if isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset):
             X1, X2 = D1.Xy_concat, D2.Xy_concat
         else:
             X1, X2 = D1, D2
@@ -83,10 +86,10 @@ class ConsistencyMetric(Metric):
         """
         self._evaluators = evaluators
 
-    def _apply_models(self, D: tsgm.dataset.Dataset) -> list:
+    def _apply_models(self, D: tsgm.dataset.DatasetOrTensor) -> list:
         return [e.evaluate(D) for e in self._evaluators]
 
-    def __call__(self, D1: tsgm.dataset.Dataset, D2: tsgm.dataset.Dataset) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor.
@@ -100,21 +103,18 @@ class ConsistencyMetric(Metric):
         consistencies_cnt = 0
         n_evals = len(evaluations1)
         for i1 in range(n_evals):
-            for i2 in range(n_evals):
-                if (i1 != i2):
-                    continue
-                else:
-                    if evaluations1[i1] > evaluations1[i2] and evaluations2[i1] > evaluations2[i2] or \
-                            evaluations1[i1] < evaluations1[i2] and evaluations2[i1] < evaluations2[i2] or \
-                            evaluations1[i1] == evaluations1[i2] and evaluations2[i1] == evaluations2[i2]:
-                        consistencies_cnt += 1
+            for i2 in range(i1 + 1, n_evals):
+                if evaluations1[i1] > evaluations1[i2] and evaluations2[i1] > evaluations2[i2] or \
+                        evaluations1[i1] < evaluations1[i2] and evaluations2[i1] < evaluations2[i2] or \
+                        evaluations1[i1] == evaluations1[i2] and evaluations2[i1] == evaluations2[i2]:
+                    consistencies_cnt += 1
 
         total_pairs = n_evals * (n_evals - 1) / 2.0
         return consistencies_cnt / total_pairs
 
 
 class BaseDownstreamEvaluator(abc.ABC):
-    def evaluate():
+    def evaluate(self, *args, **kwargs):
         pass
 
 
@@ -130,7 +130,7 @@ class DownstreamPerformanceMetric(Metric):
         """
         self._evaluator = evaluator
 
-    def __call__(self, D1: tsgm.dataset.Dataset, D2: tsgm.dataset.Dataset) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor.
@@ -145,7 +145,7 @@ class DownstreamPerformanceMetric(Metric):
         return np.mean(evaluations2 - evaluations1)
 
 
-class PrivacyMembershipInferenceMetric(Metric):
+class PrivacyMembershipInferenceMetric:
     """
     The metric that measures the possibility of membership inference attacks.
     """
