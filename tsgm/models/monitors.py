@@ -12,7 +12,7 @@ import tsgm
 
 
 logger = logging.getLogger('monitors')
-logging.basicConfig(level=logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 
 class GANMonitor(keras.callbacks.Callback):

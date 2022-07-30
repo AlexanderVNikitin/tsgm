@@ -6,7 +6,7 @@ import tsgm.types
 
 
 logger = logging.getLogger('dataset')
-logging.basicConfig(level=logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 
 class DatasetProperties:

@@ -60,7 +60,7 @@ def test_switch_generator():
 
 def test_ucr_manager():
     DATASET = "gunpoint"
-    ucr_data_manager = tsgm.utils.UCRDataManager(path="./data/UCRArchive_2018/", ds=DATASET)
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
     assert X_train.shape == (50, 150) and X_test.shape == (150, 150)

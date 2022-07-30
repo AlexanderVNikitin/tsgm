@@ -7,7 +7,7 @@ import tsgm
 
 
 def _get_gunpoint_dataset():
-    data_manager = tsgm.utils.UCRDataManager(path="./data/UCRArchive_2018", ds="gunpoint")
+    data_manager = tsgm.utils.UCRDataManager(ds="gunpoint")
     X_train, y_train, X_test, y_test  = data_manager.get()
     X_train, X_test = X_train[:, :, None], X_test[:, :, None]
     y_train = keras.utils.to_categorical(y_train - 1)
