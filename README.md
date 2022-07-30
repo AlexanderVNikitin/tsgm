@@ -2,6 +2,9 @@
 <img src="./docs/_static/logo.png">
 </div>
 
+![unit-tests](https://github.com/AlexanderVNikitin/tsgm/actions/workflows/test.yml/badge.svg?event=push)
+
+
 # Time Series Generative Modeling Framework (TSGM)
 
 [Documentation](https://tsgm.readthedocs.io/en/latest/) |
