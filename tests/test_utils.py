@@ -115,3 +115,13 @@ def test_get_energy_data():
     X = tsgm.utils.get_energy_data()
 
     assert X.shape == (1, 19735, 28)
+
+
+def test_get_mnist_data():
+    X_train, y_train, X_test, y_test = tsgm.utils.get_mnist_data()
+    
+    assert X_train.shape == (60000, 784, 1)
+    assert y_train.shape == (60000,)
+
+    assert X_test.shape == (10000, 784, 1)
+    assert y_test.shape == (10000,)

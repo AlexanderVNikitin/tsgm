@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import scipy.io.arff
 
+from tensorflow import keras
+
 from tsgm.utils import file_utils
 
 
@@ -239,3 +241,15 @@ def get_energy_data() -> np.ndarray:
         file_utils.download(url, path_to_folder)
 
     return pd.read_csv(path_to_resource).to_numpy()[None, :, 1:]
+
+
+def get_mnist_data() -> tuple:
+    cur_path = os.path.dirname(__file__)
+    path_to_folder = os.path.join(cur_path, "../../data/")
+    path_to_resource = os.path.join(path_to_folder, "mnist.npz")
+
+    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data(path_to_resource)
+    x_train = x_train.reshape(-1, 28 * 28, 1)
+    x_test = x_test.reshape(-1, 28 * 28, 1)
+
+    return x_train, y_train, x_test, y_test
