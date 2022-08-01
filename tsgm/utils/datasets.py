@@ -222,8 +222,20 @@ def get_power_consumption() -> np.ndarray:
     return df.to_numpy()
 
 
-def get_stock_data(stock_name: str):
+def get_stock_data(stock_name: str) -> np.ndarray:
     stock_df = yf.download(stock_name)
     if stock_df.empty:
         raise ValueError(f"Cannot download ticker {stock_name}")
     return stock_df.to_numpy()[None, :, :]
+
+
+def get_energy_data() -> np.ndarray:
+    cur_path = os.path.dirname(__file__)
+    path_to_folder = os.path.join(cur_path, "../../data/")
+    path_to_resource = os.path.join(path_to_folder, "energydata_complete.csv")
+
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00374/energydata_complete.csv"
+    if not os.path.exists(path_to_resource):
+        file_utils.download(url, path_to_folder)
+
+    return pd.read_csv(path_to_resource).to_numpy()[None, :, 1:]

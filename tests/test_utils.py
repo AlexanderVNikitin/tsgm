@@ -109,3 +109,9 @@ def test_get_stock_data():
     X = tsgm.utils.get_stock_data("AAPL")
 
     assert len(X.shape) == 3
+
+
+def test_get_energy_data():
+    X = tsgm.utils.get_energy_data()
+
+    assert X.shape == (1, 19735, 28)
