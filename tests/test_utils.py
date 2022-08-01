@@ -103,3 +103,9 @@ def test_get_power_consumption():
     X = tsgm.utils.get_power_consumption()
 
     assert X.shape == (2075259, 7)
+
+
+def test_get_stock_data():
+    X = tsgm.utils.get_stock_data("AAPL")
+
+    assert len(X.shape) == 3

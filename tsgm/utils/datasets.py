@@ -4,6 +4,8 @@ import glob
 import collections
 import logging
 
+import yfinance as yf
+
 import sklearn
 import sklearn.datasets
 import numpy as np
@@ -218,3 +220,10 @@ def get_power_consumption() -> np.ndarray:
         os.path.join(path, "household_power_consumption.txt"), sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
         low_memory=False, na_values=['nan', '?'], index_col='dt')
     return df.to_numpy()
+
+
+def get_stock_data(stock_name: str):
+    stock_df = yf.download(stock_name)
+    if stock_df.empty:
+        raise ValueError(f"Cannot download ticker {stock_name}")
+    return stock_df.to_numpy()[None, :, :]
