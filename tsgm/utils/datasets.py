@@ -1,6 +1,7 @@
 import os
 import typing
 import glob
+import scipy
 import collections
 import logging
 
@@ -253,3 +254,18 @@ def get_mnist_data() -> tuple:
     x_test = x_test.reshape(-1, 28 * 28, 1)
 
     return x_train, y_train, x_test, y_test
+
+
+def _exponential_quadratic(x: np.ndarray, y: np.ndarray) -> float:
+    return np.exp(-0.5 * scipy.spatial.distance.cdist(x, y))
+
+
+def get_gp_samples_data(num_samples: int, max_time: int,
+                        covar_func: typing.Callable = _exponential_quadratic) -> np.ndarray:
+
+    #  TODO: connect this implementation with `models.gp
+    times = np.expand_dims(np.linspace(0, max_time, max_time), 1)
+    sigma = covar_func(times, times)
+
+    return np.random.multivariate_normal(
+        mean=np.zeros(max_time), cov=sigma, size=num_samples)[:, None, :]

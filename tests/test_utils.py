@@ -125,3 +125,9 @@ def test_get_mnist_data():
 
     assert X_test.shape == (10000, 784, 1)
     assert y_test.shape == (10000,)
+
+
+def test_get_gp_data():
+    X = tsgm.utils.get_gp_samples_data(num_samples=10, max_time=10)
+
+    assert X.shape == (10, 1, 10)
