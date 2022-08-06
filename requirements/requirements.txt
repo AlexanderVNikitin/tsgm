@@ -1,6 +1,7 @@
 numpy
 tensorflow
 tensorflow_probability
+tensorflow_privacy
 networkx
 seaborn
 sklearn

@@ -1,7 +1,20 @@
 import tensorflow as tf
 from tensorflow import keras
+import tensorflow_privacy as tf_privacy
+
+import logging
 
 import tsgm
+
+
+logger = logging.getLogger('models')
+logger.setLevel(logging.DEBUG)
+
+
+def _is_dp_optimizer(optimizer: keras.optimizers.Optimizer) -> bool:
+    return isinstance(optimizer, tf_privacy.DPKerasAdagradOptimizer) or \
+        isinstance(optimizer, tf_privacy.DPKerasAdamOptimizer) or \
+        isinstance(optimizer, tf_privacy.DPKerasSGDOptimizer)
 
 
 class GAN(keras.Model):
@@ -52,6 +65,14 @@ class GAN(keras.Model):
         self.g_optimizer = g_optimizer
         self.loss_fn = loss_fn
 
+        generator_dp = _is_dp_optimizer(d_optimizer)
+        discriminator_dp = _is_dp_optimizer(g_optimizer)
+
+        if generator_dp != discriminator_dp:
+            logger.warning(f"One of the optimizers is DP and another one is not. generator_dp={generator_dp}, discriminator_dp={discriminator_dp}")
+
+        self.dp = generator_dp and discriminator_dp
+
     def _get_random_vector_labels(self, batch_size: int, labels=None):
         return tf.random.normal(shape=(batch_size, self.latent_dim))
 
@@ -96,6 +117,7 @@ class GAN(keras.Model):
             fake_data = self.generator(random_vector)
             predictions = self.discriminator(fake_data)
             g_loss = self.loss_fn(misleading_labels, predictions)
+
         grads = tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
 
@@ -167,10 +189,19 @@ class ConditionalGAN(keras.Model):
         :param loss_fn: Loss function.
         :type loss_fn: keras.losses.Loss
         """
+        # TODO: move `.compile logic to a base GAN class
         super(ConditionalGAN, self).compile()
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.loss_fn = loss_fn
+
+        generator_dp = _is_dp_optimizer(d_optimizer)
+        discriminator_dp = _is_dp_optimizer(g_optimizer)
+
+        if generator_dp != discriminator_dp:
+            logger.warning(f"One of the optimizers is DP and another one is not. generator_dp={generator_dp}, discriminator_dp={discriminator_dp}")
+
+        self.dp = generator_dp and discriminator_dp
 
     def _get_random_vector_labels(self, batch_size: int, labels):
         if self._temporal:
@@ -237,13 +268,20 @@ class ConditionalGAN(keras.Model):
         desc_labels = tf.concat(
             [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
         )
+
         with tf.GradientTape() as tape:
             predictions = self.discriminator(combined_data)
             d_loss = self.loss_fn(desc_labels, predictions)
-        grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-        self.d_optimizer.apply_gradients(
-            zip(grads, self.discriminator.trainable_weights)
-        )
+
+        if self.dp:
+            # For DP optimizers from `tensorflow.privacy`
+            self.d_optimizer.minimize(d_loss, self.discriminator.trainable_weights, tape=tape)
+        else:
+            grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+
+            self.d_optimizer.apply_gradients(
+                zip(grads, self.discriminator.trainable_weights)
+            )
 
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
 
@@ -256,8 +294,13 @@ class ConditionalGAN(keras.Model):
             fake_data = tf.concat([fake_samples, rep_labels], -1)
             predictions = self.discriminator(fake_data)
             g_loss = self.loss_fn(misleading_labels, predictions)
-        grads = tape.gradient(g_loss, self.generator.trainable_weights)
-        self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
+        if self.dp:
+            # For DP optimizers from `tensorflow.privacy`
+            self.g_optimizer.minimize(g_loss, self.generator.trainable_weights, tape=tape)
+
+        else:
+            grads = tape.gradient(g_loss, self.generator.trainable_weights)
+            self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
 
         self.gen_loss_tracker.update_state(g_loss)
         self.disc_loss_tracker.update_state(d_loss)

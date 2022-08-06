@@ -2,6 +2,7 @@ import pytest
 import tsgm
 
 import tensorflow as tf
+import tensorflow_privacy as tf_privacy
 import numpy as np
 from tensorflow import keras
 
@@ -200,6 +201,59 @@ def test_temporal_cgan_seq_len_123():
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
     assert generated_samples.shape == (10, 123, 1)
+
+
+def test_dp_compiler():
+    latent_dim = 2
+    num_classes = 1
+    feature_dim = 1
+    seq_len = 123
+    batch_size = 48
+
+    dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
+    architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
+        seq_len=seq_len, feat_dim=feature_dim,
+        latent_dim=latent_dim, num_classes=num_classes)
+    discriminator, generator = architecture.discriminator, architecture.generator
+
+    cond_gan = tsgm.models.cgan.ConditionalGAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim, temporal=True,
+    )
+
+    # DP optimizers
+    l2_norm_clip = 1.5
+    noise_multiplier = 1.3
+    num_microbatches = 1
+    learning_rate = 0.25
+
+    d_optimizer = tf_privacy.DPKerasAdamOptimizer(
+        l2_norm_clip=l2_norm_clip,
+        noise_multiplier=noise_multiplier,
+        num_microbatches=num_microbatches,
+        learning_rate=learning_rate
+    )
+
+
+    g_optimizer = tf_privacy.DPKerasAdamOptimizer(
+        l2_norm_clip=l2_norm_clip,
+        noise_multiplier=noise_multiplier,
+        num_microbatches=num_microbatches,
+        learning_rate=learning_rate
+    )
+    cond_gan.compile(
+        d_optimizer=d_optimizer,
+        g_optimizer=g_optimizer,
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    assert cond_gan.dp is True
+
+    cond_gan.fit(dataset, epochs=1)
+    assert cond_gan.generator is not None
+    assert cond_gan.discriminator is not None
+
+    # Check generation
+    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    assert generated_samples.shape == (10, 123, 1)    
 
 
 def test_temporal_cgan_multiple_features():
