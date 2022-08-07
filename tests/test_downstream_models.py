@@ -18,8 +18,8 @@ def _get_gunpoint_dataset():
 def test_classification_conv():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
-    seq_len, feat_dim, num_classes = X_train.shape[1], X_train.shape[2], y_train.shape[1]
-    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, num_classes=num_classes).model
+    seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
+    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim).model
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # fit network
@@ -35,8 +35,8 @@ def test_classification_conv():
 def test_classification_conv_10_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
-    seq_len, feat_dim, num_classes = X_train.shape[1], X_train.shape[2], y_train.shape[1]
-    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, num_classes=num_classes, n_conv_blocks=10).model
+    seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
+    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim, n_conv_blocks=10).model
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # fit network
@@ -52,10 +52,10 @@ def test_classification_conv_10_layers():
 def test_classification_lstm_conv_5_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
-    seq_len, feat_dim, num_classes = X_train.shape[1], X_train.shape[2], y_train.shape[1]
+    seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
     model = tsgm.models.zoo["clf_cl_n"](
         seq_len=seq_len, feat_dim=feat_dim,
-        num_classes=num_classes, n_conv_lstm_blocks=5
+        output_dim=output_dim, n_conv_lstm_blocks=5
     ).model
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -73,7 +73,7 @@ def test_classification_lstm_conv_5_layers():
 def test_classification_blocks_5_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
-    seq_len, feat_dim, num_classes = X_train.shape[1], X_train.shape[2], y_train.shape[1]
+    seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
     block = [keras.layers.Conv1D(filters=64, kernel_size=3, activation='relu'),
              keras.layers.Dropout(0.2),
              keras.layers.LSTM(128, activation="relu", return_sequences=True),
@@ -84,7 +84,7 @@ def test_classification_blocks_5_layers():
 
     model = tsgm.models.zoo["clf_block"](
         seq_len=seq_len, feat_dim=feat_dim,
-        num_classes=num_classes, blocks=blocks
+        output_dim=output_dim, blocks=blocks
     ).model
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])

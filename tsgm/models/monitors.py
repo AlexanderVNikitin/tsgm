@@ -42,7 +42,7 @@ class GANMonitor(keras.callbacks.Callback):
             random_latent_vectors = tf.random.normal(shape=(self._num_samples, self._latent_dim))
         elif self._mode == "temporal":
             raise NotImplementedError
-            # random_latent_vectors = tf.random.normal(shape=(self._num_classes * self._num_samples, self._latent_dim))
+            # random_latent_vectors = tf.random.normal(shape=(self._output_dim * self._num_samples, self._latent_dim))
         else:
             raise ValueError("Invalid `mode` in GANMonitor: ", self._mode)
 
@@ -64,24 +64,24 @@ class GANMonitor(keras.callbacks.Callback):
 
 
 class VAEMonitor(keras.callbacks.Callback):
-    def __init__(self, num_samples=6, latent_dim=128, num_classes=2):
+    def __init__(self, num_samples=6, latent_dim=128, output_dim=2):
         self._num_samples = num_samples
         self._latent_dim = latent_dim
-        self._num_classes = num_classes
+        self._output_dim = output_dim
 
     def on_epoch_end(self, epoch, logs=None):
-        random_latent_vectors = tf.random.normal(shape=(self._num_classes * self._num_samples, self._latent_dim))
+        random_latent_vectors = tf.random.normal(shape=(self._output_dim * self._num_samples, self._latent_dim))
 
         labels = []
-        for i in range(self._num_classes):
+        for i in range(self._output_dim):
             if not len(labels):
-                labels = keras.utils.to_categorical([i], self._num_classes)
+                labels = keras.utils.to_categorical([i], self._output_dim)
             else:
-                labels = tf.concat((labels, keras.utils.to_categorical([i], self._num_classes)), 0)
+                labels = tf.concat((labels, keras.utils.to_categorical([i], self._output_dim)), 0)
 
         labels = tf.repeat(labels, self._num_samples, axis=0)
         generated_images = self.model.decoder(tf.concat([random_latent_vectors, labels], 1))
 
-        for i in range(self._num_classes * self._num_samples):
+        for i in range(self._output_dim * self._num_samples):
             sns.lineplot(x=range(0, generated_images[i].shape[0]), y=tf.squeeze(generated_images[i]))
             plt.show()

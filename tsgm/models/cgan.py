@@ -237,7 +237,7 @@ class ConditionalGAN(keras.Model):
         :type loss_fn: keras.losses.Loss
         """
         real_ts, labels = data
-        num_classes = self._get_output_shape(labels)
+        output_dim = self._get_output_shape(labels)
         batch_size = tf.shape(real_ts)[0]
         if not self._temporal:
             rep_labels = labels[:, :, None]
@@ -248,7 +248,7 @@ class ConditionalGAN(keras.Model):
             rep_labels = labels
 
         rep_labels = tf.reshape(
-            rep_labels, (-1, self._seq_len, num_classes)
+            rep_labels, (-1, self._seq_len, output_dim)
         )
 
         # Generate ts

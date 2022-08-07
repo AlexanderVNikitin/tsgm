@@ -9,14 +9,14 @@ from tensorflow import keras
 import tsgm
 
 
-def _get_labels(num_samples, num_classes):
+def _get_labels(num_samples, output_dim):
     labels = None
     for i in range(num_samples):
-        sample = random.randint(0, num_classes - 1)
+        sample = random.randint(0, output_dim - 1)
         if labels is None:
-            labels = keras.utils.to_categorical([sample], num_classes)
+            labels = keras.utils.to_categorical([sample], output_dim)
         else:
-            labels = tf.concat((labels, keras.utils.to_categorical([sample], num_classes)), 0)
+            labels = tf.concat((labels, keras.utils.to_categorical([sample], output_dim)), 0)
     return labels
 
 

@@ -52,7 +52,7 @@ def test_gan():
     dataset = _gen_dataset(seq_len, feature_dim, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=0)
+        latent_dim=latent_dim, output_dim=0)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     gan = tsgm.models.cgan.GAN(
@@ -75,7 +75,7 @@ def test_gan():
 
 def test_cgan():
     latent_dim = 124
-    num_classes = 2
+    output_dim = 2
     feature_dim = 1
     seq_len = 256
     batch_size = 48
@@ -83,7 +83,7 @@ def test_cgan():
     dataset, labels = _gen_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=num_classes)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     cond_gan = tsgm.models.cgan.ConditionalGAN(
@@ -109,7 +109,7 @@ def test_cgan():
 
 def test_cgan_seq_len_123():
     latent_dim = 32
-    num_classes = 2
+    output_dim = 2
     feature_dim = 1
     seq_len = 123
     batch_size = 48
@@ -117,7 +117,7 @@ def test_cgan_seq_len_123():
     dataset, labels = _gen_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=num_classes)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     cond_gan = tsgm.models.cgan.ConditionalGAN(
@@ -144,7 +144,7 @@ def test_cgan_seq_len_123():
 
 def test_temporal_cgan():
     latent_dim = 2
-    num_classes = 1
+    output_dim = 1
     feature_dim = 1
     seq_len = 256
     batch_size = 48
@@ -152,7 +152,7 @@ def test_temporal_cgan():
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=num_classes)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     cond_gan = tsgm.models.cgan.ConditionalGAN(
@@ -175,7 +175,7 @@ def test_temporal_cgan():
 
 def test_temporal_cgan_seq_len_123():
     latent_dim = 2
-    num_classes = 1
+    output_dim = 1
     feature_dim = 1
     seq_len = 123
     batch_size = 48
@@ -183,7 +183,7 @@ def test_temporal_cgan_seq_len_123():
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=num_classes)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     cond_gan = tsgm.models.cgan.ConditionalGAN(
@@ -205,7 +205,7 @@ def test_temporal_cgan_seq_len_123():
 
 def test_dp_compiler():
     latent_dim = 2
-    num_classes = 1
+    output_dim = 1
     feature_dim = 1
     seq_len = 123
     batch_size = 48
@@ -213,7 +213,7 @@ def test_dp_compiler():
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=num_classes)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     cond_gan = tsgm.models.cgan.ConditionalGAN(

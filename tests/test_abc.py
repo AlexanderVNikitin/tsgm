@@ -17,7 +17,7 @@ def test_abc_rejection_sampler_nn_simulator():
     statistics = [tsgm.metrics.statistics.global_max_s, tsgm.metrics.statistics.global_min_s]
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
         seq_len=seq_len, feat_dim=feature_dim,
-        latent_dim=latent_dim, num_classes=output_dim)
+        latent_dim=latent_dim, output_dim=output_dim)
     discriminator, generator = architecture.discriminator, architecture.generator
 
     gan = tsgm.models.cgan.GAN(

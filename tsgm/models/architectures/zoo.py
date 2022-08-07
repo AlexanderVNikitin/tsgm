@@ -177,15 +177,15 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
 class cGAN_Conv4Architecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, num_classes):
+    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
-        self._num_classes = num_classes
+        self._output_dim = output_dim
 
-        self.generator_in_channels = latent_dim + num_classes
-        self.discriminator_in_channels = feat_dim + num_classes
+        self.generator_in_channels = latent_dim + output_dim
+        self.discriminator_in_channels = feat_dim + output_dim
 
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator()
@@ -236,15 +236,15 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
 class tcGAN_Conv4Architecture(BaseGANArchitecture):
     arch_type = "gan:t-conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, num_classes):
+    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
-        self._num_classes = num_classes
+        self._output_dim = output_dim
 
-        self.generator_in_channels = latent_dim + num_classes
-        self.discriminator_in_channels = feat_dim + num_classes
+        self.generator_in_channels = latent_dim + output_dim
+        self.discriminator_in_channels = feat_dim + output_dim
 
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator()
@@ -291,10 +291,10 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
 class BaseClassificationArchitecture(Architecture):
     arch_type = "downstream:classification"
 
-    def __init__(self, seq_len: int, feat_dim: int, num_classes: int):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int):
         self._seq_len = seq_len
         self._feat_dim = feat_dim
-        self._num_classes = num_classes
+        self._output_dim = output_dim
         self._model = self._build_model()
 
     @property
@@ -309,9 +309,9 @@ class BaseClassificationArchitecture(Architecture):
 
 
 class ConvnArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, num_classes: int, n_conv_blocks: int = 1):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, n_conv_blocks: int = 1):
         self._n_conv_blocks = n_conv_blocks
-        super().__init__(seq_len, feat_dim, num_classes)
+        super().__init__(seq_len, feat_dim, output_dim)
 
     def _build_model(self):
         m_input = keras.Input((self._seq_len, self._feat_dim))
@@ -321,14 +321,14 @@ class ConvnArchitecture(BaseClassificationArchitecture):
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._num_classes, activation='softmax')(x)
+        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
         return keras.Model(m_input, m_output, name="classification_model")
 
 
 class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, num_classes: int, n_conv_lstm_blocks: int = 1):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, n_conv_lstm_blocks: int = 1):
         self._n_conv_lstm_blocks = n_conv_lstm_blocks
-        super().__init__(seq_len, feat_dim, num_classes)
+        super().__init__(seq_len, feat_dim, output_dim)
 
     def _build_model(self):
         m_input = keras.Input((self._seq_len, self._feat_dim))
@@ -340,14 +340,14 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._num_classes, activation='softmax')(x)
+        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
         return keras.Model(m_input, m_output, name="classification_model")
 
 
 class BlockClfArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, num_classes: int, blocks: list):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, blocks: list):
         self._blocks = blocks
-        super().__init__(seq_len, feat_dim, num_classes)
+        super().__init__(seq_len, feat_dim, output_dim)
 
     def _build_model(self):
         m_input = keras.Input((self._seq_len, self._feat_dim))
@@ -356,7 +356,7 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
             x = block(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._num_classes, activation='softmax')(x)
+        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
         return keras.Model(m_input, m_output, name="classification_model")
 
 

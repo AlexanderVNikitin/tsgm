@@ -137,12 +137,12 @@ class Dataset(DatasetProperties):
         return self.X.shape[2]
 
     @property
-    def num_classes(self) -> int:
+    def output_dim(self) -> int:
         """
         Returns the number of classes in the dataset.
         """
-        num_classes = len(set(self.y))
-        if num_classes > len(self.y) * 0.5:
+        output_dim = len(set(self.y))
+        if output_dim > len(self.y) * 0.5:
             logger.warning("either the number of classes if huge or it is not a classification dataset")
         return len(set(self.y))
 
