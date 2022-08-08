@@ -1,4 +1,4 @@
-numpy
+numpy==1.23.1
 tensorflow
 tensorflow_probability
 tensorflow_privacy
