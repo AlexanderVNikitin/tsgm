@@ -1,6 +1,9 @@
 import pytest
 
+import functools
 import numpy as np
+import sklearn.metrics.pairwise
+
 import tsgm
 
 
@@ -131,3 +134,12 @@ def test_get_gp_data():
     X = tsgm.utils.get_gp_samples_data(num_samples=10, max_time=10)
 
     assert X.shape == (10, 1, 10)
+
+
+def test_mmd():
+    X = np.array([[1, 2, 3], [4, 5, 6]])
+    Y = np.array([[1, 2, 3], [4, 5, 6]])
+    Z = np.array([[1, 1, 1], [1, 1, 1]])
+    rbf_kernel = functools.partial(sklearn.metrics.pairwise.rbf_kernel, gamma=1.0)
+    assert tsgm.utils.mmd(X, Y, rbf_kernel) == 0
+    assert tsgm.utils.mmd(X, Z, rbf_kernel) != 0
