@@ -143,3 +143,15 @@ def test_mmd():
     rbf_kernel = functools.partial(sklearn.metrics.pairwise.rbf_kernel, gamma=1.0)
     assert tsgm.utils.mmd(X, Y, rbf_kernel) == 0
     assert tsgm.utils.mmd(X, Z, rbf_kernel) != 0
+
+
+def test_mmd_kernel_heuristic():
+    X1 = np.random.normal(0, 1, 10000)[:, None]
+    X2 = np.random.normal(10, 100, 10000)[:, None]
+    X11 = np.random.normal(0, 1, 10000)[:, None]
+
+    kernel_width = tsgm.utils.kernel_median_heuristic(X1, X2)
+    assert kernel_width > 1
+
+    kernel_width = tsgm.utils.kernel_median_heuristic(X1, X11)
+    assert kernel_width > 0 and kernel_width < 1
