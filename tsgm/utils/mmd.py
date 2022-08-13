@@ -1,8 +1,14 @@
 import typing
+import logging
 
 import numpy as np
+import tensorflow as tf
 
 import tsgm
+
+
+logger = logging.getLogger('dataset')
+logger.setLevel(logging.DEBUG)
 
 
 def mmd(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: typing.Callable):
@@ -19,16 +25,64 @@ def kernel_median_heuristic(X1: tsgm.types.Tensor, X2: tsgm.types.Tensor) -> flo
     n = X1.shape[0]
     m = X2.shape[0]
 
-    X1_squared = np.tile((X1 * X1).ravel(), (m, 1)).transpose()
-    X2_squared = np.tile((X2 * X2).ravel(), (n, 1))
+    if n * m >= 10 ** 8:
+        logger.warning("n * m >= 10^8, consider subsampling for kernel median heuristic")
 
-    distances = X1_squared + X2_squared - 2 * np.dot(X1, X2.transpose())
+    X1_squared = tf.transpose(tf.tile((X1 * X1).ravel()[None, :], (m, 1)))
+    X2_squared = tf.tile((X2 * X2).ravel()[None, :], (n, 1))
+
+    distances = X1_squared + X2_squared - 2 * tf.tensordot(X1, tf.transpose(X2), axes=1)
     assert np.min(distances) >= 0
 
-    non_zero_distances = list(filter(lambda x: x != 0, distances.flatten()))
+    non_zero_distances = list(filter(lambda x: x != 0, tf.reshape(distances, [-1])))
     if non_zero_distances:
         median_distance = np.median(non_zero_distances)
     else:
         median_distance = 0
 
-    return np.sqrt(median_distance / 2)  # 2 * sigma**2
+    return tf.sqrt(median_distance / 2)  # 2 * sigma**2
+
+
+def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types.Tensor, Kxz: tsgm.types.Tensor) -> float:
+    '''
+    Computes the variance of the difference statistic MMD_{XY} - MMD_{XZ}
+    See http://arxiv.org/pdf/1511.04581.pdf Appendix A for more details.
+    '''
+    m = Kxy.shape[0]
+    n = Kyy.shape[0]
+    r = Kzz.shape[0]
+
+    Kyy_nd = Kyy - tf.linalg.diag(tf.linalg.diag_part(Kyy))  # Kyy - diag[Kyy]
+    Kzz_nd = Kzz - tf.linalg.diag(tf.linalg.diag_part(Kzz))  # Kzz - diag[Kzz]
+
+    # Approximations from Eq. 31
+    u_yy = tf.math.reduce_sum(Kyy_nd) / (n * (n - 1))
+    u_zz = tf.math.reduce_sum(Kzz_nd) / (r * (r - 1))
+    u_xy = tf.math.reduce_sum(Kxy) / (m * n)
+    u_xz = tf.math.reduce_sum(Kxz) / (m * r)
+
+    Kyy_nd_T = tf.transpose(Kyy_nd)
+    Kxy_T = tf.transpose(Kxy)
+    Kzz_nd_T = tf.transpose(Kzz_nd)
+    Kxz_T = tf.transpose(Kxz)
+
+    # zeta_1 computation, Eq. 30 & 31 in the paper
+    term1 = (1 / (n * (n - 1) ** 2)) * tf.math.reduce_sum(Kyy_nd_T @ Kyy_nd) - u_yy ** 2
+    term2 = (1 / (n ** 2 * m)) * tf.math.reduce_sum(Kxy_T @ Kxy) - u_xy ** 2
+    term3 = (1 / (m ** 2 * n)) * tf.math.reduce_sum(Kxy @ Kxy_T) - u_xy ** 2
+    term4 = (1 / (r * (r - 1) ** 2)) * tf.math.reduce_sum(Kzz_nd_T @ Kzz_nd) - u_zz ** 2
+    term5 = (1 / (r * m ** 2)) * tf.math.reduce_sum(Kxz @ Kxz_T) - u_xz ** 2
+    term6 = (1 / (m * r ** 2)) * tf.math.reduce_sum(Kxz_T @ Kxz) - u_xz ** 2
+
+    term7 = (1 / (m * n * (n - 1))) * tf.math.reduce_sum(Kyy_nd @ Kxy_T) - u_yy * u_xy
+    term8 = (1 / (n * m * r)) * tf.math.reduce_sum(Kxy_T @ Kxz) - u_xz * u_xy
+    term9 = (1 / (m * r * (r - 1))) * tf.math.reduce_sum(Kzz_nd @ Kxz_T) - u_zz * u_xz
+
+    zeta1 = (term1 + term2 + term3 + term4 + term5 + term6 - 2 * (term7 + term8 + term9))
+    zeta2 = (1 / (m * (m - 1))) * tf.math.reduce_sum((Kyy_nd - Kzz_nd - Kxy_T - Kxy + Kxz + Kxz_T) ** 2) - \
+        (u_yy - 2 * u_xy - (u_zz - 2 * u_xz)) ** 2
+
+    var_z1 = (4 * (m - 2) / (m * (m - 1))) * zeta1  # Eq (13)
+    var_z2 = (2 / (m * (m - 1))) * zeta2  # Eq (13)
+
+    return var_z1 + var_z2

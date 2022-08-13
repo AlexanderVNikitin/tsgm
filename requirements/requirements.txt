@@ -8,3 +8,4 @@ sklearn
 prettytable
 yfinance
 tqdm
+scipy==1.7.3

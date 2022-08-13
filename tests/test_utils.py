@@ -146,12 +146,22 @@ def test_mmd():
 
 
 def test_mmd_kernel_heuristic():
-    X1 = np.random.normal(0, 1, 10000)[:, None]
-    X2 = np.random.normal(10, 100, 10000)[:, None]
-    X11 = np.random.normal(0, 1, 10000)[:, None]
+    X1 = np.random.normal(0, 1, 100)[:, None]
+    X2 = np.random.normal(10, 100, 100)[:, None]
+    X11 = np.random.normal(0, 1, 100)[:, None]
 
     kernel_width = tsgm.utils.kernel_median_heuristic(X1, X2)
     assert kernel_width > 1
 
     kernel_width = tsgm.utils.kernel_median_heuristic(X1, X11)
     assert kernel_width > 0 and kernel_width < 1
+
+
+def test_mmd_diff_var():
+    Kyy = np.array([[1.0, 0.0], [0.0, 1.0]])
+    Kzz = np.array([[1.0, 0.0], [0.0, 1.0]])
+    Kxy = np.array([[1.0, 0.0], [0.0, 1.0]])
+    Kxz = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+    mmd_var = tsgm.utils.mmd_diff_var(Kyy, Kzz, Kxy, Kxz)
+    assert mmd_var == 0
