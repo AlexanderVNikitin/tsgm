@@ -165,3 +165,19 @@ def test_mmd_diff_var():
 
     mmd_var = tsgm.utils.mmd_diff_var(Kyy, Kzz, Kxy, Kxz)
     assert mmd_var == 0
+
+
+def test_mmd_3_test():
+    X = np.random.normal(0, 1, 100)[:, None]
+    Y = np.random.normal(10, 100, 100)[:, None]
+    Z = np.random.normal(0, 1, 100)[:, None]
+
+    #  Use custome kernels with this (TF-sklearn compatibility)
+    # sigma_XY = tsgm.utils.kernel_median_heuristic(X, Y);
+    # sigma_XZ = tsgm.utils.kernel_median_heuristic(X, Z);
+    # sigma = (sigma_XY + sigma_XZ) / 2
+
+    rbf_kernel = functools.partial(sklearn.metrics.pairwise.rbf_kernel, gamma=1.)
+    pvalue, tstat, mmd_xy, mmd_xz = tsgm.utils.mmd_3_test(X=X, Y=Y, Z=Z, kernel=rbf_kernel)
+
+    assert pvalue < 1e-10  # the null hypothesis is rejected

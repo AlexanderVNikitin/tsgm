@@ -1,13 +1,15 @@
 import typing
 import logging
+import scipy
 
 import numpy as np
+import math
 import tensorflow as tf
 
 import tsgm
 
 
-logger = logging.getLogger('dataset')
+logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
@@ -86,3 +88,42 @@ def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types
     var_z2 = (2 / (m * (m - 1))) * zeta2  # Eq (13)
 
     return var_z1 + var_z2
+
+
+def mmd_3_test(X: tsgm.types.Tensor, Y: tsgm.types.Tensor,
+               Z: tsgm.types.Tensor, kernel: typing.Callable) -> tuple:
+    '''
+    Relative MMD test --- returns a test statistic for whether Y is closer to X or than Z.
+    See http://arxiv.org/pdf/1511.04581.pdf
+    '''
+
+    Kxx = kernel(X, X)
+    Kyy = kernel(Y, Y)
+    Kzz = kernel(Z, Z)
+    Kxy = kernel(X, Y)
+    Kxz = kernel(X, Z)
+
+    Kxx_nd = Kxx - tf.linalg.diag(tf.linalg.diag_part(Kxx))
+    Kyy_nd = Kyy - tf.linalg.diag(tf.linalg.diag_part(Kyy))
+    Kzz_nd = Kzz - tf.linalg.diag(tf.linalg.diag_part(Kzz))
+
+    m = Kxy.shape[0]
+    n = Kyy.shape[0]
+    r = Kzz.shape[0]
+
+    u_xx = tf.math.reduce_sum(Kxx_nd) * (1 / (m * (m - 1)))
+    u_yy = tf.math.reduce_sum(Kyy_nd) * (1 / (n * (n - 1)))
+    u_zz = tf.math.reduce_sum(Kzz_nd) * (1 / (r * (r - 1)))
+    u_xy = tf.math.reduce_sum(Kxy) / (m * n)
+    u_xz = tf.math.reduce_sum(Kxz) / (m * r)
+
+    t = u_yy - 2 * u_xy - (u_zz - 2 * u_xz)  # test stat
+    diff_var = mmd_diff_var(Kyy, Kzz, Kxy, Kxz)
+    sqrt_diff_var = math.sqrt(diff_var)
+
+    pvalue = scipy.stats.norm.cdf(-t / sqrt_diff_var)
+    tstat = t / sqrt_diff_var
+
+    mmd_xy = u_xx + u_yy - 2 * u_xy
+    mmd_xz = u_xx + u_zz - 2 * u_xz
+    return pvalue, tstat, mmd_xy, mmd_xz
