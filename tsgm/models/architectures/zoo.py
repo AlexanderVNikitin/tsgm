@@ -288,6 +288,65 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         return generator
 
 
+class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
+    arch_type = "gan:conditional"
+
+    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
+        super().__init__()
+        self._seq_len = seq_len
+        self._feat_dim = feat_dim
+        self._latent_dim = latent_dim
+        self._output_dim = output_dim
+
+        self.generator_in_channels = latent_dim + output_dim
+        self.discriminator_in_channels = feat_dim + output_dim
+
+        self._discriminator = self._build_discriminator()
+        self._generator = self._build_generator()
+
+    def _build_discriminator(self):
+        d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
+        x = layers.LSTM(64, 3, strides=2, padding="same")(d_input)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Dropout(rate=0.2)(x)
+        x = layers.GlobalAvgPool1D()(x)
+        d_output = layers.Dense(1, activation="sigmoid")(x)
+        discriminator = keras.Model(d_input, d_output, name="discriminator")
+        return discriminator
+
+    def _build_generator(self):
+        g_input = keras.Input((self.generator_in_channels,))
+        x = layers.Dense(8 * 8 * self._seq_len)(g_input)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Reshape((self._seq_len, 64))(x)
+        x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Conv1D(1, 8, padding="same")(x)
+        x = layers.LSTM(256, return_sequences=True)(x)
+
+        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        generator = keras.Model(g_input, g_output, name="generator")
+        return generator
+
+
 class BaseClassificationArchitecture(Architecture):
     arch_type = "downstream:classification"
 
@@ -360,6 +419,58 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
         return keras.Model(m_input, m_output, name="classification_model")
 
 
+class cGAN_LSTMnArchitecture(BaseGANArchitecture):
+    arch_type = "gan:conditional"
+
+    def __init__(self, seq_len, feat_dim, latent_dim, output_dim, n_blocks=1):
+        super().__init__(seq_len, feat_dim, output_dim)
+        self._seq_len = seq_len
+        self._feat_dim = feat_dim
+        self._latent_dim = latent_dim
+        self._output_dim = output_dim
+        self._n_blocks = n_blocks
+
+        self.generator_in_channels = latent_dim + output_dim
+        self.discriminator_in_channels = feat_dim + output_dim
+
+        self._discriminator = self._build_discriminator()
+        self._generator = self._build_generator()
+
+    def _build_discriminator(self):
+        d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
+        x = d_input
+        for i in range(self._n_blocks - 1):
+            x = layers.LSTM(64)(x)
+            x = layers.Dropout(rate=0.2)(x)
+
+        x = layers.LSTM(64, return_sequences=True)(x)
+        x = layers.Dropout(rate=0.2)(x)
+
+        x = layers.GlobalAvgPool1D()(x)
+        d_output = layers.Dense(1, activation="sigmoid")(x)
+        discriminator = keras.Model(d_input, d_output, name="discriminator")
+        return discriminator
+
+    def _build_generator(self):
+        g_input = keras.Input((self.generator_in_channels,))
+
+        x = layers.Dense(8 * 8 * self._seq_len)(g_input)
+        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.Reshape((self._seq_len, 64))(x)
+
+        for i in range(self._n_blocks - 1):
+            x = layers.LSTM(64, return_sequences=True)(x)
+            x = layers.Dropout(rate=0.2)(x)
+        x = layers.LSTM(256, return_sequences=True)(x)
+
+        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        generator = keras.Model(g_input, g_output, name="generator")
+        return generator
+
+
 class Zoo(dict):
     def __init__(self, *arg, **kwargs):
         super(Zoo, self).__init__(*arg, **kwargs)
@@ -378,6 +489,7 @@ zoo = Zoo({
     "cvae_conv5": cVAE_CONV5Architecture,
     "cgan_base_c4_l1": cGAN_Conv4Architecture,
     "t-cgan_c4": tcGAN_Conv4Architecture,
+    "cgan_lstm_n": cGAN_LSTMnArchitecture,
 
     # Downstream models
     "clf_cn": ConvnArchitecture,

@@ -82,7 +82,7 @@ def visualize_ts_lineplot(ts: tsgm.types.Tensor, ys: tsgm.types.OptTensor = None
         sns.lineplot(x=range(ts.shape[1]), y=ts[sample_id, :, feature_id], ax=axs[i], label=f"feature #{feature_id}")
         if ys is not None:
             if len(ys.shape) == 1:
-                print(ys[sample_id])
+                axs[i].set_title(ys[sample_id])
             elif len(ys.shape) == 2:
                 sns.lineplot(x=range(ts.shape[1]), y=ys[sample_id], ax=axs[i].twinx(), color="g", label="Target variable")
             else:

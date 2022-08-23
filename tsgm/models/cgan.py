@@ -297,7 +297,6 @@ class ConditionalGAN(keras.Model):
         if self.dp:
             # For DP optimizers from `tensorflow.privacy`
             self.g_optimizer.minimize(g_loss, self.generator.trainable_weights, tape=tape)
-
         else:
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))

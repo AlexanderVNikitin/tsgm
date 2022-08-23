@@ -9,6 +9,10 @@ setup(name='tsgm',
       url='',
       download_url='',
       license='Apache-2.0',
-      install_requires=[],
+      install_requires=[
+          "tensorflow>=2.9",
+          "scipy>=1.7.3"
+          "numpy>=1.23.2",
+      ],
       package_data={'tsgm': ['README.md']},
       packages=find_packages())
