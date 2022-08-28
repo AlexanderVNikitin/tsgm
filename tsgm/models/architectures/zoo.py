@@ -449,7 +449,7 @@ class BasicRecurrentArchitecture(keras.models.Model):
         )
         return model
 
-    def build(self):
+    def build(self) -> keras.models.Model:
         model = keras.models.Sequential(name=f"{self._name}")
         model = self._make_network(model)
         return model
