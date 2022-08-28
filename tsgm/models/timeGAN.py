@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.python.types.core import TensorLike
 import numpy as np
 from tqdm import tqdm, trange
 
@@ -93,10 +94,54 @@ class TimeGAN:
         ).build()
 
         # ----------------------------
-        # Basic Losses
+        # Optimizers: call .compile() to set them
         # ----------------------------
-        self._mse = keras.losses.MeanSquaredError()
-        self._bce = keras.losses.BinaryCrossentropy()
+        self.autoencoder_opt = None
+        self.adversarialsup_opt = None
+        self.generator_opt = None
+        self.embedder_opt = None
+        self.discriminator_opt = None
+        # ----------------------------
+        # Loss functions: call .compile() to set them
+        # ----------------------------
+        self._mse = None
+        self._bce = None
+
+    def compile(
+        self,
+        d_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        g_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        emb_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        supgan_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        emb_loss: keras.losses.Loss = keras.losses.MeanSquaredError(),
+        clf_loss: keras.losses.Loss = keras.losses.BinaryCrossentropy(),
+    ):
+        """
+        Assign optimizers and loss functions.
+
+        :param d_optimizer: An optimizer for the GAN's discriminator
+        :param g_optimizer: An optimizer for the GAN's generator
+        :param emb_optimizer: An optimizer for the GAN's embedder
+        :param supgan_optimizer: An optimizer for the adversarial supervised network
+        :param ae_optimizer: An optimizer for the autoencoder network
+        :param emb_loss: A loss function for the embedding recovery
+        :param clf_loss: A loss function for the discriminator task
+        :return: None
+        """
+        # ----------------------------
+        # Optimizers
+        # ----------------------------
+        self.autoencoder_opt = ae_optimizer
+        self.adversarialsup_opt = supgan_optimizer
+        self.generator_opt = g_optimizer
+        self.embedder_opt = emb_optimizer
+        self.discriminator_opt = d_optimizer
+        # ----------------------------
+        # Loss functions
+        # ----------------------------
+        self._mse = emb_loss
+        self._bce = clf_loss
 
     def _define_timegan(self):
         # --------------------------------
@@ -164,14 +209,16 @@ class TimeGAN:
         self.discriminator_model.summary()
 
     @tf.function
-    def _train_autoencoder(self, X, optimizer: keras.optimizers.Optimizer):
+    def _train_autoencoder(
+        self, X: TensorLike, optimizer: keras.optimizers.Optimizer
+    ) -> float:
         """
         1. Embedding network training: minimize E_loss0
         """
         with tf.GradientTape() as tape:
             X_tilde = self.autoencoder(X)
             E_loss_T0 = self._mse(X, X_tilde)
-            E_loss0 = 10 * tf.sqrt(E_loss_T0)
+            E_loss0 = 10.0 * tf.sqrt(E_loss_T0)
 
         e_vars = self.embedder.trainable_variables
         r_vars = self.recovery.trainable_variables
@@ -182,7 +229,9 @@ class TimeGAN:
         return E_loss0
 
     @tf.function
-    def _train_supervisor(self, X, optimizer: keras.optimizers.Optimizer):
+    def _train_supervisor(
+        self, X: TensorLike, optimizer: keras.optimizers.Optimizer
+    ) -> float:
         """
         2. Training with supervised loss only: minimize G_loss_S
         """
@@ -204,7 +253,9 @@ class TimeGAN:
         return G_loss_S
 
     @tf.function
-    def _train_generator(self, X, Z, optimizer: keras.optimizers.Optimizer):
+    def _train_generator(
+        self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
+    ) -> tuple[float, float, float]:
         """
         3. Joint training (Generator training twice more than discriminator training): minimize G_loss
         """
@@ -245,7 +296,9 @@ class TimeGAN:
         return G_loss_U, G_loss_S, G_loss_V
 
     @tf.function
-    def _train_embedder(self, X, optimizer: keras.optimizers.Optimizer):
+    def _train_embedder(
+        self, X: TensorLike, optimizer: keras.optimizers.Optimizer
+    ) -> tuple[float, float]:
         """
         Train embedder during joint training: minimize E_loss
         """
@@ -270,7 +323,9 @@ class TimeGAN:
         return E_loss, E_loss_T0
 
     @tf.function
-    def _train_discriminator(self, X, Z, optimizer: keras.optimizers.Optimizer):
+    def _train_discriminator(
+        self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
+    ) -> float:
         """
         minimize D_loss
         """
@@ -283,11 +338,13 @@ class TimeGAN:
         return D_loss
 
     @staticmethod
-    def _compute_generator_moments_loss(y_true, y_pred):
+    def _compute_generator_moments_loss(
+        y_true: TensorLike, y_pred: TensorLike
+    ) -> float:
         """
-        :param y_true:
-        :param y_pred:
-        :return G_loss_V:
+        :param y_true: TensorLike
+        :param y_pred: TensorLike
+        :return G_loss_V: float
         """
         _eps = 1e-6
         y_true_mean, y_true_var = tf.nn.moments(x=y_true, axes=[0])
@@ -301,11 +358,11 @@ class TimeGAN:
         # G_loss_V = G_loss_V1 + G_loss_V2
         return g_loss_mean + g_loss_var
 
-    def _check_discriminator_loss(self, X, Z):
+    def _check_discriminator_loss(self, X: TensorLike, Z: TensorLike) -> float:
         """
-        :param X:
-        :param Z:
-        :return D_loss:
+        :param X: TensorLike
+        :param Z: TensorLike
+        :return D_loss: float
         """
         # Loss on false negatives
         Y_real = self.discriminator_model(X)
@@ -321,7 +378,7 @@ class TimeGAN:
         D_loss = D_loss_real + D_loss_fake + self.gamma * D_loss_fake_e
         return D_loss
 
-    def _generate_noise(self):
+    def _generate_noise(self) -> TensorLike:
         """
         Random vector generation
         :return Z, generated random vector
@@ -354,46 +411,51 @@ class TimeGAN:
         )
 
     def fit(self, data):
+        assert not (
+            self.autoencoder_opt is None
+            or self.adversarialsup_opt is None
+            or self.generator_opt is None
+            or self.embedder_opt is None
+            or self.discriminator_opt is None
+        ), "One of the optimizers is not defined. Pleas call .compile() to set them"
+        assert not (
+            self._mse is None or self._bce is None
+        ), "One of the loss functions is not defined. Pleas call .compile() to set them"
+
         # Define the model
         self._define_timegan()
 
         # 1. Embedding network training
         print("Start Embedding Network Training")
 
-        autoencoder_opt = keras.optimizers.Adam()
         for epoch in tqdm(range(self.epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
-            step_e_loss_0 = self._train_autoencoder(X_, autoencoder_opt)
+            step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
             # Checkpoint
             if epoch % self.checkpoint == 0:
                 print(f"step: {epoch}/{self.epochs}, e_loss: {step_e_loss_0}")
 
-        print("Finish Embedding Network Training")
+        print("Finished Embedding Network Training")
 
         # 2. Training only with supervised loss
         print("Start Training with Supervised Loss Only")
 
         # Adversarial Supervised network training
-        adversarialsup_opt = keras.optimizers.Adam()
         for epoch in tqdm(range(self.epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
-            step_g_loss_s = self._train_supervisor(X_, adversarialsup_opt)
+            step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
             # Checkpoint
             if epoch % self.checkpoint == 0:
                 print(
                     f"step: {epoch}/{self.epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
 
-        print("Finish Training with Supervised Loss Only")
+        print("Finished Training with Supervised Loss Only")
 
         # 3. Joint Training
         print("Start Joint Training")
 
         # GAN with embedding network training
-        generator_opt = keras.optimizers.Adam()
-        embedder_opt = keras.optimizers.Adam()
-        discriminator_opt = keras.optimizers.Adam()
-
         step_g_loss_u = step_g_loss_s = step_g_loss_v = step_e_loss_t0 = step_d_loss = 0
         for epoch in tqdm(range(self.epochs), desc="GAN with embedding - training"):
 
@@ -405,20 +467,20 @@ class TimeGAN:
                 # Train the generator
                 # --------------------------
                 step_g_loss_u, step_g_loss_s, step_g_loss_v = self._train_generator(
-                    X_, Z_, generator_opt
+                    X_, Z_, self.generator_opt
                 )
 
                 # --------------------------
                 # Train the embedder
                 # --------------------------
-                step_e_loss_t0 = self._train_embedder(X_, embedder_opt)
+                _, step_e_loss_t0 = self._train_embedder(X_, self.embedder_opt)
 
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             Z_ = next(self.get_noise_batch())
             step_d_loss = self._check_discriminator_loss(X_, Z_)
             if step_d_loss > 0.15:
-                print("Train discriminator (discriminator does not work well)")
-                step_d_loss = self._train_discriminator(X_, Z_, discriminator_opt)
+                print("Train Discriminator (discriminator does not work well yet)")
+                step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
 
             # Print multiple checkpoints
             if epoch % self.checkpoint == 0:
@@ -430,9 +492,9 @@ class TimeGAN:
                     g_loss_v: {np.round(step_g_loss_v, 4)},
                     e_loss_t0: {np.round(np.sqrt(step_e_loss_t0), 4)}"""
                 )
-            print("Finish Joint Training")
+        print("Finished Joint Training")
 
-    def generate(self, n_samples: int):
+    def generate(self, n_samples: int) -> TensorLike:
         """
         Generate synthetic time series
         """
