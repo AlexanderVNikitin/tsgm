@@ -5,6 +5,8 @@ from tqdm import tqdm, trange
 
 import logging
 
+from tsgm.models.architectures.zoo import BasicRecurrentArchitecture
+
 logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
 
@@ -50,7 +52,7 @@ class TimeGAN:
         # ----------------------------
         # Basic Architectures
         # ----------------------------
-        self.embedder = TimeGanBasicRecurrentArchitecture(
+        self.embedder = BasicRecurrentArchitecture(
             hidden_dim=self.hidden_dim,
             output_dim=self.hidden_dim,
             n_layers=self.n_layers,
@@ -58,7 +60,7 @@ class TimeGAN:
             name="Embedder",
         ).build()
 
-        self.recovery = TimeGanBasicRecurrentArchitecture(
+        self.recovery = BasicRecurrentArchitecture(
             hidden_dim=self.hidden_dim,
             output_dim=self.dim,
             n_layers=self.n_layers,
@@ -66,7 +68,7 @@ class TimeGAN:
             name="Recovery",
         ).build()
 
-        self.supervisor = TimeGanBasicRecurrentArchitecture(
+        self.supervisor = BasicRecurrentArchitecture(
             hidden_dim=self.hidden_dim,
             output_dim=self.hidden_dim,
             n_layers=self.n_layers,
@@ -74,7 +76,7 @@ class TimeGAN:
             name="Supervisor",
         ).build()
 
-        self.discriminator = TimeGanBasicRecurrentArchitecture(
+        self.discriminator = BasicRecurrentArchitecture(
             hidden_dim=self.hidden_dim,
             output_dim=1,
             n_layers=self.n_layers,
@@ -82,7 +84,7 @@ class TimeGAN:
             name="Discriminator",
         ).build()
 
-        self.generator_aux = TimeGanBasicRecurrentArchitecture(
+        self.generator_aux = BasicRecurrentArchitecture(
             hidden_dim=self.hidden_dim,
             output_dim=self.hidden_dim,
             n_layers=self.n_layers,
@@ -442,64 +444,3 @@ class TimeGAN:
             data.append(records)
         return np.array(np.vstack(data))
 
-
-class TimeGanBasicRecurrentArchitecture(keras.models.Model):
-    def __init__(
-        self,
-        hidden_dim: int,
-        output_dim: int,
-        n_layers: int,
-        network_type: str,
-        name: str = "Sequential",
-    ):
-        """
-        :param hidden_dim: int, the number of units (e.g. 24)
-        :param output_dim: int, the number of output units (e.g. 1)
-        :param n_layers: int, the number of layers (e.g. 3)
-        :param network_type: str, one of 'gru', 'lstm', or 'lstmLN'
-        :param name: str, model name
-            Default: "Sequential"
-        """
-        self.hidden_dim = hidden_dim
-        self.output_dim = output_dim
-        self.n_layers = n_layers
-
-        assert network_type in ["gru", "lstm", "lstmLN"]
-        self.network_type = network_type
-
-        self._name = name
-
-    def _rnn_cell(self) -> keras.layers.Layer:
-        """
-        Basic RNN Cell
-        :return cell: keras.layers.Layer
-        """
-        cell = None
-        # GRU
-        if self.network_type == "gru":
-            cell = keras.layers.GRUCell(self.hidden_dim, activation="tanh")
-        # LSTM
-        elif self.network_type == "lstm":
-            cell = keras.layers.LSTMCell(self.hidden_dim, activation="tanh")
-        # LSTM Layer Normalization
-        elif self.network_type == "lstmLN":
-            cell = keras.layers.LayerNormLSTMCell(
-                num_units=self.hidden_dim, activation="tanh"
-            )
-        return cell
-
-    def _make_network(self, model: keras.models.Model) -> keras.models.Model:
-        _cells = tf.keras.layers.StackedRNNCells(
-            [self._rnn_cell() for _ in range(self.n_layers)],
-            name=f"{self.network_type}_x{self.n_layers}",
-        )
-        model.add(keras.layers.RNN(_cells, return_sequences=True))
-        model.add(
-            keras.layers.Dense(units=self.output_dim, activation="sigmoid", name="OUT")
-        )
-        return model
-
-    def build(self):
-        model = keras.models.Sequential(name=f"{self._name}")
-        model = self._make_network(model)
-        return model
