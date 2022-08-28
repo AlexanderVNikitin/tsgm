@@ -443,4 +443,3 @@ class TimeGAN:
             records = self.generator(Z_)
             data.append(records)
         return np.array(np.vstack(data))
-
