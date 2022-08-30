@@ -478,5 +478,6 @@ zoo = Zoo(
         "clf_cn": ConvnArchitecture,
         "clf_cl_n": ConvnLSTMnArchitecture,
         "clf_block": BlockClfArchitecture,
+        "recurrent": BasicRecurrentArchitecture,
     }
 )
