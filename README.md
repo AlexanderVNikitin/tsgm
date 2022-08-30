@@ -40,6 +40,11 @@ Run tests:
 make test
 ```
 
+To check static typing:
+```bash
+mypy
+```
+
 ## Datasets
 TSGM provides API for convenient use of many time-series datasets. The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
 
