@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.types.core import TensorLike
 import numpy as np
+from copy import deepcopy
 from tqdm import tqdm, trange
 
 import logging
@@ -96,16 +97,19 @@ class TimeGAN:
         # ----------------------------
         # Optimizers: call .compile() to set them
         # ----------------------------
-        self.autoencoder_opt = None
-        self.adversarialsup_opt = None
-        self.generator_opt = None
-        self.embedder_opt = None
-        self.discriminator_opt = None
+        DEFAULT_ADAM = keras.optimizers.Adam()
+        self.autoencoder_opt = deepcopy(DEFAULT_ADAM)
+        self.adversarialsup_opt = deepcopy(DEFAULT_ADAM)
+        self.generator_opt = deepcopy(DEFAULT_ADAM)
+        self.embedder_opt = deepcopy(DEFAULT_ADAM)
+        self.discriminator_opt = deepcopy(DEFAULT_ADAM)
         # ----------------------------
         # Loss functions: call .compile() to set them
         # ----------------------------
-        self._mse = None
-        self._bce = None
+        DEFAULT_MSE = keras.losses.MeanSquaredError()
+        DEFAULT_BCE = keras.losses.BinaryCrossentropy()
+        self._mse = DEFAULT_MSE
+        self._bce = DEFAULT_BCE
 
     def compile(
         self,
@@ -417,10 +421,10 @@ class TimeGAN:
             or self.generator_opt is None
             or self.embedder_opt is None
             or self.discriminator_opt is None
-        ), "One of the optimizers is not defined. Pleas call .compile() to set them"
+        ), "One of the optimizers is not defined. Please call .compile() to set them"
         assert not (
             self._mse is None or self._bce is None
-        ), "One of the loss functions is not defined. Pleas call .compile() to set them"
+        ), "One of the loss functions is not defined. Please call .compile() to set them"
 
         # Define the model
         self._define_timegan()
