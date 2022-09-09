@@ -77,7 +77,9 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
 
     def _build_encoder(self):
         encoder_inputs = keras.Input(shape=(self._seq_len, self._feat_dim))
-        x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(encoder_inputs)
+        x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(
+            encoder_inputs
+        )
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
@@ -105,17 +107,29 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dense(self._encoder.layers[-6].output_shape[1], activation="relu")(x)
 
         x = layers.Reshape((24, 64))(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(x)
+        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
+            x
+        )
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(x)
+        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
+            x
+        )
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(x)
+        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
+            x
+        )
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(x)
+        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
+            x
+        )
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 10, activation="relu", strides=1, padding="same")(x)
+        x = layers.Conv1DTranspose(
+            64, 10, activation="relu", strides=1, padding="same"
+        )(x)
         x = layers.Dropout(rate=0.2)(x)
-        decoder_outputs = layers.Conv1DTranspose(self._feat_dim, 3, activation="sigmoid", padding="same")(x)
+        decoder_outputs = layers.Conv1DTranspose(
+            self._feat_dim, 3, activation="sigmoid", padding="same"
+        )(x)
         decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
         return decoder
 
@@ -133,9 +147,13 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         self._decoder = self._build_decoder()
 
     def _build_encoder(self):
-        encoder_inputs = keras.Input(shape=(self._seq_len, self._feat_dim + self._output_dim))
+        encoder_inputs = keras.Input(
+            shape=(self._seq_len, self._feat_dim + self._output_dim)
+        )
 
-        x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(encoder_inputs)
+        x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(
+            encoder_inputs
+        )
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
@@ -155,7 +173,12 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         return encoder
 
     def _build_decoder(self):
-        inputs = keras.Input(shape=(self._seq_len, self._latent_dim + self._output_dim,))
+        inputs = keras.Input(
+            shape=(
+                self._seq_len,
+                self._latent_dim + self._output_dim,
+            )
+        )
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(inputs)
         x = layers.LeakyReLU(alpha=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
@@ -167,7 +190,9 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dropout(rate=0.2)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
-        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
+            x
+        )
         d_output = layers.LocallyConnected1D(1, 1, activation="sigmoid")(x)
 
         decoder = keras.Model(inputs, d_output, name="decoder")
@@ -227,7 +252,9 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
-        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
+            x
+        )
         g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
@@ -281,7 +308,9 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.Dropout(rate=0.2)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
-        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
+            x
+        )
         g_output = layers.LocallyConnected1D(1, 1, activation="tanh")(x)
 
         generator = keras.Model(g_input, g_output, name="generator")
@@ -368,7 +397,9 @@ class BaseClassificationArchitecture(Architecture):
 
 
 class ConvnArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, n_conv_blocks: int = 1):
+    def __init__(
+        self, seq_len: int, feat_dim: int, output_dim: int, n_conv_blocks: int = 1
+    ):
         self._n_conv_blocks = n_conv_blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
@@ -376,16 +407,18 @@ class ConvnArchitecture(BaseClassificationArchitecture):
         m_input = keras.Input((self._seq_len, self._feat_dim))
         x = m_input
         for _ in range(self._n_conv_blocks):
-            x = layers.Conv1D(filters=64, kernel_size=3, activation='relu')(x)
+            x = layers.Conv1D(filters=64, kernel_size=3, activation="relu")(x)
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
-        x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
+        x = layers.Dense(128, activation="relu")(x)
+        m_output = layers.Dense(self._output_dim, activation="softmax")(x)
         return keras.Model(m_input, m_output, name="classification_model")
 
 
 class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, n_conv_lstm_blocks: int = 1):
+    def __init__(
+        self, seq_len: int, feat_dim: int, output_dim: int, n_conv_lstm_blocks: int = 1
+    ):
         self._n_conv_lstm_blocks = n_conv_lstm_blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
@@ -393,13 +426,13 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
         m_input = keras.Input((self._seq_len, self._feat_dim))
         x = m_input
         for _ in range(self._n_conv_lstm_blocks):
-            x = layers.Conv1D(filters=64, kernel_size=3, activation='relu')(x)
+            x = layers.Conv1D(filters=64, kernel_size=3, activation="relu")(x)
             x = layers.Dropout(0.2)(x)
             x = layers.LSTM(128, activation="relu", return_sequences=True)(x)
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
-        x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
+        x = layers.Dense(128, activation="relu")(x)
+        m_output = layers.Dense(self._output_dim, activation="softmax")(x)
         return keras.Model(m_input, m_output, name="classification_model")
 
 
@@ -414,9 +447,71 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
         for block in self._blocks:
             x = block(x)
         x = layers.Flatten()(x)
-        x = layers.Dense(128, activation='relu')(x)
-        m_output = layers.Dense(self._output_dim, activation='softmax')(x)
+        x = layers.Dense(128, activation="relu")(x)
+        m_output = layers.Dense(self._output_dim, activation="softmax")(x)
         return keras.Model(m_input, m_output, name="classification_model")
+
+
+class BasicRecurrentArchitecture(keras.models.Model):
+    def __init__(
+        self,
+        hidden_dim: int,
+        output_dim: int,
+        n_layers: int,
+        network_type: str,
+        name: str = "Sequential",
+    ):
+        """
+        :param hidden_dim: int, the number of units (e.g. 24)
+        :param output_dim: int, the number of output units (e.g. 1)
+        :param n_layers: int, the number of layers (e.g. 3)
+        :param network_type: str, one of 'gru', 'lstm', or 'lstmLN'
+        :param name: str, model name
+            Default: "Sequential"
+        """
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        self.n_layers = n_layers
+
+        assert network_type in ["gru", "lstm", "lstmLN"]
+        self.network_type = network_type
+
+        self._name = name
+
+    def _rnn_cell(self) -> keras.layers.Layer:
+        """
+        Basic RNN Cell
+        :return cell: keras.layers.Layer
+        """
+        cell = None
+        # GRU
+        if self.network_type == "gru":
+            cell = keras.layers.GRUCell(self.hidden_dim, activation="tanh")
+        # LSTM
+        elif self.network_type == "lstm":
+            cell = keras.layers.LSTMCell(self.hidden_dim, activation="tanh")
+        # LSTM Layer Normalization
+        elif self.network_type == "lstmLN":
+            cell = keras.layers.LayerNormLSTMCell(
+                num_units=self.hidden_dim, activation="tanh"
+            )
+        return cell
+
+    def _make_network(self, model: keras.models.Model) -> keras.models.Model:
+        _cells = tf.keras.layers.StackedRNNCells(
+            [self._rnn_cell() for _ in range(self.n_layers)],
+            name=f"{self.network_type}_x{self.n_layers}",
+        )
+        model.add(keras.layers.RNN(_cells, return_sequences=True))
+        model.add(
+            keras.layers.Dense(units=self.output_dim, activation="sigmoid", name="OUT")
+        )
+        return model
+
+    def build(self) -> keras.models.Model:
+        model = keras.models.Sequential(name=f"{self._name}")
+        model = self._make_network(model)
+        return model
 
 
 class cGAN_LSTMnArchitecture(BaseGANArchitecture):
@@ -483,16 +578,19 @@ class Zoo(dict):
         print(summary_table)
 
 
-zoo = Zoo({
-    # Generative models
-    "vae_conv5": VAE_CONV5Architecture,
-    "cvae_conv5": cVAE_CONV5Architecture,
-    "cgan_base_c4_l1": cGAN_Conv4Architecture,
-    "t-cgan_c4": tcGAN_Conv4Architecture,
-    "cgan_lstm_n": cGAN_LSTMnArchitecture,
-
-    # Downstream models
-    "clf_cn": ConvnArchitecture,
-    "clf_cl_n": ConvnLSTMnArchitecture,
-    "clf_block": BlockClfArchitecture,
-})
+zoo = Zoo(
+    {
+        # Generative models
+        "vae_conv5": VAE_CONV5Architecture,
+        "cvae_conv5": cVAE_CONV5Architecture,
+        "cgan_base_c4_l1": cGAN_Conv4Architecture,
+        "t-cgan_c4": tcGAN_Conv4Architecture,
+        "cgan_lstm_n": cGAN_LSTMnArchitecture,
+        
+        # Downstream models
+        "clf_cn": ConvnArchitecture,
+        "clf_cl_n": ConvnLSTMnArchitecture,
+        "clf_block": BlockClfArchitecture,
+        "recurrent": BasicRecurrentArchitecture,
+    }
+)
