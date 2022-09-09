@@ -24,6 +24,7 @@ The package is built on top of `Tensorflow <https://www.tensorflow.org/>`_ that 
 
    guides/installation
    guides/introduction
+   guides/datasets
    guides/resources
 
 .. toctree::

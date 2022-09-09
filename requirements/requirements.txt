@@ -1,9 +1,8 @@
-tensorflow_privacy==0.8.4
+tensorflow_privacy
+tensorflow
 tensorflow_probability
-pandas==1.4.3
 numpy
 scipy
-tensorflow==2.9
 networkx
 seaborn
 sklearn
