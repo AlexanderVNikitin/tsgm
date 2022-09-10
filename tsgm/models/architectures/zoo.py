@@ -452,7 +452,9 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
         return keras.Model(m_input, m_output, name="classification_model")
 
 
-class BasicRecurrentArchitecture(keras.models.Model):
+class BasicRecurrentArchitecture(Architecture):
+    arch_type = "rnn_architecture"
+
     def __init__(
         self,
         hidden_dim: int,
@@ -586,7 +588,7 @@ zoo = Zoo(
         "cgan_base_c4_l1": cGAN_Conv4Architecture,
         "t-cgan_c4": tcGAN_Conv4Architecture,
         "cgan_lstm_n": cGAN_LSTMnArchitecture,
-        
+
         # Downstream models
         "clf_cn": ConvnArchitecture,
         "clf_cl_n": ConvnLSTMnArchitecture,

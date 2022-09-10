@@ -1,6 +1,6 @@
-tensorflow_privacy
-tensorflow
-tensorflow_probability
+tensorflow_privacy==0.8.5
+tensorflow==2.9.1
+tensorflow_probability==0.17.0
 numpy
 scipy
 networkx

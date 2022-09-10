@@ -48,7 +48,7 @@ setup(name='tsgm',
       long_description="",
       license=license,
       install_requires=[
-          "tensorflow>=2.9",
+          "tensorflow==2.9.1",
           "scipy>=1.7.3"
           "numpy>=1.23.2",
       ],
