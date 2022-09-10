@@ -4,6 +4,7 @@ from tensorflow.python.types.core import TensorLike
 import numpy as np
 from copy import deepcopy
 from tqdm import tqdm, trange
+import typing
 
 import logging
 
@@ -259,7 +260,7 @@ class TimeGAN:
     @tf.function
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> tuple[float, float, float]:
+    ) -> typing.Tuple[float, float, float]:
         """
         3. Joint training (Generator training twice more than discriminator training): minimize G_loss
         """
@@ -302,7 +303,7 @@ class TimeGAN:
     @tf.function
     def _train_embedder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> tuple[float, float]:
+    ) -> typing.Tuple[float, float]:
         """
         Train embedder during joint training: minimize E_loss
         """
