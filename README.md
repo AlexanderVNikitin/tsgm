@@ -45,6 +45,31 @@ To check static typing:
 mypy
 ```
 
+## Train your generative model
+Here we provide the gist of the framework, for the completed examples see [our tutorials](./tutorials).
+```python
+import tsgm
+
+# ... Define hyperparameters ...
+
+dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
+    seq_len=seq_len, feat_dim=feature_dim,
+    latent_dim=latent_dim, output_dim=0)
+discriminator, generator = architecture.discriminator, architecture.generator
+
+gan = tsgm.models.cgan.GAN(
+    discriminator=discriminator, generator=generator, latent_dim=latent_dim
+)
+gan.compile(
+    d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+    g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+    loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+)
+
+result = gan.generate(10)
+```
+
 ## Datasets
 TSGM provides API for convenient use of many time-series datasets. The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
 
