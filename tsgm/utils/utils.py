@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -9,3 +10,11 @@ def reconstruction_loss_by_axis(original, reconstructed, axis=0):
         return tf.reduce_sum(tf.math.squared_difference(original, reconstructed))
     else:
         return tf.losses.mean_squared_error(tf.reduce_mean(original, axis=axis), tf.reduce_mean(reconstructed, axis=axis))
+
+
+def generate_slices(X, slice_len=10):
+    new_X = []
+    for el in X:
+        for i in range(0, len(el) - slice_len):
+            new_X.append(el[i : i + slice_len])
+    return np.array(new_X)

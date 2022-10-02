@@ -311,7 +311,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = layers.LocallyConnected1D(1, 1, activation="tanh")(x)
+        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
 
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
@@ -475,8 +475,8 @@ class BasicRecurrentArchitecture(Architecture):
         self.output_dim = output_dim
         self.n_layers = n_layers
 
-        assert network_type in ["gru", "lstm", "lstmLN"]
-        self.network_type = network_type
+        self.network_type = network_type.lower()
+        assert self.network_type in ["gru", "lstm", "lstmLN"]
 
         self._name = name
 
@@ -499,39 +499,40 @@ class BasicRecurrentArchitecture(Architecture):
             )
         return cell
 
-    def _make_network(self, model: keras.models.Model) -> keras.models.Model:
+    def _make_network(self, model: keras.models.Model, activation: str, return_sequences: bool) -> keras.models.Model:
         _cells = tf.keras.layers.StackedRNNCells(
             [self._rnn_cell() for _ in range(self.n_layers)],
             name=f"{self.network_type}_x{self.n_layers}",
         )
-        model.add(keras.layers.RNN(_cells, return_sequences=True))
+        model.add(keras.layers.RNN(_cells, return_sequences=return_sequences))
         model.add(
-            keras.layers.Dense(units=self.output_dim, activation="sigmoid", name="OUT")
+            keras.layers.Dense(units=self.output_dim, activation=activation, name="OUT")
         )
         return model
 
-    def build(self) -> keras.models.Model:
+    def build(self, activation: str = "sigmoid", return_sequences: bool = True) -> keras.models.Model:
         model = keras.models.Sequential(name=f"{self._name}")
-        model = self._make_network(model)
+        model = self._make_network(model, activation=activation, return_sequences=return_sequences)
         return model
 
 
 class cGAN_LSTMnArchitecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim, n_blocks=1):
+    def __init__(self, seq_len, feat_dim, latent_dim, output_dim, n_blocks=1, output_activation="tanh"):
         super().__init__(seq_len, feat_dim, output_dim)
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
         self._n_blocks = n_blocks
+        self._output_activation = output_activation
 
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
 
         self._discriminator = self._build_discriminator()
-        self._generator = self._build_generator()
+        self._generator = self._build_generator(output_activation=output_activation)
 
     def _build_discriminator(self):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
@@ -548,7 +549,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         discriminator = keras.Model(d_input, d_output, name="discriminator")
         return discriminator
 
-    def _build_generator(self):
+    def _build_generator(self, output_activation):
         g_input = keras.Input((self.generator_in_channels,))
 
         x = layers.Dense(8 * 8 * self._seq_len)(g_input)
@@ -563,7 +564,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation=output_activation)(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 

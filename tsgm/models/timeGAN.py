@@ -46,7 +46,6 @@ class TimeGAN:
 
         self.n_layers = n_layers
 
-        self.epochs = epochs
         self.checkpoint = checkpoint
         self.batch_size = batch_size
 
@@ -415,7 +414,7 @@ class TimeGAN:
             .repeat()
         )
 
-    def fit(self, data):
+    def fit(self, data, epochs):
         assert not (
             self.autoencoder_opt is None
             or self.adversarialsup_opt is None
@@ -433,12 +432,12 @@ class TimeGAN:
         # 1. Embedding network training
         print("Start Embedding Network Training")
 
-        for epoch in tqdm(range(self.epochs), desc="Autoencoder - training"):
+        for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
             # Checkpoint
             if epoch % self.checkpoint == 0:
-                print(f"step: {epoch}/{self.epochs}, e_loss: {step_e_loss_0}")
+                print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
 
         print("Finished Embedding Network Training")
 
@@ -446,13 +445,13 @@ class TimeGAN:
         print("Start Training with Supervised Loss Only")
 
         # Adversarial Supervised network training
-        for epoch in tqdm(range(self.epochs), desc="Adversarial Supervised - training"):
+        for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
             # Checkpoint
             if epoch % self.checkpoint == 0:
                 print(
-                    f"step: {epoch}/{self.epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
+                    f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
 
         print("Finished Training with Supervised Loss Only")
@@ -462,7 +461,7 @@ class TimeGAN:
 
         # GAN with embedding network training
         step_g_loss_u = step_g_loss_s = step_g_loss_v = step_e_loss_t0 = step_d_loss = 0
-        for epoch in tqdm(range(self.epochs), desc="GAN with embedding - training"):
+        for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
 
             # Generator training (twice more than discriminator training)
             for kk in range(2):
@@ -490,7 +489,7 @@ class TimeGAN:
             # Print multiple checkpoints
             if epoch % self.checkpoint == 0:
                 print(
-                    f"""step: {epoch}/{self.epochs},
+                    f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
                     g_loss_u: {np.round(step_g_loss_u, 4)},
                     g_loss_s: {np.round(np.sqrt(step_g_loss_s), 4)},
@@ -509,4 +508,4 @@ class TimeGAN:
             Z_ = next(self.get_noise_batch())
             records = self.generator(Z_)
             data.append(records)
-        return np.array(np.vstack(data))
+        return np.array(np.vstack(data))[:n_samples]

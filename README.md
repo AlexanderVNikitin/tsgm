@@ -66,6 +66,7 @@ gan.compile(
     g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
     loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
 )
+gan.fit(dataset, epochs=N_EPOCHS)
 
 result = gan.generate(10)
 ```

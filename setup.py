@@ -50,7 +50,7 @@ setup(name='tsgm',
       install_requires=[
           "tensorflow==2.9.1",
           "scipy>=1.7.3"
-          "numpy>=1.23.2",
+          "numpy>=1.21.6",
       ],
       package_data={'tsgm': ['README.md']},
       packages=find_packages())

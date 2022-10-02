@@ -50,11 +50,11 @@ def test_timegan():
 
     dataset = _gen_dataset(batch_size, seq_len, feature_dim)
     timegan = tsgm.models.timeGAN.TimeGAN(
-        seq_len=seq_len, module="gru", hidden_dim=latent_dim, n_features=feature_dim, n_layers=3, epochs=1, batch_size=batch_size
+        seq_len=seq_len, module="gru", hidden_dim=latent_dim, n_features=feature_dim, n_layers=3, batch_size=batch_size
     )
     timegan.compile()
     
-    timegan.fit(dataset)
+    timegan.fit(dataset, epochs=1)
 
     # Check internal nets
     assert timegan.generator is not None
@@ -78,5 +78,5 @@ def test_timegan():
 
     # Check generation
     generated_samples = timegan.generate(1)
-    assert generated_samples.shape == (batch_size, seq_len, feature_dim)
+    assert generated_samples.shape == (1, seq_len, feature_dim)
 

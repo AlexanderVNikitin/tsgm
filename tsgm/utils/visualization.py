@@ -32,6 +32,30 @@ def visualize_dataset(dataset: tsgm.dataset.Dataset, obj_id: int = 0, path: str 
     plt.savefig(path)
 
 
+def visualize_tsne_unlabeled(
+        X: tsgm.types.Tensor, X_gen: tsgm.types.Tensor, palette="deep",
+        alpha=0.25,
+        path: str = "/tmp/tsne_embeddings.pdf"):
+    """
+    Visualizes TSNE of real and synthetic data.
+    """
+    tsne = sklearn.manifold.TSNE(n_components=2, learning_rate='auto', init='random')
+
+    X_all = np.concatenate((X, X_gen))
+
+    colors = {"hist": "red", "gen": "blue"}
+    point_styles = ["hist"] * X.shape[0] + ["gen"] * X_gen.shape[0]
+    X_emb = tsne.fit_transform(np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2])))
+
+    plt.figure(figsize=(8, 6), dpi=80)
+    sns.scatterplot(x=X_emb[:, 0], y=X_emb[:, 1], hue=point_styles,
+                    style=point_styles, markers={"hist": "<", "gen": "H"}, palette=colors, alpha=0.25)
+    plt.legend(fontsize=14)
+    plt.box(False)
+    plt.axis('off')
+    plt.savefig(path)
+
+
 def visualize_tsne(X: tsgm.types.Tensor, y: tsgm.types.Tensor, X_gen: tsgm.types.Tensor, y_gen: tsgm.types.Tensor,
                    path: str = "/tmp/tsne_embeddings.pdf"):
     """
@@ -49,7 +73,7 @@ def visualize_tsne(X: tsgm.types.Tensor, y: tsgm.types.Tensor, X_gen: tsgm.types
     X_emb = tsne.fit_transform(np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2])))
 
     plt.figure(figsize=(8, 6), dpi=80)
-    sns.scatterplot(x=X_emb[:, 0], y=X_emb[:, 1], hue=c[:], style=point_styles[:], markers={"hist": "<", "gen": "H"}, alpha=0.7)
+    sns.scatterplot(x=X_emb[:, 0], y=X_emb[:, 1], hue=c, style=point_styles, markers={"hist": "<", "gen": "H"}, alpha=0.7)
     plt.legend()
     plt.box(False)
     plt.axis('off')
