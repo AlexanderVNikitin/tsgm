@@ -28,6 +28,8 @@ class BetaVAE(keras.Model):
             name="reconstruction_loss"
         )
         self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
+        self._seq_len = self.decoder.output_shape[1]
+        self.latent_dim = self.decoder.input_shape[1]
 
     @property
     def metrics(self) -> list:
@@ -83,6 +85,18 @@ class BetaVAE(keras.Model):
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
         }
+
+    def generate(self, n: int) -> tsgm.types.Tensor:
+        """
+        Generates new data from the model.
+
+        :param n: the number of samples to be generated.
+        :type n: int
+
+        :returns: a tensor with generated samples.
+        """
+        z = tf.random.normal((n, self.latent_dim))
+        return self.decoder(z)
 
 
 class cBetaVAE(keras.Model):

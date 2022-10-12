@@ -104,9 +104,11 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
 
-        x = layers.Dense(self._encoder.layers[-6].output_shape[1], activation="relu")(x)
+        dense_shape = self._encoder.layers[-6].output_shape[1] * self._seq_len
 
-        x = layers.Reshape((24, 64))(x)
+        x = layers.Dense(dense_shape, activation="relu")(x)
+
+        x = layers.Reshape((self._seq_len, dense_shape // self._seq_len))(x)
         x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
             x
         )

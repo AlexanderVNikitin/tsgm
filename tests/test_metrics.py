@@ -9,31 +9,33 @@ import tsgm
 
 
 def test_statistics():
-    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
+    ts = np.array([
+        [[0, 2], [11, -11], [1, 2]],
+        [[10, 21], [1, -1], [6, 8]]])
     assert tsgm.metrics.statistics.axis_max_s(ts, axis=None) == [21]
     assert tsgm.metrics.statistics.axis_min_s(ts, axis=None) == [-11]
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=1) == [11,  2, 10, 21]).all()
-    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=1) == [0, -11, 1, -1]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=1) == [11, 21]).all()
+    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=1) == [0, -11]).all()
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=2) == [2, 11, 2, 21, 1, 8]).all()
-    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=2) == [0, -11, 1, 10, -1, 6]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=2) == [21, 11,  8]).all()
+    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=2) == [0, -11, 1]).all()
 
     assert (tsgm.metrics.statistics.axis_mode_s(ts, axis=None) == [1]).all()
 
     # Now, checking with tf.Tensor
     ts_tf = tf.convert_to_tensor(ts)
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=None) == [21]).all()
-    assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=None) == [-11]).all()
+    assert tsgm.metrics.statistics.axis_max_s(ts_tf, axis=None) == [21]
+    assert tsgm.metrics.statistics.axis_min_s(ts_tf, axis=None) == [-11]
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=1) == [11,  2, 10, 21]).all()
-    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=1) == [0, -11, 1, -1]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=1) == [11, 21]).all()
+    assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=1) == [0, -11]).all()
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=2) == [2, 11, 2, 21, 1, 8]).all()
-    assert (tsgm.metrics.statistics.axis_min_s(ts, axis=2) == [0, -11, 1, 10, -1, 6]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=2) == [21, 11,  8]).all()
+    assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=2) == [0, -11, 1]).all()
 
-    assert (tsgm.metrics.statistics.axis_mode_s(ts, axis=None) == [1]).all()
+    assert (tsgm.metrics.statistics.axis_mode_s(ts_tf, axis=None) == [1]).all()
 
 
 def test_similarity_metric():
@@ -51,7 +53,7 @@ def test_similarity_metric():
     assert sim_metric(ts, diff_ts) < sim_metric(ts, sim_ts)
     stat_results = sim_metric.stats(ts)
     
-    assert len(stat_results) == 10
+    assert len(stat_results) == 6
     assert sim_metric._discrepancy(sim_metric.stats(ts), sim_metric.stats(diff_ts)) == sim_metric(ts, diff_ts)
     assert sim_metric(ts, diff_ts) == sim_metric(diff_ts, ts)
 
