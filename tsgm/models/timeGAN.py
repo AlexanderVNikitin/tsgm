@@ -32,7 +32,6 @@ class TimeGAN:
         hidden_dim: int = 24,
         n_features: int = 6,
         n_layers: int = 3,
-        epochs: int = 10,
         checkpoint: int = 2,
         batch_size: int = 256,
         gamma: float = 1.0,
@@ -110,6 +109,11 @@ class TimeGAN:
         DEFAULT_BCE = keras.losses.BinaryCrossentropy()
         self._mse = DEFAULT_MSE
         self._bce = DEFAULT_BCE
+
+        # --------------------------
+        # All losses: will be populated in .fit()
+        # --------------------------
+        self.training_losses = []
 
     def compile(
         self,
@@ -259,7 +263,7 @@ class TimeGAN:
     @tf.function
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> typing.Tuple[float, float, float]:
+    ) -> typing.Tuple[float, float, float, float, float]:
         """
         3. Joint training (Generator training twice more than discriminator training): minimize G_loss
         """
@@ -297,7 +301,7 @@ class TimeGAN:
             if grad is not None
         ]
         optimizer.apply_gradients(apply_grads)
-        return G_loss_U, G_loss_S, G_loss_V
+        return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
 
     @tf.function
     def _train_embedder(
@@ -432,12 +436,14 @@ class TimeGAN:
         # 1. Embedding network training
         print("Start Embedding Network Training")
 
+        autoencoder_losses = []
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
             # Checkpoint
             if epoch % self.checkpoint == 0:
                 print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
+            autoencoder_losses.append(float(step_e_loss_0))
 
         print("Finished Embedding Network Training")
 
@@ -445,6 +451,7 @@ class TimeGAN:
         print("Start Training with Supervised Loss Only")
 
         # Adversarial Supervised network training
+        adversarial_s_losses = []
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
@@ -453,13 +460,14 @@ class TimeGAN:
                 print(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
-
+            adversarial_s_losses.append(float(np.sqrt(step_g_loss_s)))
         print("Finished Training with Supervised Loss Only")
 
         # 3. Joint Training
         print("Start Joint Training")
 
         # GAN with embedding network training
+        gan_losses = []
         step_g_loss_u = step_g_loss_s = step_g_loss_v = step_e_loss_t0 = step_d_loss = 0
         for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
 
@@ -470,9 +478,13 @@ class TimeGAN:
                 # --------------------------
                 # Train the generator
                 # --------------------------
-                step_g_loss_u, step_g_loss_s, step_g_loss_v = self._train_generator(
-                    X_, Z_, self.generator_opt
-                )
+                (
+                    step_g_loss_u,
+                    step_g_loss_u_e,
+                    step_g_loss_s,
+                    step_g_loss_v,
+                    g_loss,
+                ) = self._train_generator(X_, Z_, self.generator_opt)
 
                 # --------------------------
                 # Train the embedder
@@ -492,11 +504,30 @@ class TimeGAN:
                     f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
                     g_loss_u: {np.round(step_g_loss_u, 4)},
+                    g_loss_u_e: {np.round(step_g_loss_u_e, 4)},
                     g_loss_s: {np.round(np.sqrt(step_g_loss_s), 4)},
                     g_loss_v: {np.round(step_g_loss_v, 4)},
+                    g_loss_v: {np.round(g_loss, 4)},
                     e_loss_t0: {np.round(np.sqrt(step_e_loss_t0), 4)}"""
                 )
+            gan_losses.append(
+                [
+                    float(step_d_loss),
+                    float(step_g_loss_u),
+                    float(step_g_loss_u_e),
+                    float(np.sqrt(step_g_loss_s)),
+                    float(step_g_loss_v),
+                    float(g_loss),
+                    float(np.sqrt(step_e_loss_t0)),
+                ]
+            )
+
         print("Finished Joint Training")
+
+        # Record training losses
+        self.training_losses.append(
+            [autoencoder_losses, adversarial_s_losses, gan_losses]
+        )
 
     def generate(self, n_samples: int) -> TensorLike:
         """
