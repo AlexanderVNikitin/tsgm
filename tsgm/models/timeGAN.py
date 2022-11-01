@@ -534,19 +534,30 @@ class TimeGAN:
         print("Finished Joint Training")
 
         # Record training losses
-        self.training_losses = np.array([
-            np.array(autoencoder_losses),
-            np.array(adversarial_s_losses),
-            np.array(d_loss),
-            np.array(g_loss_u),
-            np.array(g_loss_u_e),
-            np.array(g_loss_s),
-            np.array(g_loss_v),
-            np.array(g_loss),
-            np.array(e_loss_t0),
-        ])
+        self.training_losses = np.array(
+            [
+                np.array(autoencoder_losses),
+                np.array(adversarial_s_losses),
+                np.array(d_loss),
+                np.array(g_loss_u),
+                np.array(g_loss_u_e),
+                np.array(g_loss_s),
+                np.array(g_loss_v),
+                np.array(g_loss),
+                np.array(e_loss_t0),
+            ]
+        )
 
-        self.losses_labels = ["autoencoder", "adversarial_supervised", "discriminator", "generator_u", "generator_u_e", "generator_v", "generator", "embedder"]
+        self.losses_labels = [
+            "autoencoder",
+            "adversarial_supervised",
+            "discriminator",
+            "generator_u",
+            "generator_u_e",
+            "generator_v",
+            "generator",
+            "embedder",
+        ]
 
     def generate(self, n_samples: int) -> TensorLike:
         """
