@@ -165,7 +165,8 @@ def visualize_training_loss(
     loss_vector, labels=[], path: str = "/tmp/training_loss.pdf"
 ):
     """
-    :param loss_vector: np.array, having shape num of metrics x number of epochs
+    Plot training losses as a function of the epochs
+    :param loss_vector: np.array, having shape num of metrics times number of epochs
     :param labels: list of strings
     :param path: str, where to save the plot
     """
