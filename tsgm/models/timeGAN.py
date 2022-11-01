@@ -32,7 +32,6 @@ class TimeGAN:
         hidden_dim: int = 24,
         n_features: int = 6,
         n_layers: int = 3,
-        checkpoint: int = 2,
         batch_size: int = 256,
         gamma: float = 1.0,
     ):
@@ -45,7 +44,6 @@ class TimeGAN:
 
         self.n_layers = n_layers
 
-        self.checkpoint = checkpoint
         self.batch_size = batch_size
 
         self.gamma = gamma
@@ -395,7 +393,7 @@ class TimeGAN:
         while True:
             yield np.random.uniform(low=0, high=1, size=(self.seq_len, self.dim))
 
-    def get_noise_batch(self):
+    def get_noise_batch(self) -> typing.Iterator:
         """
         Return an iterator of random noise vectors
         """
@@ -407,7 +405,7 @@ class TimeGAN:
             .repeat()
         )
 
-    def _get_data_batch(self, data, n_windows: int):
+    def _get_data_batch(self, data, n_windows: int) -> typing.Iterator:
         """
         Return an iterator of shuffled input data
         """
@@ -419,7 +417,14 @@ class TimeGAN:
             .repeat()
         )
 
-    def fit(self, data, epochs):
+    def fit(self, data: TensorLike, epochs: int, checkpoints_interval: int = None):
+        """
+        :param data: TensorLike, the training data
+        :param epochs: int, the number of epochs for the training loops
+        :param checkpoints_interval: int, the interval for printing out loss values
+            (loss values will be print out every 'checkpoints_interval' epochs)
+            Default: None
+        """
         assert not (
             self.autoencoder_opt is None
             or self.adversarialsup_opt is None
@@ -431,6 +436,10 @@ class TimeGAN:
             self._mse is None or self._bce is None
         ), "One of the loss functions is not defined. Please call .compile() to set them"
 
+        checkpoints_interval = (
+            epochs if checkpoints_interval is None else checkpoints_interval
+        )
+
         # Define the model
         self._define_timegan()
 
@@ -441,8 +450,9 @@ class TimeGAN:
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
+
             # Checkpoint
-            if epoch % self.checkpoint == 0:
+            if epoch % checkpoints_interval == 0:
                 print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
             autoencoder_losses.append(float(step_e_loss_0))
 
@@ -456,8 +466,9 @@ class TimeGAN:
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
+
             # Checkpoint
-            if epoch % self.checkpoint == 0:
+            if epoch % checkpoints_interval == 0:
                 print(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
@@ -512,7 +523,7 @@ class TimeGAN:
                 step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
 
             # Print multiple checkpoints
-            if epoch % self.checkpoint == 0:
+            if epoch % checkpoints_interval == 0:
                 print(
                     f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
