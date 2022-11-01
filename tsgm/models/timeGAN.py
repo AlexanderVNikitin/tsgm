@@ -114,6 +114,11 @@ class TimeGAN:
         self.training_losses = []
         self.losses_labels = []
 
+        # --------------------------
+        # Synthetic data generation during training: will be populated in .fit()
+        # --------------------------
+        self.synthetic_data_generated_in_training = dict()
+
     def compile(
         self,
         d_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
@@ -417,13 +422,22 @@ class TimeGAN:
             .repeat()
         )
 
-    def fit(self, data: TensorLike, epochs: int, checkpoints_interval: int = None):
+    def fit(
+        self,
+        data: TensorLike,
+        epochs: int,
+        checkpoints_interval: int = None,
+        generate_synthetic: list = [],
+    ):
         """
         :param data: TensorLike, the training data
         :param epochs: int, the number of epochs for the training loops
         :param checkpoints_interval: int, the interval for printing out loss values
             (loss values will be print out every 'checkpoints_interval' epochs)
-            Default: None
+            Default: None (no print out)
+        :param generate_synthetic: list of int, a list of epoch numbers when synthetic data samples are generated
+            Default: [] (no generation)
+        :return None
         """
         assert not (
             self.autoencoder_opt is None
@@ -435,10 +449,6 @@ class TimeGAN:
         assert not (
             self._mse is None or self._bce is None
         ), "One of the loss functions is not defined. Please call .compile() to set them"
-
-        checkpoints_interval = (
-            epochs if checkpoints_interval is None else checkpoints_interval
-        )
 
         # Define the model
         self._define_timegan()
@@ -452,7 +462,7 @@ class TimeGAN:
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
 
             # Checkpoint
-            if epoch % checkpoints_interval == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
             autoencoder_losses.append(float(step_e_loss_0))
 
@@ -468,7 +478,7 @@ class TimeGAN:
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
 
             # Checkpoint
-            if epoch % checkpoints_interval == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
@@ -523,7 +533,7 @@ class TimeGAN:
                 step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
 
             # Print multiple checkpoints
-            if epoch % checkpoints_interval == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(
                     f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
@@ -541,6 +551,11 @@ class TimeGAN:
             g_loss_v.append(float(step_g_loss_v))
             g_loss.append(float(step_g_loss))
             e_loss_t0.append(float(np.sqrt(step_e_loss_t0)))
+
+            # Synthetic data generation
+            if epoch in generate_synthetic:
+                _sample = self.generate(n_samples=len(data))
+                self.synthetic_data_generated_in_training[epoch] = _sample
 
         print("Finished Joint Training")
 
