@@ -97,22 +97,30 @@ def visualize_tsne(
     X_gen: tsgm.types.Tensor,
     y_gen: tsgm.types.Tensor,
     path: str = "/tmp/tsne_embeddings.pdf",
+    feature_averaging: bool = False,
 ):
     """
     Visualizes TSNE of real and synthetic data.
     """
     tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
 
-    X_all = np.concatenate((X, X_gen))
+    if feature_averaging:
+        X_all = np.concatenate((np.mean(X, axis=2), np.mean(X_gen, axis=2)))
+
+        X_emb = tsne.fit_transform(np.resize(X_all, (X_all.shape[0], X_all.shape[1])))
+    else:
+        X_all = np.concatenate((X, X_gen))
+
+        X_emb = tsne.fit_transform(
+            np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2]))
+        )
+
     y_all = np.concatenate((y, y_gen))
 
     c = np.argmax(y_all, axis=1)
     colors = {0: "class 0", 1: "class 1"}
     c = [colors[el] for el in c]
     point_styles = ["hist"] * X.shape[0] + ["gen"] * X_gen.shape[0]
-    X_emb = tsne.fit_transform(
-        np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2]))
-    )
 
     plt.figure(figsize=(8, 6), dpi=80)
     sns.scatterplot(
