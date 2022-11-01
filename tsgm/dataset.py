@@ -100,17 +100,25 @@ class Dataset(DatasetProperties):
     def _merge_meta(self, other_meta: dict) -> dict:
         return {**self._metadata, **other_meta}
 
-    def __add__(self, other_ds: "Dataset") -> "Dataset":
-        """
-        Returns a concatenated time series and labels in a tensor.
-        Output shape is n_sample x seq_len x feat_dim + y_dim
-        """
+    def _concatenate_dataset(self, other_ds: "Dataset") -> "Dataset":
         assert self._compatible(other_ds)
         return Dataset(
             np.concatenate((self.X, other_ds.X), axis=0),
             np.concatenate((self.y, other_ds.y), axis=0) if self.y is not None else None,
             self._merge_meta(other_ds._metadata)
         )
+
+    def __add__(self, other_ds: "Dataset") -> "Dataset":
+        """
+        Returns a concatenated time series and labels in a tensor.
+        Output shape is n_sample x seq_len x feat_dim + y_dim
+        """
+        assert self._compatible(other_ds)
+        logger.warning("Operator '+' concatenates dataset objects")
+        return self._concatenate_dataset(other_ds)
+
+    def __or__(self, other_ds: "Dataset") -> "Dataset":
+        return self._concatenate_dataset(other_ds)
 
     @property
     def shape(self) -> tuple:

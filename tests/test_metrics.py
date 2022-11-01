@@ -59,7 +59,7 @@ def test_similarity_metric():
 
 
 class MockEvaluator:
-    def evaluate(self, D: tsgm.dataset.Dataset) -> float:
+    def evaluate(self, D: tsgm.dataset.Dataset, Dtest: tsgm.dataset.Dataset) -> float:
         return 0.42
 
 
@@ -70,13 +70,16 @@ def test_consistency_metric():
     diff_ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
     D2 = tsgm.dataset.Dataset(diff_ts, y=None)
 
+    test_ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
+    D_test = tsgm.dataset.Dataset(test_ts, y=None)
+
     n_models = 5
     consistency_metric = tsgm.metrics.ConsistencyMetric(
         evaluators = [MockEvaluator() for _ in range(n_models)]
     )
-    model_results = consistency_metric._apply_models(D1)
+    model_results = consistency_metric._apply_models(D1, D_test)
     assert len(model_results) == n_models
-    assert consistency_metric(D1, D2) == 1.0
+    assert consistency_metric(D1, D2, D_test) == 1.0
 
 
 def test_downstream_performance_metric():
@@ -86,11 +89,14 @@ def test_downstream_performance_metric():
     diff_ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
     D2 = tsgm.dataset.Dataset(diff_ts, y=None)
 
+    test_ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
+    D_test = tsgm.dataset.Dataset(diff_ts, y=None)
+
     downstream_perf_metric = tsgm.metrics.DownstreamPerformanceMetric(
         evaluator=MockEvaluator()
     )
-    assert downstream_perf_metric(D1, D2) == downstream_perf_metric(D2, D1)
-    assert downstream_perf_metric(D1, D2) == 0
+    assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(D2, D1, D_test)
+    assert downstream_perf_metric(D1, D2, D_test) == 0
 
 
 class FlattenTSOneClassSVM:

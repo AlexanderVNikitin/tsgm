@@ -13,7 +13,7 @@ DEFAULT_SPLIT_STRATEGY = sklearn.model_selection.KFold(
 
 class Metric(abc.ABC):
     @abc.abstractmethod
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, X2: tsgm.dataset.DatasetOrTensor) -> float:
+    def __call__(self, *args, **kwargs) -> float:
         pass
 
 
@@ -61,7 +61,7 @@ class SimilarityMetric(Metric):
         :returns: similarity metric between D1 & D2.
         """
 
-        #  TODO: check compatibility of this check in different versions of python
+        #  TODO: check compatibility of this metric in different versions of python
         #  typing.get_args() can be used instead
         #  assert isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset) or\
         #      isinstance(D1, tsgm.types.Tensor.__args__) and isinstance(D2, tsgm.types.Tensor.__args__)
@@ -86,10 +86,10 @@ class ConsistencyMetric(Metric):
         """
         self._evaluators = evaluators
 
-    def _apply_models(self, D: tsgm.dataset.DatasetOrTensor) -> list:
-        return [e.evaluate(D) for e in self._evaluators]
+    def _apply_models(self, D: tsgm.dataset.DatasetOrTensor, D_test: tsgm.dataset.DatasetOrTensor) -> list:
+        return [e.evaluate(D, D_test) for e in self._evaluators]
 
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: tsgm.dataset.DatasetOrTensor) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor.
@@ -98,8 +98,8 @@ class ConsistencyMetric(Metric):
 
         :returns: consistency metric between D1 & D2.
         """
-        evaluations1 = self._apply_models(D1)
-        evaluations2 = self._apply_models(D2)
+        evaluations1 = self._apply_models(D1, D_test)
+        evaluations2 = self._apply_models(D2, D_test)
         consistencies_cnt = 0
         n_evals = len(evaluations1)
         for i1 in range(n_evals):
@@ -130,7 +130,7 @@ class DownstreamPerformanceMetric(Metric):
         """
         self._evaluator = evaluator
 
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: typing.Optional[tsgm.dataset.DatasetOrTensor]) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor.
@@ -139,9 +139,15 @@ class DownstreamPerformanceMetric(Metric):
 
         :returns: downstream performance metric between D1 & D2.
         """
-        evaluations1 = self._evaluator.evaluate(D1)
-        evaluations2 = self._evaluator.evaluate(D1 + D2)
-
+        if isinstance(D1, tsgm.dataset.Dataset):
+            D1D2 = D1 | D2
+        else:
+            if isinstance(D2, tsgm.dataset.Dataset):
+                D1D2 = np.concatenate((D1, D2.X))
+            else:
+                D1D2 = np.concatenate((D1, D2))
+        evaluations1 = self._evaluator.evaluate(D1, D_test)
+        evaluations2 = self._evaluator.evaluate(D1D2, D_test)
         return np.mean(evaluations2 - evaluations1)
 
 
@@ -149,8 +155,7 @@ class PrivacyMembershipInferenceMetric:
     """
     The metric that measures the possibility of membership inference attacks.
     """
-    def __init__(self, attacker: typing.Any,
-                 metric: typing.Callable = None):
+    def __init__(self, attacker: typing.Any, metric: typing.Callable = None):
         """
         :param attacker: An attacker, one class classififier (OCC) that implements methods `.fit` and `.predict`
         :type attacker: typing.Any
@@ -174,4 +179,4 @@ class PrivacyMembershipInferenceMetric:
         self._attacker.fit(d_syn.Xy_concat)
         labels = self._attacker.predict((d_tr + d_test).Xy_concat)
         correct_labels = [1] * len(d_tr) + [-1] * len(d_test)
-        return self._metric(labels, correct_labels)
+        return 1 - self._metric(labels, correct_labels)

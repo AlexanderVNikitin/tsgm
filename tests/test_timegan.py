@@ -35,7 +35,7 @@ def _gen_dataset(no, seq_len, dim):
         # Align row/column
         temp = np.transpose(np.asarray(temp))
         # Normalize to [0,1]
-        temp = (temp + 1)*0.5
+        temp = (temp + 1) * 0.5
         # Stack the generated data
         data.append(temp)
 

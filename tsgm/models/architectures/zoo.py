@@ -1,4 +1,5 @@
 import abc
+import math
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -252,7 +253,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.Conv1D(1, 8, padding="same")(x)
         x = layers.LSTM(256, return_sequences=True)(x)
 
-        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+        pool_and_stride = math.ceil((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x

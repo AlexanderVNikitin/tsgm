@@ -30,7 +30,7 @@ def gen_sine_dataset(N, T, D, max_value=10):
         shift = np.random.random() * max_value + 1
         ts = np.arange(0, T, 1)
         for d in range(1, D + 1):
-            result[-1].append((a * np.sin(d * ts + shift)).T)
+            result[-1].append((a * np.sin((d + 3) * ts / 25. + shift)).T)
 
     return np.transpose(np.array(result), [0, 2, 1])
 
