@@ -38,12 +38,14 @@ def visualize_dataset(
 
 
 def visualize_tsne_unlabeled(
-    X: tsgm.types.Tensor,
-    X_gen: tsgm.types.Tensor,
-    palette="deep",
-    alpha=0.25,
-    path: str = "/tmp/tsne_embeddings.pdf",
-):
+        X: tsgm.types.Tensor,
+        X_gen: tsgm.types.Tensor,
+        palette="deep",
+        alpha=0.25,
+        path: str = "/tmp/tsne_embeddings.pdf",
+        fontsize: int = 20,
+        markerscale: int = 3,
+        markersize: int = 1):
     """
     Visualizes TSNE of real and synthetic data.
     """
@@ -58,18 +60,12 @@ def visualize_tsne_unlabeled(
     )
 
     plt.figure(figsize=(8, 6), dpi=80)
-    sns.scatterplot(
-        x=X_emb[:, 0],
-        y=X_emb[:, 1],
-        hue=point_styles,
-        style=point_styles,
-        markers={"hist": "<", "gen": "H"},
-        palette=colors,
-        alpha=0.25,
-    )
-    plt.legend(fontsize=14)
+    sns.scatterplot(x=X_emb[:, 0], y=X_emb[:, 1], hue=point_styles,
+                    style=point_styles, markers={"hist": "<", "gen": "H"}, palette=colors, alpha=alpha, s=markersize)
     plt.box(False)
-    plt.axis("off")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.legend(bbox_to_anchor=(1, 1), loc=1, borderaxespad=0, fontsize=fontsize, markerscale=markerscale)
     plt.savefig(path)
 
 
@@ -124,9 +120,7 @@ def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
         axs[i].imshow(ts[sample_id].T, aspect="auto")
 
 
-def visualize_ts_lineplot(
-    ts: tsgm.types.Tensor, ys: tsgm.types.OptTensor = None, num: int = 5
-):
+def visualize_ts_lineplot(ts: tsgm.types.Tensor, ys: tsgm.types.OptTensor = None, num: int = 5, unite_features: bool = True):
     assert len(ts.shape) == 3
 
     fig, axs = plt.subplots(num, 1, figsize=(14, 10))
@@ -135,13 +129,12 @@ def visualize_ts_lineplot(
 
     ids = np.random.choice(ts.shape[0], size=num, replace=False)
     for i, sample_id in enumerate(ids):
-        feature_id = np.random.randint(ts.shape[2])
-        sns.lineplot(
-            x=range(ts.shape[1]),
-            y=ts[sample_id, :, feature_id],
-            ax=axs[i],
-            label=f"feature #{feature_id}",
-        )
+        if not unite_features:
+            feature_id = np.random.randint(ts.shape[2])
+            sns.lineplot(x=range(ts.shape[1]), y=ts[sample_id, :, feature_id], ax=axs[i], label=rf"feature \#{feature_id}")
+        else:
+            for feat_id in range(ts.shape[2]):
+                sns.lineplot(x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i])
         if ys is not None:
             if len(ys.shape) == 1:
                 axs[i].set_title(ys[sample_id])
