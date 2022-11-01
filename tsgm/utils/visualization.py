@@ -38,34 +38,56 @@ def visualize_dataset(
 
 
 def visualize_tsne_unlabeled(
-        X: tsgm.types.Tensor,
-        X_gen: tsgm.types.Tensor,
-        palette="deep",
-        alpha=0.25,
-        path: str = "/tmp/tsne_embeddings.pdf",
-        fontsize: int = 20,
-        markerscale: int = 3,
-        markersize: int = 1):
+    X: tsgm.types.Tensor,
+    X_gen: tsgm.types.Tensor,
+    palette="deep",
+    alpha=0.25,
+    path: str = "/tmp/tsne_embeddings.pdf",
+    fontsize: int = 20,
+    markerscale: int = 3,
+    markersize: int = 1,
+    feature_averaging: bool = False,
+):
     """
     Visualizes TSNE of real and synthetic data.
     """
     tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
 
-    X_all = np.concatenate((X, X_gen))
-
     colors = {"hist": "red", "gen": "blue"}
     point_styles = ["hist"] * X.shape[0] + ["gen"] * X_gen.shape[0]
-    X_emb = tsne.fit_transform(
-        np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2]))
-    )
+
+    if feature_averaging:
+        X_all = np.concatenate((np.mean(X, axis=2), np.mean(X_gen, axis=2)))
+
+        X_emb = tsne.fit_transform(np.resize(X_all, (X_all.shape[0], X_all.shape[1])))
+    else:
+        X_all = np.concatenate((X, X_gen))
+
+        X_emb = tsne.fit_transform(
+            np.resize(X_all, (X_all.shape[0], X_all.shape[1] * X_all.shape[2]))
+        )
 
     plt.figure(figsize=(8, 6), dpi=80)
-    sns.scatterplot(x=X_emb[:, 0], y=X_emb[:, 1], hue=point_styles,
-                    style=point_styles, markers={"hist": "<", "gen": "H"}, palette=colors, alpha=alpha, s=markersize)
+    sns.scatterplot(
+        x=X_emb[:, 0],
+        y=X_emb[:, 1],
+        hue=point_styles,
+        style=point_styles,
+        markers={"hist": "<", "gen": "H"},
+        palette=colors,
+        alpha=alpha,
+        s=markersize,
+    )
     plt.box(False)
-    plt.axis('off')
+    plt.axis("off")
     plt.tight_layout()
-    plt.legend(bbox_to_anchor=(1, 1), loc=1, borderaxespad=0, fontsize=fontsize, markerscale=markerscale)
+    plt.legend(
+        bbox_to_anchor=(1, 1),
+        loc=1,
+        borderaxespad=0,
+        fontsize=fontsize,
+        markerscale=markerscale,
+    )
     plt.savefig(path)
 
 
@@ -120,7 +142,12 @@ def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
         axs[i].imshow(ts[sample_id].T, aspect="auto")
 
 
-def visualize_ts_lineplot(ts: tsgm.types.Tensor, ys: tsgm.types.OptTensor = None, num: int = 5, unite_features: bool = True):
+def visualize_ts_lineplot(
+    ts: tsgm.types.Tensor,
+    ys: tsgm.types.OptTensor = None,
+    num: int = 5,
+    unite_features: bool = True,
+):
     assert len(ts.shape) == 3
 
     fig, axs = plt.subplots(num, 1, figsize=(14, 10))
@@ -131,10 +158,17 @@ def visualize_ts_lineplot(ts: tsgm.types.Tensor, ys: tsgm.types.OptTensor = None
     for i, sample_id in enumerate(ids):
         if not unite_features:
             feature_id = np.random.randint(ts.shape[2])
-            sns.lineplot(x=range(ts.shape[1]), y=ts[sample_id, :, feature_id], ax=axs[i], label=rf"feature \#{feature_id}")
+            sns.lineplot(
+                x=range(ts.shape[1]),
+                y=ts[sample_id, :, feature_id],
+                ax=axs[i],
+                label=rf"feature \#{feature_id}",
+            )
         else:
             for feat_id in range(ts.shape[2]):
-                sns.lineplot(x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i])
+                sns.lineplot(
+                    x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i]
+                )
         if ys is not None:
             if len(ys.shape) == 1:
                 axs[i].set_title(ys[sample_id])
