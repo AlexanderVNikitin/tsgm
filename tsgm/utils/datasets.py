@@ -193,7 +193,7 @@ def split_dataset_into_objects(X, y, step=10):
     return np.array(Xs), np.array(ys)
 
 
-def _load_arff(path: str) -> pd.DataFrame:
+def load_arff(path: str) -> pd.DataFrame:
     data = scipy.io.arff.loadarff(path)
     return pd.DataFrame(data[0])
 
@@ -206,7 +206,7 @@ def get_eeg() -> tuple:
     if not os.path.exists(path_to_resource):
         file_utils.download(url, path_to_folder)
 
-    df = _load_arff(path_to_resource)
+    df = load_arff(path_to_resource)
     X = df.drop("eyeDetection", axis=1).to_numpy()
     y = df["eyeDetection"].astype(np.int64).to_numpy()
     return X, y
@@ -254,6 +254,28 @@ def get_mnist_data() -> tuple:
     x_test = x_test.reshape(-1, 28 * 28, 1)
 
     return x_train, y_train, x_test, y_test
+
+
+def _target_wafer(y_raw):
+    return (y_raw.astype(int) > 0).astype(int)
+
+
+def _dataset_split_wafer(dataset):
+    return dataset.drop("target", axis=1).to_numpy()[:, :, None], _target_wafer(dataset["target"])
+
+
+def get_wafer_data() -> tuple:
+    cur_path = os.path.dirname(__file__)
+    path_to_folder = os.path.join(cur_path, "../../data/")
+    path_to_resource = os.path.join(path_to_folder, "wafer")
+
+    url = "https://www.timeseriesclassification.com/Downloads/"
+    file_utils.download_all_resources(url, path_to_resource, resources=[("Wafer.zip", None)])
+    train_wafer = load_arff(os.path.join(path_to_resource, "Wafer_TRAIN.arff"))
+    test_wafer = load_arff(os.path.join(path_to_resource, "Wafer_TEST.arff"))
+    train_X, train_y = _dataset_split_wafer(train_wafer)
+    test_X, test_y = _dataset_split_wafer(test_wafer)
+    return train_X, train_y, test_X, test_y
 
 
 def _exponential_quadratic(x: np.ndarray, y: np.ndarray) -> float:
