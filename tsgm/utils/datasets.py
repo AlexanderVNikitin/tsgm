@@ -193,7 +193,7 @@ def split_dataset_into_objects(X, y, step=10):
     return np.array(Xs), np.array(ys)
 
 
-def _load_arff(path: str) -> pd.DataFrame:
+def load_arff(path: str) -> pd.DataFrame:
     data = scipy.io.arff.loadarff(path)
     return pd.DataFrame(data[0])
 
@@ -206,7 +206,7 @@ def get_eeg() -> tuple:
     if not os.path.exists(path_to_resource):
         file_utils.download(url, path_to_folder)
 
-    df = _load_arff(path_to_resource)
+    df = load_arff(path_to_resource)
     X = df.drop("eyeDetection", axis=1).to_numpy()
     y = df["eyeDetection"].astype(np.int64).to_numpy()
     return X, y
