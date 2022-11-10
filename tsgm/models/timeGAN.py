@@ -426,8 +426,8 @@ class TimeGAN:
         self,
         data: TensorLike,
         epochs: int,
-        checkpoints_interval: int = None,
-        generate_synthetic: list = [],
+        checkpoints_interval: typing.Optional[int] = None,
+        generate_synthetic: tuple = (),
     ):
         """
         :param data: TensorLike, the training data
