@@ -3,6 +3,7 @@ import sklearn.manifold
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 import tsgm
 
