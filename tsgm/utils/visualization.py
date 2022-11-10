@@ -11,14 +11,21 @@ import tsgm
 DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
 
 
-def visualize_dataset(dataset: tsgm.dataset.Dataset, obj_id: int = 0, palette=DEFAULT_PALETTE_TSNE, path: str = "/tmp/generated_data.pdf") -> None:
+def visualize_dataset(
+    dataset: tsgm.dataset.Dataset,
+    obj_id: int = 0,
+    palette=DEFAULT_PALETTE_TSNE,
+    path: str = "/tmp/generated_data.pdf",
+) -> None:
     """
     The function visualizes time series dataset with target values.
     It can be handy for regression problems.
     :param dataset: A time series dataset.
     :type dataset: tsgm.dataset.DatasetOrTensor.
     """
-    plt.figure(num=None, figsize=(8, 4), dpi=80, palette=palette, facecolor='w', edgecolor='k')
+    plt.figure(
+        num=None, figsize=(8, 4), dpi=80, palette=palette, facecolor="w", edgecolor="k"
+    )
 
     T = dataset.X.shape[-1]
 
