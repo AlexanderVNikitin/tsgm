@@ -46,7 +46,8 @@ def parse_arguments():
                         default=LATENT_DIM_DEFAULT)
     parser.add_argument("--dump-model-path", type=str, help="Path where the serialized model is saved",
                         default="./saved_model.pkl")
-    parser.add_argument("--architecture", type=str, help="[GAN|TimeGAN|VAE]", default="GAN")
+    parser.add_argument("--architecture-type", type=str, help="[GAN|TimeGAN|VAE]", default="GAN")
+    parser.add_argument("--architecture", type=str, help="Specific name of the architecture in Zoo", default=None)
 
     return parser.parse_args()
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     tsgm.utils.fix_seeds()
     args = parse_arguments()
 
-    print(f"Training {args.architecture} with latent_dim={args.latent_dim} and n_epochs={args.n_epochs}")
+    print(f"Training {args.architecture_type} with latent_dim={args.latent_dim} and n_epochs={args.n_epochs}")
 
     X_source = pickle.load(open(args.source_data, "rb"))
     if args.source_data_labels != "":
@@ -63,7 +64,9 @@ if __name__ == "__main__":
     assert len(X_source.shape) == 3
     n, seq_len, feature_dim = X_source.shape
     print(f"n={n}, seq_len={seq_len} feature_dim={feature_dim}")
-    if args.architecture.lower() == "gan":
+
+    normalised_arch_type = args.architecture_type.strip().lower()
+    if normalised_arch_type == "gan":
         dataset, X_preprocessed = _gen_dataset(X_source, batch_size=args.batch_size)
         architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
             seq_len=seq_len, feat_dim=feature_dim,
@@ -79,13 +82,13 @@ if __name__ == "__main__":
             loss_fn=keras.losses.BinaryCrossentropy(),
         )
         model.fit(dataset, epochs=args.n_epochs)
-    elif args.architecture.lower() == "timegan":
+    elif normalised_arch_type == "timegan":
         dataset, X_preprocessed = _gen_dataset(X_source, batch_size=args.batch_size, scale=(0, 1))
         model = tsgm.models.timeGAN.TimeGAN(seq_len=X_preprocessed.shape[1],
             n_features=X_preprocessed.shape[2], module='lstm', epochs=args.n_epochs)
         model.compile()
         model.fit(X_preprocessed, epochs=args.n_epochs)
-    elif args.architecture.lower() == "vae":
+    elif normalised_arch_type == "vae":
         dataset, X_preprocessed = _gen_dataset(X_source, batch_size=args.batch_size, scale=(0, 1))
         architecture = tsgm.models.architectures.zoo["vae_conv5"](
             seq_len=seq_len, feat_dim=feature_dim,
@@ -95,7 +98,7 @@ if __name__ == "__main__":
         model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0003))
         model.fit(X_preprocessed, epochs=args.n_epochs)
     else:
-        raise ValueError(f"Unknown architecture: {args.architecture}")
+        raise ValueError(f"Unknown architecture: {normalised_arch_type}")
     X_syn = model.generate(n)
     pickle.dump(X_syn, open(args.dest_data, "wb"))
     print(f"The generated dataset is saved to {args.dest_data}")

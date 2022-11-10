@@ -181,3 +181,13 @@ def test_mmd_3_test():
     pvalue, tstat, mmd_xy, mmd_xz = tsgm.utils.mmd_3_test(X=X, Y=Y, Z=Z, kernel=rbf_kernel)
 
     assert pvalue < 1e-10  # the null hypothesis is rejected
+
+
+def test_get_wafer():
+    X_train, y_train, X_test, y_test = tsgm.utils.get_wafer_data()
+
+    assert X_train.shape == (1000, 152, 1)
+    assert y_train.shape == (1000,)
+
+    assert X_test.shape == (6164, 152, 1)
+    assert y_test.shape == (6164,)

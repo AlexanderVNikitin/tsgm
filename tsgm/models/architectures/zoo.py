@@ -323,7 +323,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
 class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim, output_dim: int):
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -523,7 +523,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
     def __init__(self, seq_len, feat_dim, latent_dim, output_dim, n_blocks=1, output_activation="tanh"):
-        super().__init__(seq_len, feat_dim, output_dim)
+        super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
