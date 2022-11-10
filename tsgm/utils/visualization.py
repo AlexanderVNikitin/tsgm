@@ -3,23 +3,21 @@ import sklearn.manifold
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-import math
 
 import tsgm
 
 
-def visualize_dataset(
-    dataset: tsgm.dataset.Dataset,
-    obj_id: int = 0,
-    path: str = "/tmp/generated_data.pdf",
-) -> None:
+DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
+
+
+def visualize_dataset(dataset: tsgm.dataset.Dataset, obj_id: int = 0, palette=DEFAULT_PALETTE_TSNE, path: str = "/tmp/generated_data.pdf") -> None:
     """
     The function visualizes time series dataset with target values.
     It can be handy for regression problems.
     :param dataset: A time series dataset.
     :type dataset: tsgm.dataset.DatasetOrTensor.
     """
-    plt.figure(num=None, figsize=(8, 4), dpi=80, facecolor="w", edgecolor="k")
+    plt.figure(num=None, figsize=(8, 4), dpi=80, palette=palette, facecolor='w', edgecolor='k')
 
     T = dataset.X.shape[-1]
 
@@ -40,7 +38,7 @@ def visualize_dataset(
 def visualize_tsne_unlabeled(
     X: tsgm.types.Tensor,
     X_gen: tsgm.types.Tensor,
-    palette="deep",
+    palette=DEFAULT_PALETTE_TSNE,
     alpha=0.25,
     path: str = "/tmp/tsne_embeddings.pdf",
     fontsize: int = 20,
@@ -53,7 +51,6 @@ def visualize_tsne_unlabeled(
     """
     tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
 
-    colors = {"hist": "red", "gen": "blue"}
     point_styles = ["hist"] * X.shape[0] + ["gen"] * X_gen.shape[0]
 
     if feature_averaging:
@@ -74,7 +71,7 @@ def visualize_tsne_unlabeled(
         hue=point_styles,
         style=point_styles,
         markers={"hist": "<", "gen": "H"},
-        palette=colors,
+        palette=palette,
         alpha=alpha,
         s=markersize,
     )
