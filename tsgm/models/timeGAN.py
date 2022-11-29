@@ -14,7 +14,7 @@ logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
 
 
-class LossHistory(dict):
+class LossTracker(dict):
     """
     Extends default python dictionary.
     Example: Given {'loss_a': 1, 'loss_b': 2}, adding key='loss_a' with value=0.7
@@ -30,11 +30,11 @@ class LossHistory(dict):
         # If there is no key, behaves like the standard dictionary
         except KeyError:
             # key -> new_value
-            super(LossHistory, self).__setitem__(key, value)
+            super(LossTracker, self).__setitem__(key, value)
         # If key is there, but value is not a list
         except AttributeError:
             # key -> [old_value, new_value]
-            super(LossHistory, self).__setitem__(key, [self[key], value])
+            super(LossTracker, self).__setitem__(key, [self[key], value])
 
     def to_numpy(self) -> np.array:
         """
@@ -147,9 +147,7 @@ class TimeGAN:
         # --------------------------
         # All losses: will be populated in .fit()
         # --------------------------
-        self.training_losses_history = LossHistory()
-        # self.training_losses = []
-        # self.losses_labels = []
+        self.training_losses_history = LossTracker()
 
         # --------------------------
         # Synthetic data generation during training: will be populated in .fit()
