@@ -14,6 +14,42 @@ logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
 
 
+class LossHistory(dict):
+    """
+    Extends default python dictionary.
+    Example: Given {'loss_a': 1, 'loss_b': 2}, adding key='loss_a' with value=0.7
+            gives {'loss_a': [1, 0.7], 'loss_b': 2}
+    """
+
+    def __setitem__(self, key, value):
+        try:
+            # Assumes the key already exists
+            # and the value is a list [oldest_value, another_old, ...]
+            # key -> [oldest_value, another_old, ..., new_value]
+            self[key].append(value)
+        # If there is no key, behaves like the standard dictionary
+        except KeyError:
+            # key -> new_value
+            super(LossHistory, self).__setitem__(key, value)
+        # If key is there, but value is not a list
+        except AttributeError:
+            # key -> [old_value, new_value]
+            super(LossHistory, self).__setitem__(key, [self[key], value])
+
+    def to_numpy(self) -> np.array:
+        """
+        :return 2d vector of losses
+        """
+        _losses = np.array([np.array(v) for v in self.values() if isinstance(v, list)])
+        return _losses
+
+    def labels(self) -> list:
+        """
+        :return list of keys
+        """
+        return list(self.keys())
+
+
 class TimeGAN:
     """
     Time-series Generative Adversarial Networks (TimeGAN)
@@ -111,8 +147,9 @@ class TimeGAN:
         # --------------------------
         # All losses: will be populated in .fit()
         # --------------------------
-        self.training_losses = []
-        self.losses_labels = []
+        self.training_losses_history = LossHistory()
+        # self.training_losses = []
+        # self.losses_labels = []
 
         # --------------------------
         # Synthetic data generation during training: will be populated in .fit()
@@ -456,7 +493,6 @@ class TimeGAN:
         # 1. Embedding network training
         print("Start Embedding Network Training")
 
-        autoencoder_losses = []
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
@@ -464,7 +500,7 @@ class TimeGAN:
             # Checkpoint
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
-            autoencoder_losses.append(float(step_e_loss_0))
+            self.training_losses_history["autoencoder"] = float(step_e_loss_0)
 
         print("Finished Embedding Network Training")
 
@@ -472,7 +508,6 @@ class TimeGAN:
         print("Start Training with Supervised Loss Only")
 
         # Adversarial Supervised network training
-        adversarial_s_losses = []
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
@@ -482,27 +517,16 @@ class TimeGAN:
                 print(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
-            adversarial_s_losses.append(float(np.sqrt(step_g_loss_s)))
+            self.training_losses_history["adversarial_supervised"] = float(
+                np.sqrt(step_g_loss_s)
+            )
+
         print("Finished Training with Supervised Loss Only")
 
         # 3. Joint Training
         print("Start Joint Training")
 
         # GAN with embedding network training
-        g_loss_u = []
-        g_loss_u_e = []
-        g_loss_s = []
-        g_loss_v = []
-        g_loss = []
-        e_loss_t0 = []
-        d_loss = []
-        step_g_loss_u = 0
-        step_g_loss_u_e = 0
-        step_g_loss_s = 0
-        step_g_loss_v = 0
-        step_g_loss = 0
-        step_e_loss_t0 = 0
-        step_d_loss = 0
         for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
 
             # Generator training (twice more than discriminator training)
@@ -544,13 +568,13 @@ class TimeGAN:
                     g_loss_v: {np.round(step_g_loss, 4)},
                     e_loss_t0: {np.round(np.sqrt(step_e_loss_t0), 4)}"""
                 )
-            d_loss.append(float(step_d_loss))
-            g_loss_u.append(float(step_g_loss_u))
-            g_loss_u_e.append(float(step_g_loss_u_e))
-            g_loss_s.append(float(np.sqrt(step_g_loss_s)))
-            g_loss_v.append(float(step_g_loss_v))
-            g_loss.append(float(step_g_loss))
-            e_loss_t0.append(float(np.sqrt(step_e_loss_t0)))
+            self.training_losses_history["discriminator"] = float(step_d_loss)
+            self.training_losses_history["generator_u"] = float(step_g_loss_u)
+            self.training_losses_history["generator_u_e"] = float(step_g_loss_u_e)
+            self.training_losses_history["generator_v"] = float(step_g_loss_v)
+            self.training_losses_history["generator_s"] = float(np.sqrt(step_g_loss_s))
+            self.training_losses_history["generator"] = float(step_g_loss)
+            self.training_losses_history["embedder"] = float(np.sqrt(step_e_loss_t0))
 
             # Synthetic data generation
             if epoch in generate_synthetic:
@@ -558,32 +582,7 @@ class TimeGAN:
                 self.synthetic_data_generated_in_training[epoch] = _sample
 
         print("Finished Joint Training")
-
-        # Record training losses
-        self.training_losses = np.array(
-            [
-                np.array(autoencoder_losses),
-                np.array(adversarial_s_losses),
-                np.array(d_loss),
-                np.array(g_loss_u),
-                np.array(g_loss_u_e),
-                np.array(g_loss_s),
-                np.array(g_loss_v),
-                np.array(g_loss),
-                np.array(e_loss_t0),
-            ]
-        )
-
-        self.losses_labels = [
-            "autoencoder",
-            "adversarial_supervised",
-            "discriminator",
-            "generator_u",
-            "generator_u_e",
-            "generator_v",
-            "generator",
-            "embedder",
-        ]
+        return
 
     def generate(self, n_samples: int) -> TensorLike:
         """
