@@ -4,6 +4,7 @@ from tensorflow.python.types.core import TensorLike
 import numpy as np
 from copy import deepcopy
 from tqdm import tqdm, trange
+from collections import OrderedDict
 import typing
 
 import logging
@@ -14,9 +15,9 @@ logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
 
 
-class LossTracker(dict):
+class LossTracker(OrderedDict):
     """
-    Extends default python dictionary.
+    Extends python OrderedDict.
     Example: Given {'loss_a': 1, 'loss_b': 2}, adding key='loss_a' with value=0.7
             gives {'loss_a': [1, 0.7], 'loss_b': 2}
     """
@@ -27,10 +28,10 @@ class LossTracker(dict):
             # and the value is a list [oldest_value, another_old, ...]
             # key -> [oldest_value, another_old, ..., new_value]
             self[key].append(value)
-        # If there is no key, behaves like the standard dictionary
+        # If there is no key, add key -> [new_value]
         except KeyError:
-            # key -> new_value
-            super(LossTracker, self).__setitem__(key, value)
+            # key -> [new_value]
+            super(LossTracker, self).__setitem__(key, [value])
         # If key is there, but value is not a list
         except AttributeError:
             # key -> [old_value, new_value]
