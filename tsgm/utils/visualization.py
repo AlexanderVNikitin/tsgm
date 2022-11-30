@@ -14,7 +14,7 @@ DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
 def visualize_dataset(
     dataset: tsgm.dataset.Dataset,
     obj_id: int = 0,
-    palette=DEFAULT_PALETTE_TSNE,
+    palette: dict = DEFAULT_PALETTE_TSNE,
     path: str = "/tmp/generated_data.pdf",
 ) -> None:
     """
@@ -46,8 +46,8 @@ def visualize_dataset(
 def visualize_tsne_unlabeled(
     X: tsgm.types.Tensor,
     X_gen: tsgm.types.Tensor,
-    palette=DEFAULT_PALETTE_TSNE,
-    alpha=0.25,
+    palette: dict = DEFAULT_PALETTE_TSNE,
+    alpha: float = 0.25,
     path: str = "/tmp/tsne_embeddings.pdf",
     fontsize: int = 20,
     markerscale: int = 3,
@@ -197,7 +197,13 @@ def visualize_ts_lineplot(
                 raise ValueError("ys contains too many dimensions")
 
 
-def visualize_original_and_reconst_ts(original, reconst, num=5, vmin=0, vmax=1):
+def visualize_original_and_reconst_ts(
+    original: tsgm.types.Tensor,
+    reconst: tsgm.types.Tensor,
+    num: int = 5,
+    vmin: int = 0,
+    vmax: int = 1,
+):
     assert original.shape == reconst.shape
 
     fig, axs = plt.subplots(num, 2, figsize=(14, 10))
@@ -209,7 +215,9 @@ def visualize_original_and_reconst_ts(original, reconst, num=5, vmin=0, vmax=1):
 
 
 def visualize_training_loss(
-    loss_vector, labels=[], path: str = "/tmp/training_loss.pdf"
+    loss_vector: tsgm.types.Tensor,
+    labels: tuple = (),
+    path: str = "/tmp/training_loss.pdf",
 ):
     """
     Plot training losses as a function of the epochs
