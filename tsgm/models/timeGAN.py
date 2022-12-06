@@ -17,9 +17,10 @@ logger.setLevel(logging.DEBUG)
 
 class LossTracker(OrderedDict):
     """
-    Extends python OrderedDict.
-    Example: Given {'loss_a': 1, 'loss_b': 2}, adding key='loss_a' with value=0.7
-            gives {'loss_a': [1, 0.7], 'loss_b': 2}
+    Dictionary of lists, extends python OrderedDict.
+    Example: Given {'loss_a': [1], 'loss_b': [2]}, adding key='loss_a' with value=0.7
+            gives {'loss_a': [1, 0.7], 'loss_b': [2]}. and adding key='loss_c' with value=1.2
+            gives {'loss_a': [1, 0.7], 'loss_b': [2], 'loss_c': [1.2]}
     """
 
     def __setitem__(self, key, value):
@@ -32,10 +33,6 @@ class LossTracker(OrderedDict):
         except KeyError:
             # key -> [new_value]
             super(LossTracker, self).__setitem__(key, [value])
-        # If key is there, but value is not a list
-        except AttributeError:
-            # key -> [old_value, new_value]
-            super(LossTracker, self).__setitem__(key, [self[key], value])
 
     def to_numpy(self) -> np.array:
         """
