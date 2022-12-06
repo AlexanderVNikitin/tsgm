@@ -244,7 +244,9 @@ def visualize_training_loss(
         # scale loss to be in range [0, 0.xxx]
         _max_magnitude = math.floor(math.log10(np.max(_loss)))
         if _max_magnitude >= 0:
-            _loss /= 10 ** (_max_magnitude + 1)
+            _exp = _max_magnitude + 1
+            _loss /= 10 ** _exp
+            _label += f" ($10^{_exp}$)"
 
         if i < len(_colors):
             # use custom styles until a style is defined
