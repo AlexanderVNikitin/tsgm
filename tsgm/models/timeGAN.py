@@ -19,7 +19,7 @@ class LossTracker(OrderedDict):
     """
     Dictionary of lists, extends python OrderedDict.
     Example: Given {'loss_a': [1], 'loss_b': [2]}, adding key='loss_a' with value=0.7
-            gives {'loss_a': [1, 0.7], 'loss_b': [2]}. and adding key='loss_c' with value=1.2
+            gives {'loss_a': [1, 0.7], 'loss_b': [2]}, and adding key='loss_c' with value=1.2
             gives {'loss_a': [1, 0.7], 'loss_b': [2], 'loss_c': [1.2]}
     """
 
