@@ -47,6 +47,9 @@ setup(name='tsgm',
       keywords=keywords,
       long_description="",
       license=license,
+      entry_points={
+        "console_scripts": ["tsgm-gd=cli.gd:main", "tsgm-eval=cli.eval:main"],
+      },
       install_requires=[
           "tensorflow==2.9.1",
           "scipy>=1.7.3"

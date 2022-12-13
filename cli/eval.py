@@ -5,11 +5,6 @@ import functools
 import numpy as np
 import sklearn.metrics
 import tensorflow as tf
-from tensorflow import keras
-
-from io import BytesIO
-
-from keras import layers
 
 import tsgm
 
@@ -57,7 +52,7 @@ class PredictNextEvaluator:
             return np.mean(results)
         else:
             return np.array(results)
-    
+
 
 class FlattenTSOneClassSVM:
     def __init__(self, clf):
@@ -77,9 +72,9 @@ def parse_arguments():
 
     parser.add_argument("--generated-data", type=str, help='Path to the pickled data you want to model (.pkl)',
                         default=None, required=True)
-    parser.add_argument("--source-data", type=str, help="Source data that was used to produce generated-data (.pkl)", 
+    parser.add_argument("--source-data", type=str, help="Source data that was used to produce generated-data (.pkl)",
                         default=None, required=True)
-    parser.add_argument("--holdout-data", type=str, help="Holdout test data (.pkl)", 
+    parser.add_argument("--holdout-data", type=str, help="Holdout test data (.pkl)",
                         default=None, required=True)
 
     parser.add_argument("--batch-size", type=int, help="Batch size", default=None)
@@ -99,13 +94,13 @@ def _get_scale(generated_data) -> tuple:
 def load_data(data_path: str) -> tsgm.dataset.DatasetOrTensor:
     try:
         return pickle.load(open(data_path, "rb"))
-    except:
+    except pickle.PickleError:
         raise ValueError(f"Unsupported filetype in {data_path}")
 
 
 def evaluate_similarity_metric(
-    X_source: tsgm.dataset.DatasetOrTensor, X_syn: tsgm.dataset.DatasetOrTensor, 
-    X_holdout: tsgm.dataset.DatasetOrTensor) -> None:
+        X_source: tsgm.dataset.DatasetOrTensor, X_syn: tsgm.dataset.DatasetOrTensor,
+        X_holdout: tsgm.dataset.DatasetOrTensor) -> None:
     statistics = [functools.partial(tsgm.metrics.statistics.axis_max_s, axis=None),
                   functools.partial(tsgm.metrics.statistics.axis_min_s, axis=None),
                   functools.partial(tsgm.metrics.statistics.axis_max_s, axis=1),
@@ -132,13 +127,12 @@ def evaluate_downstream_performance_metric(X_source, X_syn, X_holdout):
     downstream_perf_metric = tsgm.metrics.DownstreamPerformanceMetric(
         evaluator=PredictNextEvaluator(hidden_dim=8, output_dim=X_source.shape[2], n_layers=N_LAYERS_EVALUATOR, epochs=N_EPOCHS_EVALUATOR)
     )
-    
     print(f"Downstream Performance Metric: {downstream_perf_metric(X_source, X_syn[:100], X_holdout)}")
 
 
 def evaluate_consistency_metric(X_source, X_syn, X_holdout):
     consistency_metric = tsgm.metrics.ConsistencyMetric(
-        evaluators = [PredictNextEvaluator(hidden_dim=8, output_dim=X_source.shape[2], n_layers=l + 1, epochs=N_EPOCHS_EVALUATOR, return_mean=True) for l in range(N_EVALUATORS)]
+        evaluators=[PredictNextEvaluator(hidden_dim=8, output_dim=X_source.shape[2], n_layers=n_layers + 1, epochs=N_EPOCHS_EVALUATOR, return_mean=True) for n_layers in range(N_EVALUATORS)]
     )
     print(f"Consistency Metric: {consistency_metric(X_source, X_syn, X_holdout)}")
 
@@ -149,8 +143,8 @@ def evaluate_privacy_metric(X_source, X_syn, X_holdout):
         attacker=attacker
     )
     print("Privacy Metric: ", privacy_metric(
-        tsgm.dataset.Dataset(X_source, y=None),\
-        tsgm.dataset.Dataset(X_syn, y=None),\
+        tsgm.dataset.Dataset(X_source, y=None),
+        tsgm.dataset.Dataset(X_syn, y=None),
         tsgm.dataset.Dataset(X_holdout, y=None)))
 
 
@@ -161,7 +155,7 @@ def evaluate_metrics(X_source, X_syn, X_holdout):
     evaluate_privacy_metric(X_source, X_syn, X_holdout)
 
 
-if __name__ == "__main__":
+def main():
     tsgm.utils.fix_seeds()
     args = parse_arguments()
     source_data = load_data(args.source_data)
@@ -175,3 +169,7 @@ if __name__ == "__main__":
     if isinstance(X_syn, tf.Tensor):
         X_syn = X_syn.numpy()
     evaluate_metrics(X_train, X_syn, X_holdout)
+
+
+if __name__ == "__main__":
+    main()

@@ -72,7 +72,6 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
-
         self._encoder = self._build_encoder()
         self._decoder = self._build_decoder()
 
@@ -169,8 +168,8 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Flatten()(x)
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
-        z_mean = layers.Dense(self._seq_len * self._latent_dim, name="z_mean")(x)
-        z_log_var = layers.Dense(self._seq_len * self._latent_dim, name="z_log_var")(x)
+        z_mean = layers.Dense(self._latent_dim * self._seq_len, name="z_mean")(x)
+        z_log_var = layers.Dense(self._latent_dim * self._seq_len, name="z_log_var")(x)
         z = Sampling()([z_mean, z_log_var])
         encoder = keras.Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
         return encoder
@@ -196,7 +195,7 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        d_output = layers.LocallyConnected1D(1, 1, activation="sigmoid")(x)
+        d_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="sigmoid")(x)
 
         decoder = keras.Model(inputs, d_output, name="decoder")
         return decoder
@@ -211,7 +210,6 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
-
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
 

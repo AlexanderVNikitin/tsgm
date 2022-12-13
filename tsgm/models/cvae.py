@@ -100,6 +100,7 @@ class BetaVAE(keras.Model):
 
 
 class cBetaVAE(keras.Model):
+    # TODO: allow using architecture or encoder & decoder
     def __init__(self, encoder, decoder, latent_dim, temporal, beta=1.0, **kwargs):
         super(cBetaVAE, self).__init__(**kwargs)
         self.beta = beta
@@ -111,9 +112,9 @@ class cBetaVAE(keras.Model):
             name="reconstruction_loss"
         )
         self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
-        self.latent_dim = latent_dim
         self._temporal = temporal
         self._seq_len = self.decoder.output_shape[1]
+        self.latent_dim = latent_dim
 
     @property
     def metrics(self) -> list:
@@ -149,7 +150,6 @@ class cBetaVAE(keras.Model):
         X, labels = data
         encoder_input = self._get_encoder_input(X, labels)
         z_mean, _, _ = self.encoder(encoder_input)
-
         decoder_input = self._get_decoder_input(z_mean, labels)
         x_decoded = self.decoder(decoder_input)
         if len(x_decoded.shape) == 1:
