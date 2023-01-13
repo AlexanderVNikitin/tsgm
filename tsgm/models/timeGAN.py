@@ -4,6 +4,7 @@ from tensorflow.python.types.core import TensorLike
 import numpy as np
 from copy import deepcopy
 from tqdm import tqdm, trange
+from collections import OrderedDict
 import typing
 
 import logging
@@ -12,6 +13,39 @@ from tsgm.models.architectures.zoo import BasicRecurrentArchitecture
 
 logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
+
+
+class LossTracker(OrderedDict):
+    """
+    Dictionary of lists, extends python OrderedDict.
+    Example: Given {'loss_a': [1], 'loss_b': [2]}, adding key='loss_a' with value=0.7
+            gives {'loss_a': [1, 0.7], 'loss_b': [2]}, and adding key='loss_c' with value=1.2
+            gives {'loss_a': [1, 0.7], 'loss_b': [2], 'loss_c': [1.2]}
+    """
+
+    def __setitem__(self, key, value):
+        try:
+            # Assumes the key already exists
+            # and the value is a list [oldest_value, another_old, ...]
+            # key -> [oldest_value, another_old, ..., new_value]
+            self[key].append(value)
+        # If there is no key, add key -> [new_value]
+        except KeyError:
+            # key -> [new_value]
+            super(LossTracker, self).__setitem__(key, [value])
+
+    def to_numpy(self) -> np.array:
+        """
+        :return 2d vector of losses
+        """
+        _losses = np.array([np.array(v) for v in self.values() if isinstance(v, list)])
+        return _losses
+
+    def labels(self) -> list:
+        """
+        :return list of keys
+        """
+        return list(self.keys())
 
 
 class TimeGAN:
@@ -32,8 +66,6 @@ class TimeGAN:
         hidden_dim: int = 24,
         n_features: int = 6,
         n_layers: int = 3,
-        epochs: int = 10,
-        checkpoint: int = 2,
         batch_size: int = 256,
         gamma: float = 1.0,
     ):
@@ -46,7 +78,6 @@ class TimeGAN:
 
         self.n_layers = n_layers
 
-        self.checkpoint = checkpoint
         self.batch_size = batch_size
 
         self.gamma = gamma
@@ -110,6 +141,16 @@ class TimeGAN:
         DEFAULT_BCE = keras.losses.BinaryCrossentropy()
         self._mse = DEFAULT_MSE
         self._bce = DEFAULT_BCE
+
+        # --------------------------
+        # All losses: will be populated in .fit()
+        # --------------------------
+        self.training_losses_history = LossTracker()
+
+        # --------------------------
+        # Synthetic data generation during training: will be populated in .fit()
+        # --------------------------
+        self.synthetic_data_generated_in_training = dict()
 
     def compile(
         self,
@@ -259,7 +300,7 @@ class TimeGAN:
     @tf.function
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> typing.Tuple[float, float, float]:
+    ) -> typing.Tuple[float, float, float, float, float]:
         """
         3. Joint training (Generator training twice more than discriminator training): minimize G_loss
         """
@@ -297,7 +338,7 @@ class TimeGAN:
             if grad is not None
         ]
         optimizer.apply_gradients(apply_grads)
-        return G_loss_U, G_loss_S, G_loss_V
+        return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
 
     @tf.function
     def _train_embedder(
@@ -390,7 +431,7 @@ class TimeGAN:
         while True:
             yield np.random.uniform(low=0, high=1, size=(self.seq_len, self.dim))
 
-    def get_noise_batch(self):
+    def get_noise_batch(self) -> typing.Iterator:
         """
         Return an iterator of random noise vectors
         """
@@ -402,7 +443,7 @@ class TimeGAN:
             .repeat()
         )
 
-    def _get_data_batch(self, data, n_windows: int):
+    def _get_data_batch(self, data, n_windows: int) -> typing.Iterator:
         """
         Return an iterator of shuffled input data
         """
@@ -414,7 +455,23 @@ class TimeGAN:
             .repeat()
         )
 
-    def fit(self, data, epochs):
+    def fit(
+        self,
+        data: TensorLike,
+        epochs: int,
+        checkpoints_interval: typing.Optional[int] = None,
+        generate_synthetic: tuple = (),
+    ):
+        """
+        :param data: TensorLike, the training data
+        :param epochs: int, the number of epochs for the training loops
+        :param checkpoints_interval: int, the interval for printing out loss values
+            (loss values will be print out every 'checkpoints_interval' epochs)
+            Default: None (no print out)
+        :param generate_synthetic: list of int, a list of epoch numbers when synthetic data samples are generated
+            Default: [] (no generation)
+        :return None
+        """
         assert not (
             self.autoencoder_opt is None
             or self.adversarialsup_opt is None
@@ -435,9 +492,11 @@ class TimeGAN:
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
+
             # Checkpoint
-            if epoch % self.checkpoint == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
+            self.training_losses_history["autoencoder"] = float(step_e_loss_0)
 
         print("Finished Embedding Network Training")
 
@@ -448,11 +507,15 @@ class TimeGAN:
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
             X_ = next(self._get_data_batch(data, n_windows=len(data)))
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
+
             # Checkpoint
-            if epoch % self.checkpoint == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
+            self.training_losses_history["adversarial_supervised"] = float(
+                np.sqrt(step_g_loss_s)
+            )
 
         print("Finished Training with Supervised Loss Only")
 
@@ -460,7 +523,6 @@ class TimeGAN:
         print("Start Joint Training")
 
         # GAN with embedding network training
-        step_g_loss_u = step_g_loss_s = step_g_loss_v = step_e_loss_t0 = step_d_loss = 0
         for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
 
             # Generator training (twice more than discriminator training)
@@ -470,9 +532,13 @@ class TimeGAN:
                 # --------------------------
                 # Train the generator
                 # --------------------------
-                step_g_loss_u, step_g_loss_s, step_g_loss_v = self._train_generator(
-                    X_, Z_, self.generator_opt
-                )
+                (
+                    step_g_loss_u,
+                    step_g_loss_u_e,
+                    step_g_loss_s,
+                    step_g_loss_v,
+                    step_g_loss,
+                ) = self._train_generator(X_, Z_, self.generator_opt)
 
                 # --------------------------
                 # Train the embedder
@@ -487,16 +553,32 @@ class TimeGAN:
                 step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
 
             # Print multiple checkpoints
-            if epoch % self.checkpoint == 0:
+            if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 print(
                     f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
                     g_loss_u: {np.round(step_g_loss_u, 4)},
+                    g_loss_u_e: {np.round(step_g_loss_u_e, 4)},
                     g_loss_s: {np.round(np.sqrt(step_g_loss_s), 4)},
                     g_loss_v: {np.round(step_g_loss_v, 4)},
+                    g_loss_v: {np.round(step_g_loss, 4)},
                     e_loss_t0: {np.round(np.sqrt(step_e_loss_t0), 4)}"""
                 )
+            self.training_losses_history["discriminator"] = float(step_d_loss)
+            self.training_losses_history["generator_u"] = float(step_g_loss_u)
+            self.training_losses_history["generator_u_e"] = float(step_g_loss_u_e)
+            self.training_losses_history["generator_v"] = float(step_g_loss_v)
+            self.training_losses_history["generator_s"] = float(np.sqrt(step_g_loss_s))
+            self.training_losses_history["generator"] = float(step_g_loss)
+            self.training_losses_history["embedder"] = float(np.sqrt(step_e_loss_t0))
+
+            # Synthetic data generation
+            if epoch in generate_synthetic:
+                _sample = self.generate(n_samples=len(data))
+                self.synthetic_data_generated_in_training[epoch] = _sample
+
         print("Finished Joint Training")
+        return
 
     def generate(self, n_samples: int) -> TensorLike:
         """

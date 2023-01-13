@@ -45,8 +45,15 @@ To check static typing:
 mypy
 ```
 
+## CLI
+We provide two CLIs for convenient synthetic data generation:
+- `tsgm-gd` generates data by a stored sample,
+- `tsgm-eval` evaluates the generated time series.
+
+Use `tsgm-gd --help` or `tsgm-eval --help` for documentation.
+
 ## Train your generative model
-Here we provide the gist of the framework, for the completed examples see [our tutorials](./tutorials).
+Here, we provide the gist of the framework, for the completed examples see [our tutorials](./tutorials).
 ```python
 import tsgm
 

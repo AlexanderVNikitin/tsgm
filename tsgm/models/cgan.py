@@ -253,7 +253,6 @@ class ConditionalGAN(keras.Model):
 
         # Generate ts
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-
         generated_ts = self.generator(random_vector_labels)
 
         fake_data = tf.concat([generated_ts, rep_labels], -1)
