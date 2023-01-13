@@ -3,67 +3,10 @@ from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
 import warnings
 
-import tsgm
-
 import logging
 
 logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
-
-
-class BaseCompose:
-    def __init__(
-        self,
-        augmentations: List[tsgm.tsgm.models.augmentations.BaseAugmenter],
-        p: float,
-        seed: Optional[float] = None,
-    ):
-        if isinstance(augmentations, (BaseCompose, BaseAugmenter)):
-            warnings.warn(
-                "augmentations is a single object, but a sequence is expected! It will be wrapped into list."
-            )
-            augmentations = [augmentations]
-
-        self.augmentations = augmentations
-        self.p = p
-        self.seed = seed
-
-        self.replay_mode = False
-        self.applied_in_replay = False
-
-    def __len__(self) -> int:
-        return len(self.augmentations)
-
-    def __call__(self, *args, **data) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    def __getitem__(self, item: int) -> tsgm.tsgm.models.augmentations.BaseAugmenter:
-        return self.augmentations[item]
-
-    def __repr__(self) -> str:
-        args = {
-            k: v
-            for k, v in self._to_dict().items()
-            if not (k.startswith("__") or k == "transforms")
-        }
-        repr_string = self.__class__.__name__ + "(["
-        for a in self.augmentations:
-            repr_string += "\n" + " " * 4 + repr(a) + ","
-        repr_string += "\n" + f"], {args})"
-        return repr_string
-
-    @classmethod
-    def is_serializable(cls) -> bool:
-        return True
-
-    def add_targets(self, additional_targets: Optional[Dict[str, str]]) -> None:
-        if additional_targets:
-            for t in self.transforms:
-                t.add_targets(additional_targets)
-
-    def set_deterministic(self, flag: bool, save_key: str = "replay") -> None:
-        for t in self.transforms:
-            t.set_deterministic(flag, save_key)
 
 
 class BaseAugmenter:
@@ -87,6 +30,9 @@ class BaseAugmenter:
     def generate(self, n_samples: int) -> TensorLike:
         raise NotImplementedError
 
+    def fit_generate(self, time_series: np.ndarray, n_samples: int) -> TensorLike:
+        raise NotImplementedError
+
     def get_params(self) -> Dict:
         return self.params
 
@@ -101,6 +47,52 @@ class BaseAugmenter:
         d = self._to_dict()
         d["id"] = id(self)
         return d
+
+
+class BaseCompose:
+    def __init__(
+        self,
+        augmentations: List[BaseAugmenter],
+        p: float,
+        seed: Optional[float] = None,
+    ):
+        if isinstance(augmentations, (BaseCompose, BaseAugmenter)):
+            warnings.warn(
+                "augmentations is a single object, but a sequence is expected! It will be wrapped into list."
+            )
+            augmentations = [augmentations]
+
+        self.augmentations = augmentations
+        self.p = p
+        self.seed = seed
+
+        self.replay_mode = False
+        self.applied_in_replay = False
+
+    def __len__(self) -> int:
+        return len(self.augmentations)
+
+    def __call__(self, *args, **data) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    def __getitem__(self, item: int) -> BaseAugmenter:
+        return self.augmentations[item]
+
+    def __repr__(self) -> str:
+        args = {
+            k: v
+            for k, v in self._to_dict().items()
+            if not (k.startswith("__") or k == "transforms")
+        }
+        repr_string = self.__class__.__name__ + "(["
+        for a in self.augmentations:
+            repr_string += "\n" + " " * 4 + repr(a) + ","
+        repr_string += "\n" + f"], {args})"
+        return repr_string
+
+    @classmethod
+    def is_serializable(cls) -> bool:
+        return True
 
 
 class GaussianNoise(BaseAugmenter):
@@ -141,8 +133,43 @@ class GaussianNoise(BaseAugmenter):
         self.mean = mean
         self.per_channel = per_feature
 
-    def fit(self, img: np.ndarray):
-        return
+        # this will be populated with the seed datapoints after .fit()
+        self._data = None
+        # this will be populated with the synthetic data after .generate()
+        self.synthetic = []
+
+    def fit(self, dataset: TensorLike) -> BaseAugmenter:
+        # reset
+        self.synthetic = []
+        self._data = dataset
+        return self
 
     def generate(self, n_samples: int) -> TensorLike:
-        return
+        if self._data is None:
+            raise AttributeError(
+                "This object is not fitted. Call .fit(your_dataset) first."
+            )
+        seeds_idx = np.random.choice(
+            range(self._data.shape[0]), size=n_samples, replace=True
+        )
+
+        for i in seeds_idx:
+            sequence = self._data[i]
+            _draw = np.random.uniform()
+            if _draw >= self.p:
+                self.synthetic.append(sequence)
+            else:
+                variance = np.random.uniform(self.variance[0], self.variance[1])
+                sigma = variance**0.5
+
+                if self.per_channel:
+                    gauss = np.random.normal(self.mean, sigma, sequence.shape)
+                else:
+                    gauss = np.random.normal(self.mean, sigma, sequence.shape[:2])
+                    gauss = np.expand_dims(gauss, -1)
+                self.synthetic.append(sequence + gauss)
+        return np.array(self.synthetic)
+
+    def fit_generate(self, dataset: TensorLike, n_samples: int) -> TensorLike:
+        self.fit(dataset=dataset)
+        return self.generate(n_samples=n_samples)
