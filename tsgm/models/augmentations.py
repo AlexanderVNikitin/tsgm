@@ -1,7 +1,6 @@
 import numpy as np
 from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
-import warnings
 
 import logging
 
@@ -17,13 +16,6 @@ class BaseAugmenter:
         self.always_apply = always_apply
         self.seed = seed
 
-        # replay mode params
-        self.deterministic = False
-        self.save_key = "replay"
-        self.params: Dict[Any, Any] = dict()
-        self.replay_mode = False
-        self.applied_in_replay = False
-
     def fit(self, time_series: np.ndarray):
         raise NotImplementedError
 
@@ -32,21 +24,6 @@ class BaseAugmenter:
 
     def fit_generate(self, time_series: np.ndarray, n_samples: int) -> TensorLike:
         raise NotImplementedError
-
-    def get_params(self) -> Dict:
-        return self.params
-
-    @classmethod
-    def is_serializable(cls):
-        return True
-
-    def get_base_init_args(self) -> Dict[str, Any]:
-        return {"always_apply": self.always_apply, "p": self.p}
-
-    def get_dict_with_id(self) -> Dict[str, Any]:
-        d = self._to_dict()
-        d["id"] = id(self)
-        return d
 
 
 class BaseCompose:
@@ -57,9 +34,6 @@ class BaseCompose:
         seed: Optional[float] = None,
     ):
         if isinstance(augmentations, (BaseCompose, BaseAugmenter)):
-            warnings.warn(
-                "augmentations is a single object, but a sequence is expected! It will be wrapped into list."
-            )
             augmentations = [augmentations]
 
         self.augmentations = augmentations
@@ -77,22 +51,6 @@ class BaseCompose:
 
     def __getitem__(self, item: int) -> BaseAugmenter:
         return self.augmentations[item]
-
-    def __repr__(self) -> str:
-        args = {
-            k: v
-            for k, v in self._to_dict().items()
-            if not (k.startswith("__") or k == "transforms")
-        }
-        repr_string = self.__class__.__name__ + "(["
-        for a in self.augmentations:
-            repr_string += "\n" + " " * 4 + repr(a) + ","
-        repr_string += "\n" + f"], {args})"
-        return repr_string
-
-    @classmethod
-    def is_serializable(cls) -> bool:
-        return True
 
 
 class GaussianNoise(BaseAugmenter):
@@ -160,7 +118,7 @@ class GaussianNoise(BaseAugmenter):
                 self.synthetic.append(sequence)
             else:
                 variance = np.random.uniform(self.variance[0], self.variance[1])
-                sigma = variance**0.5
+                sigma = variance ** 0.5
 
                 if self.per_channel:
                     gauss = np.random.normal(self.mean, sigma, sequence.shape)
