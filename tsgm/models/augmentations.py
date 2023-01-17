@@ -87,15 +87,9 @@ class GaussianNoise(BaseAugmenter):
 
         self.mean = mean
         self.per_channel = per_feature
-
-        # this will be populated with the seed datapoints after .fit()
         self._data = None
-        # this will be populated with the synthetic data after .generate()
-        self.synthetic = []
 
     def fit(self, dataset: TensorLike) -> BaseAugmenter:
-        # reset
-        self.synthetic = []
         self._data = dataset
         return self
 
@@ -108,11 +102,12 @@ class GaussianNoise(BaseAugmenter):
             range(self._data.shape[0]), size=n_samples, replace=True
         )
 
+        synthetic_data = []
         for i in seeds_idx:
             sequence = self._data[i]
             _draw = np.random.uniform()
             if _draw >= self.p:
-                self.synthetic.append(sequence)
+                synthetic_data.append(sequence)
             else:
                 variance = np.random.uniform(self.variance[0], self.variance[1])
                 sigma = variance ** 0.5
@@ -122,8 +117,8 @@ class GaussianNoise(BaseAugmenter):
                 else:
                     gauss = np.random.normal(self.mean, sigma, sequence.shape[:2])
                     gauss = np.expand_dims(gauss, -1)
-                self.synthetic.append(sequence + gauss)
-        return np.array(self.synthetic)
+                synthetic_data.append(sequence + gauss)
+        return np.array(synthetic_data)
 
     def fit_generate(self, dataset: TensorLike, n_samples: int) -> TensorLike:
         self.fit(dataset=dataset)
