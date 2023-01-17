@@ -40,9 +40,6 @@ class BaseCompose:
         self.p = p
         self.seed = seed
 
-        self.replay_mode = False
-        self.applied_in_replay = False
-
     def __len__(self) -> int:
         return len(self.augmentations)
 
