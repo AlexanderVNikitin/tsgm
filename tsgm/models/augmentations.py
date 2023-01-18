@@ -125,7 +125,7 @@ class GaussianNoise(BaseAugmenter):
 class SliceAndShuffle(BaseAugmenter):
     """Slice the time series in k pieces and create a new time series by shuffling.
     Args:
-        k (int): the number of slices
+        n_segments (int): the number of slices
         per_feature (bool): if set to True, each time series is sliced independently.
             Otherwise, all features are sliced in the same way. Default: True
     """
