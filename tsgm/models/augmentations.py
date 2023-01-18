@@ -19,10 +19,8 @@ class BaseAugmenter:
         return
 
     def _get_seeds(self, n: int) -> TensorLike:
-        seeds_idx = np.random.choice(
-            range(self._data.shape[0]), size=n, replace=True
-        )
-        return  seeds_idx
+        seeds_idx = np.random.choice(range(self._data.shape[0]), size=n, replace=True)
+        return seeds_idx
 
     def _check_fitted(self):
         if self._data is None:
@@ -39,7 +37,9 @@ class BaseAugmenter:
     def generate(self, n_samples: int) -> TensorLike:
         raise NotImplementedError
 
-    def fit_generate(self, time_series: TensorLike, y: Optional[TensorLike], n_samples: int) -> TensorLike:
+    def fit_generate(
+        self, time_series: TensorLike, y: Optional[TensorLike], n_samples: int
+    ) -> TensorLike:
         self.fit(time_series=time_series, y=y)
         return self.generate(n_samples=n_samples)
 
@@ -107,7 +107,7 @@ class GaussianNoise(BaseAugmenter):
         for i in seeds_idx:
             sequence = self._data[i]
             variance = np.random.uniform(self.variance[0], self.variance[1])
-            sigma = variance ** 0.5
+            sigma = variance**0.5
             if self.per_channel:
                 gauss = np.random.normal(self.mean, sigma, sequence.shape)
             else:
