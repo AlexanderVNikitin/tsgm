@@ -13,7 +13,7 @@ class BaseAugmenter:
         self,
     ):
 
-    def fit(self, time_series: TensorLike, y: Optional[TensorLike] = None):
+    def fit(self, time_series: TensorLike, y: Optional[TensorLike]):
         raise NotImplementedError
 
     def generate(self, n_samples: int) -> TensorLike:
@@ -114,6 +114,6 @@ class GaussianNoise(BaseAugmenter):
         else:
             return np.array(synthetic_data)
 
-    def fit_generate(self, dataset: TensorLike, n_samples: int) -> TensorLike:
-        self.fit(dataset=dataset)
+    def fit_generate(self, time_series: TensorLike, y: Optional[TensorLike], n_samples: int) -> TensorLike:
+        self.fit(time_series=time_series, y=y)
         return self.generate(n_samples=n_samples)
