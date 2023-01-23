@@ -58,13 +58,15 @@ Here, we provide the gist of the framework, for the completed examples see [our 
 import tsgm
 
 # ... Define hyperparameters ...
+# dataset is a dataset (tensor of shape n_samples x seq_len x feature_dim)
 
-dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+# Zoo contains several prebuilt architectures: we choose a conditional GAN architecture
 architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
     seq_len=seq_len, feat_dim=feature_dim,
     latent_dim=latent_dim, output_dim=0)
 discriminator, generator = architecture.discriminator, architecture.generator
 
+# Initialize GAN object with selected discriminator and generator
 gan = tsgm.models.cgan.GAN(
     discriminator=discriminator, generator=generator, latent_dim=latent_dim
 )
@@ -75,7 +77,8 @@ gan.compile(
 )
 gan.fit(dataset, epochs=N_EPOCHS)
 
-result = gan.generate(10)
+# Generate 100 synthetic samples
+result = gan.generate(100)
 ```
 
 ## Datasets
