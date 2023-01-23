@@ -3,6 +3,8 @@
 </div>
 
 ![unit-tests](https://github.com/AlexanderVNikitin/tsgm/actions/workflows/test.yml/badge.svg?event=push)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 
 
 # Time Series Generative Modeling Framework (TSGM)
