@@ -60,7 +60,7 @@ Here, we provide the gist of the framework, for the completed examples see [our 
 import tsgm
 
 # ... Define hyperparameters ...
-# dataset is a dataset (tensor of shape n_samples x seq_len x feature_dim)
+# dataset is a tensor of shape n_samples x seq_len x feature_dim
 
 # Zoo contains several prebuilt architectures: we choose a conditional GAN architecture
 architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
