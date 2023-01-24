@@ -28,7 +28,7 @@ class BaseAugmenter:
                 "This object is not fitted. Call .fit(your_dataset) first."
             )
 
-    def fit(self, time_series: TensorLike, y: Optional[TensorLike]):
+    def fit(self, time_series: TensorLike, y: Optional[TensorLike] = None):
         self._data = time_series
         if y is not None:
             self._targets = y
@@ -150,7 +150,9 @@ class SliceAndShuffle(BaseAugmenter):
         for i in seeds_idx:
             sequence = self._data[i]
             if self.per_channel:
-                raise NotImplementedError()
+                raise NotImplementedError(
+                    "SliceAndShuffle separately by feature is not supported yet."
+                )
             else:
                 # Randomly pick n_segments-1 points where to slice
                 idxs = np.random.randint(0, sequence.shape[0], size=self.n_segments - 1)
