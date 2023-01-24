@@ -6,7 +6,7 @@ import tsgm
 
 def test_base_compose():
     _mock_aug = tsgm.models.augmentations.GaussianNoise()
-    compose = tsgm.models.augmentations.BaseCompose([_mock_aug] * 10, p=1, seed=1234)
+    compose = tsgm.models.augmentations.BaseCompose([_mock_aug] * 10,)
 
     assert len(compose) == 10
     assert compose[1] == _mock_aug
