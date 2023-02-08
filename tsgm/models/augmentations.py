@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
@@ -29,6 +30,7 @@ class BaseAugmenter:
             )
 
     def fit(self, time_series: TensorLike, y: Optional[TensorLike] = None):
+        assert len(time_series.shape) == 3
         self._data = time_series
         if y is not None:
             self._targets = y
@@ -171,3 +173,38 @@ class SliceAndShuffle(BaseAugmenter):
             return np.array(synthetic_data), np.array(labels)
         else:
             return np.array(synthetic_data)
+
+
+class Shuffle(BaseAugmenter):
+    """Shuffles time series features.
+    Shuffling is beneficial when each feature corresponds to interchangeable sensors.
+    """
+
+    def __init__(self):
+        super(Shuffle, self).__init__(per_feature=False)
+
+    def _n_repeats(self, n: int) -> int:
+        return math.ceil(n / len(self._data))
+
+    def generate(self, n_samples: int) -> TensorLike:
+        self._check_fitted()
+
+        seeds_idx = self._get_seeds(n_samples)
+        n_data = self._data.shape[0]
+        
+        n_repeats = self._n_repeats(n_samples)
+        shuffle_ids = [np.random.choice(np.arange(self._data.shape[2]), self._data.shape[2], replace=False) for _ in range(n_repeats)]
+
+        synthetic_data = []
+        labels = []
+        for num, i in enumerate(seeds_idx):
+            sequence = self._data[i]
+            id_repeat = self._n_repeats(num)
+            synthetic_data.append(sequence[:, shuffle_ids[id_repeat]])
+            if self._targets is not None:
+                labels.append(self._targets[i])
+        if self._targets is not None:
+            return np.array(synthetic_data), np.array(labels)
+        else:
+            return np.array(synthetic_data)
+        

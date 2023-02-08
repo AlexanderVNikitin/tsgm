@@ -26,3 +26,15 @@ def test_gaussian_augmentation():
     xs_gen1 = gn_aug.generate(n_gen)
     assert not np.array_equal(xs_gen, xs_gen1)
     assert xs_gen1.shape == xs_gen.shape
+
+
+def test_shuffle():
+    xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
+    shfl_aug = tsgm.models.augmentations.Shuffle()
+    shfl_aug.fit(xs)
+    xs_gen = shfl_aug.generate(2)
+    assert xs_gen.shape == (2, 2, 4)
+
+    xs_gen = shfl_aug.generate(17)
+    assert xs_gen.shape == (17, 2, 4)
+    assert all([np.allclose(x[0], x[1]) for x in xs_gen])
