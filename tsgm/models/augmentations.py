@@ -1,5 +1,7 @@
 import math
 import numpy as np
+import random
+import scipy.interpolate
 from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
 
@@ -207,4 +209,31 @@ class Shuffle(BaseAugmenter):
             return np.array(synthetic_data), np.array(labels)
         else:
             return np.array(synthetic_data)
+
+
+class MagnitudeWarping(BaseAugmenter):
+    """
+    Magnitude warping changes the magnitude of each
+    sample by convolving the data window with a smooth curve varying around one
+    https://dl.acm.org/doi/pdf/10.1145/3136755.3136817
+    """
+    def __init__(self):
+        super(MagnitudeWarping, self).__init__(per_feature=False)
+
+    def generate(self, n_samples: int, sigma: float = 0.2, knot: int = 4):
+        n_features = self._data.shape[2]
+        n_timesteps = self._data.shape[1]
+
+        orig_steps = np.arange(n_timesteps)
+        random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, knot + 2, n_features))
+        warp_steps = (np.ones(
+            (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=knot + 2))).T
+        result = np.zeros((n_samples, n_timesteps, n_features))
+        for i in range(n_samples):
+            random_sample_id = random.randint(0, self._data.shape[0] - 1)
+            warper = np.array([scipy.interpolate.CubicSpline(
+                warp_steps[:, dim], random_warps[i, :, dim])(orig_steps) for dim in range(n_features)]).T
+            result[i] = self._data[random_sample_id] * warper
+
+        return result
         
