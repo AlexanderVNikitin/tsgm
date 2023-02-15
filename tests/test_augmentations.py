@@ -40,10 +40,20 @@ def test_shuffle():
     assert all([np.allclose(x[0], x[1]) for x in xs_gen])
 
 
-
 def test_magnitude_warping():
     xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
     magn_warp_aug = tsgm.models.augmentations.MagnitudeWarping()
+    magn_warp_aug.fit(xs)
+    xs_gen = magn_warp_aug.generate(2)
+    assert xs_gen.shape == (2, 2, 4)
+
+    xs_gen = magn_warp_aug.generate(17)
+    assert xs_gen.shape == (17, 2, 4)
+
+
+def test_window_warping():
+    xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
+    magn_warp_aug = tsgm.models.augmentations.WindowWarping()
     magn_warp_aug.fit(xs)
     xs_gen = magn_warp_aug.generate(2)
     assert xs_gen.shape == (2, 2, 4)

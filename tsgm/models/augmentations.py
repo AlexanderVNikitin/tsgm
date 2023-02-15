@@ -192,10 +192,10 @@ class Shuffle(BaseAugmenter):
         self._check_fitted()
 
         seeds_idx = self._get_seeds(n_samples)
-        n_data = self._data.shape[0]
-        
+        n_features = self._data.shape[2]
+
         n_repeats = self._n_repeats(n_samples)
-        shuffle_ids = [np.random.choice(np.arange(self._data.shape[2]), self._data.shape[2], replace=False) for _ in range(n_repeats)]
+        shuffle_ids = [np.random.choice(np.arange(n_features), n_features, replace=False) for _ in range(n_repeats)]
 
         synthetic_data = []
         labels = []
@@ -221,8 +221,9 @@ class MagnitudeWarping(BaseAugmenter):
         super(MagnitudeWarping, self).__init__(per_feature=False)
 
     def generate(self, n_samples: int, sigma: float = 0.2, knot: int = 4):
-        n_features = self._data.shape[2]
+        n_data = self._data.shape[0]
         n_timesteps = self._data.shape[1]
+        n_features = self._data.shape[2]
 
         orig_steps = np.arange(n_timesteps)
         random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, knot + 2, n_features))
@@ -230,10 +231,47 @@ class MagnitudeWarping(BaseAugmenter):
             (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=knot + 2))).T
         result = np.zeros((n_samples, n_timesteps, n_features))
         for i in range(n_samples):
-            random_sample_id = random.randint(0, self._data.shape[0] - 1)
+            random_sample_id = random.randint(0, n_data - 1)
             warper = np.array([scipy.interpolate.CubicSpline(
                 warp_steps[:, dim], random_warps[i, :, dim])(orig_steps) for dim in range(n_features)]).T
             result[i] = self._data[random_sample_id] * warper
 
         return result
-        
+
+
+class WindowWarping(BaseAugmenter):
+    """
+    https://halshs.archives-ouvertes.fr/halshs-01357973/document
+    """
+    def __init__(self):
+        super(WindowWarping, self).__init__(per_feature=False)
+
+    def generate(self, n_samples, window_ratio=0.2, scales=[0.25, 1.0]):
+        n_data = self._data.shape[0]
+        n_timesteps = self._data.shape[1]
+        n_features = self._data.shape[2]
+
+        scales_per_sample = np.random.choice(scales, n_samples)
+        warp_size = max(np.round(window_ratio * n_timesteps).astype(np.int64), 1)
+        window_starts = np.random.randint(
+            low=0, high=n_timesteps - warp_size,
+            size=(n_samples))
+        window_ends = window_starts + warp_size
+
+        result = np.zeros((n_samples, n_timesteps, n_features))
+        for i in range(n_samples):
+            for dim in range(n_features):
+                random_sample_id = random.randint(0, n_data - 1)
+                random_sample = self._data[random_sample_id]
+                start_seg = random_sample[:window_starts[i], dim]
+                warp_ts_size = max(round(warp_size * scales_per_sample[i]), 1)
+                window_seg = np.interp(
+                    x=np.linspace(0, warp_size - 1, num=warp_ts_size),
+                    xp=np.arange(warp_size),
+                    fp=random_sample[window_starts[i] : window_ends[i], dim])
+                end_seg = random_sample[window_ends[i]:, dim]
+                warped = np.concatenate((start_seg, window_seg, end_seg))
+                result[i, :, dim] = np.interp(
+                    np.arange(n_timesteps),
+                    np.linspace(0, n_timesteps - 1., num=warped.size), warped).T
+        return result
