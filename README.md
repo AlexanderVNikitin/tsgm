@@ -30,6 +30,12 @@ We provide:
 
 
 ## Install TSGM
+
+To install TSGM run
+```
+pip install tsgm
+```
+
 #### For contributors
 ```bash
 git clone github.com/AlexanderVNikitin/tsgm
@@ -84,7 +90,19 @@ result = gan.generate(100)
 ```
 
 ## Datasets
-TSGM provides API for convenient use of many time-series datasets. The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
+TSGM provides API for convenient use of many time-series datasets (currently more than 15 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
+
+## Augmentations
+TSGM provides a number of time series augmentations.
+
+| Augmentation  | Class in TSGM | Reference     |
+| ------------- | ------------- | ------------- |
+| Gaussian Noise / Jittering  | `tsgm.augmentations.GaussianNoise` | -  |        
+| Slice-And-Shuffle  | `tsgm.augmentations.SliceAndShuffle` | - |
+| Shuffle features  | `tsgm.augmentations.Shuffle` | - |
+| Magnitude warping  | `tsgm.augmentations.MagnitudeWarping` | [Data Augmentation of Wearable Sensor Data for Parkinson’s Disease Monitoring using Convolutional Neural Networks](https://dl.acm.org/doi/pdf/10.1145/3136755.3136817) |
+| Window warping  | `tsgm.augmentations.WindowWarping` | [Data Augmentation for Time Series Classification using Convolutional Neural Networks](https://shs.hal.science/halshs-01357973/document) |
+
 
 ## Contributing
 We appreciate all contributions. To learn more, please check [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -36,7 +36,7 @@ classifiers = [
 
 
 setup(name='tsgm',
-      version='0.0.0',
+      version='0.0.1',
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',
@@ -52,7 +52,7 @@ setup(name='tsgm',
       },
       install_requires=[
           "tensorflow==2.9.1",
-          "scipy>=1.7.3"
+          "scipy>=1.7.3",
           "numpy>=1.21.6",
       ],
       package_data={'tsgm': ['README.md']},
