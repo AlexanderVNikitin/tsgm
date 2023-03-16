@@ -35,6 +35,14 @@ classifiers = [
 ]
 
 
+def read_file(filename: str) -> str:
+    with open(filename, encoding="utf-8") as f:
+        return f.read().strip()
+
+
+readme_text = read_file("README.md")
+
+
 setup(name='tsgm',
       version='0.0.1',
       description='Time Series Generative Modelling Framework',
@@ -45,7 +53,7 @@ setup(name='tsgm',
       url=url,
       download_url='',
       keywords=keywords,
-      long_description="",
+      long_description=readme_text,
       license=license,
       entry_points={
         "console_scripts": ["tsgm-gd=cli.gd:main", "tsgm-eval=cli.eval:main"],

@@ -44,7 +44,7 @@ def extract_archive(from_path: str, to_path: typing.Optional[str] = None, pwd: t
     os.remove(from_path)
 
 
-def download(url: str, path: str, md5: typing.Optional[str] = None, max_attempt: int = 2) -> None:
+def download(url: str, path: str, md5: typing.Optional[str] = None, max_attempt: int = 3) -> None:
     logger.info(f"### Downloading from {url} ###")
     os.makedirs(path, exist_ok=True)
     resource_name = url.split("/")[-1]
