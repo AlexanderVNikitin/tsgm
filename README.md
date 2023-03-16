@@ -18,15 +18,9 @@ TSGM is an open-source framework for synthetic time series generation.
 
 The framework can be used for:
 - creating synthetic data, using historical data, black-box models, or a combined approach,
+- augmenting time series data,
 - researching new approaches for synthetic data generation,
 - comparison of different generative methods for time series.
-
-
-## Getting started
-
-We provide:
-* [Documentation](https://tsgm.readthedocs.io/en/latest/) where we give complete overview of the implemented methods,
-* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) with tutorials that describe practical use-cases of the framework.
 
 
 ## Install TSGM
@@ -36,32 +30,8 @@ To install TSGM run
 pip install tsgm
 ```
 
-#### For contributors
-```bash
-git clone github.com/AlexanderVNikitin/tsgm
-cd tsgm
-make install
-```
-
-Run tests:
-```bash
-make test
-```
-
-To check static typing:
-```bash
-mypy
-```
-
-## CLI
-We provide two CLIs for convenient synthetic data generation:
-- `tsgm-gd` generates data by a stored sample,
-- `tsgm-eval` evaluates the generated time series.
-
-Use `tsgm-gd --help` or `tsgm-eval --help` for documentation.
-
 ## Train your generative model
-Here, we provide the gist of the framework, for the completed examples see [our tutorials](./tutorials).
+For more examples, see [our tutorials](./tutorials).
 ```python
 import tsgm
 
@@ -88,6 +58,38 @@ gan.fit(dataset, epochs=N_EPOCHS)
 # Generate 100 synthetic samples
 result = gan.generate(100)
 ```
+
+
+## Getting started
+
+We provide:
+* [Documentation](https://tsgm.readthedocs.io/en/latest/) where we give complete overview of the implemented methods,
+* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) with tutorials that describe practical use-cases of the framework.
+
+
+#### For contributors
+```bash
+git clone github.com/AlexanderVNikitin/tsgm
+cd tsgm
+make install
+```
+
+Run tests:
+```bash
+make test
+```
+
+To check static typing:
+```bash
+mypy
+```
+
+## CLI
+We provide two CLIs for convenient synthetic data generation:
+- `tsgm-gd` generates data by a stored sample,
+- `tsgm-eval` evaluates the generated time series.
+
+Use `tsgm-gd --help` or `tsgm-eval --help` for documentation.
 
 ## Datasets
 TSGM provides API for convenient use of many time-series datasets (currently more than 15 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
