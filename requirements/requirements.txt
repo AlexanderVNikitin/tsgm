@@ -4,6 +4,7 @@ tensorflow_probability==0.17.0
 numpy
 scipy
 networkx
+optuna
 seaborn
 scikit-learn
 prettytable
