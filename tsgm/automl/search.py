@@ -39,7 +39,7 @@ class ModelSelection:
         :param n_trials: int, how many points to sample in the parameters space
         :param optimize_towards: str, "maximize" or "minimize"
         :param search_space:
-        :param **model_kwargs: keywords parametrs to the model
+        :param **model_kwargs: keywords parameters to the model
         """
         assert n_trials > 0, "n_trials needs to be greater than 0"
         assert optimize_towards in ["maximize", "minimize"]
