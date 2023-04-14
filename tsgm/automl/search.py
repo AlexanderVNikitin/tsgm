@@ -32,12 +32,14 @@ class ModelSelection:
         n_trials: int = 100,
         optimize_towards: str = "maximize",
         search_space: typing.Optional[optuna.trial.Trial] = None,
+        **model_kwargs
     ):
         """
         :param model:
         :param n_trials: int, how many points to sample in the parameters space
         :param optimize_towards: str, "maximize" or "minimize"
         :param search_space:
+        :param **model_kwargs: keywords parametrs to the model
         """
         assert n_trials > 0, "n_trials needs to be greater than 0"
         assert optimize_towards in ["maximize", "minimize"]
@@ -46,6 +48,7 @@ class ModelSelection:
         self.direction = optimize_towards
         # self.model = model
         self.model = ConvnArchitecture
+        self.model_args = model_kwargs
         self.search_space = search_space
         # if self.search_space is None:
         #     logger.info("Looking for a config file for the parameters space...")
@@ -82,7 +85,7 @@ class ModelSelection:
         # Build model and optimizer.
         n_layers = trial.suggest_int("n_layers", 1, 10)
         num_hidden = trial.suggest_int("n_units", 4, 128, log=True)
-        model = self.model(seq_len=28, feat_dim=28, n_conv_blocks=n_layers, output_dim=10).model
+        model = self.model(n_conv_blocks=n_layers, **self.model_args).model
         optimizer = create_optimizer(trial)
 
         # Training and validating cycle.
@@ -155,4 +158,4 @@ def create_optimizer(trial):
 
 
 if __name__ == "__main__":
-    ModelSelection().start()
+    ModelSelection(**dict(seq_len=28, feat_dim=28, output_dim=10)).start()
