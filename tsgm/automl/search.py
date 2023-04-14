@@ -22,7 +22,89 @@ from tsgm.models.architectures.zoo import ConvnArchitecture
 logger = logging.getLogger("automl")
 logger.setLevel(logging.DEBUG)
 
-# TODO(crcrpar): Remove the below three lines once everything is ok.
+
+class ModelSelection:
+    """
+    """
+    def __init__(
+        self,
+        # model: tsgm.models.timeGAN.TimeGAN | tsgm.models.cvae | tsgm.models.cgan = None,
+        n_trials: int = 100,
+        optimize_towards: str = "maximize",
+        search_space: typing.Optional[optuna.trial.Trial] = None,
+    ):
+        """
+        :param model:
+        :param n_trials: int, how many points to sample in the parameters space
+        :param optimize_towards: str, "maximize" or "minimize"
+        :param search_space:
+        """
+        assert n_trials > 0, "n_trials needs to be greater than 0"
+        assert optimize_towards in ["maximize", "minimize"]
+
+        self.n_trials = n_trials
+        self.direction = optimize_towards
+        # self.model = model
+        self.model = ConvnArchitecture
+        self.search_space = search_space
+        # if self.search_space is None:
+        #     logger.info("Looking for a config file for the parameters space...")
+        #     raise NotImplementedError
+
+        self.study = optuna.create_study(direction=self.direction)
+        return
+
+    def learn(self, model, optimizer, dataset, mode="eval"):
+        # objective
+        accuracy = tf.metrics.Accuracy("accuracy", dtype=tf.float32)
+
+        for batch, (images, labels) in enumerate(dataset):
+            with tf.GradientTape() as tape:
+                logits = model(images, training=(mode == "train"))
+                loss_value = tf.reduce_mean(
+                    tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+                )
+                if mode == "eval":
+                    accuracy(
+                        tf.argmax(logits, axis=1, output_type=tf.int64), tf.cast(labels, tf.int64)
+                    )
+                else:
+                    grads = tape.gradient(loss_value, model.variables)
+                    optimizer.apply_gradients(zip(grads, model.variables))
+
+        if mode == "eval":
+            return accuracy
+
+    def objective(self, trial):
+        # Get MNIST data.
+        train_ds, valid_ds = get_mnist()
+
+        # Build model and optimizer.
+        n_layers = trial.suggest_int("n_layers", 1, 10)
+        num_hidden = trial.suggest_int("n_units", 4, 128, log=True)
+        model = self.model(seq_len=28, feat_dim=28, n_conv_blocks=n_layers, output_dim=10).model
+        optimizer = create_optimizer(trial)
+
+        # Training and validating cycle.
+        EPOCHS = 2
+        with tf.device("/cpu:0"):
+            for _ in range(EPOCHS):
+                self.learn(model, optimizer, train_ds, "train")
+
+            accuracy = self.learn(model, optimizer, valid_ds, "eval")
+
+        # Return last validation accuracy.
+        return accuracy.result()
+
+    def start(self):
+        """
+        Run the optimization
+        """
+        self.study.optimize(self.objective, n_trials=self.n_trials)
+        return
+
+
+# TODO: Remove below once everything is ok.
 # Register a global custom opener to avoid HTTP Error 403: Forbidden when downloading MNIST.
 opener = urllib.request.build_opener()
 opener.addheaders = [("User-agent", "Mozilla/5.0")]
@@ -31,8 +113,6 @@ urllib.request.install_opener(opener)
 N_TRAIN_EXAMPLES = 3000
 N_VALID_EXAMPLES = 1000
 BATCHSIZE = 128
-CLASSES = 10
-EPOCHS = 1
 
 
 def get_mnist():
@@ -51,14 +131,6 @@ def get_mnist():
     return train_ds, valid_ds
 
 
-def create_model(trial):
-    # optimize the numbers of layers
-    n_layers = trial.suggest_int("n_layers", 1, 10)
-    num_hidden = trial.suggest_int("n_units", 4, 128, log=True)
-    b = ConvnArchitecture(seq_len=28, feat_dim=28, n_conv_blocks=n_layers, output_dim=CLASSES)
-    return b.model
-
-
 def create_optimizer(trial):
     # optimize the choice of optimizers as well as their parameters
     kwargs = {}
@@ -68,7 +140,7 @@ def create_optimizer(trial):
         kwargs["learning_rate"] = trial.suggest_float(
             "rmsprop_learning_rate", 1e-5, 1e-1, log=True
         )
-        kwargs["weight_decay"] = trial.suggest_float("rmsprop_weight_decay", 0.85, 0.99)
+        # kwargs["weight_decay"] = trial.suggest_float("rmsprop_weight_decay", 0.85, 0.99)
         kwargs["momentum"] = trial.suggest_float("rmsprop_momentum", 1e-5, 1e-1, log=True)
     elif optimizer_selected == "Adam":
         kwargs["learning_rate"] = trial.suggest_float("adam_learning_rate", 1e-5, 1e-1, log=True)
@@ -82,47 +154,5 @@ def create_optimizer(trial):
     return optimizer
 
 
-def learn(model, optimizer, dataset, mode="eval"):
-    # objective
-    accuracy = tf.metrics.Accuracy("accuracy", dtype=tf.float32)
-
-    for batch, (images, labels) in enumerate(dataset):
-        with tf.GradientTape() as tape:
-            logits = model(images, training=(mode == "train"))
-            loss_value = tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels)
-            )
-            if mode == "eval":
-                accuracy(
-                    tf.argmax(logits, axis=1, output_type=tf.int64), tf.cast(labels, tf.int64)
-                )
-            else:
-                grads = tape.gradient(loss_value, model.variables)
-                optimizer.apply_gradients(zip(grads, model.variables))
-
-    if mode == "eval":
-        return accuracy
-
-
-def objective(trial):
-    # Get MNIST data.
-    train_ds, valid_ds = get_mnist()
-
-    # Build model and optimizer.
-    model = create_model(trial)
-    optimizer = create_optimizer(trial)
-
-    # Training and validating cycle.
-    with tf.device("/cpu:0"):
-        for _ in range(EPOCHS):
-            learn(model, optimizer, train_ds, "train")
-
-        accuracy = learn(model, optimizer, valid_ds, "eval")
-
-    # Return last validation accuracy.
-    return accuracy.result()
-
-
 if __name__ == "__main__":
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=100)
+    ModelSelection().start()
