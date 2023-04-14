@@ -40,12 +40,12 @@ pip install tsgm
 ```bash
 git clone github.com/AlexanderVNikitin/tsgm
 cd tsgm
-make install
+pip install -e .
 ```
 
 Run tests:
 ```bash
-make test
+python -m pytest
 ```
 
 To check static typing:
