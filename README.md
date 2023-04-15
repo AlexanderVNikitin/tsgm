@@ -1,5 +1,5 @@
 <div style="text-align:center">
-<img src="./docs/_static/logo.png">
+<img src="https://github.com/AlexanderVNikitin/tsgm/raw/main/docs/_static/logo.png">
 </div>
 
 [![unit-tests](https://github.com/AlexanderVNikitin/tsgm/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/AlexanderVNikitin/tsgm/actions?query=workflow%3ATests+branch%3Amain)

@@ -54,6 +54,7 @@ setup(name='tsgm',
       download_url='',
       keywords=keywords,
       long_description=readme_text,
+      long_description_content_type='text/markdown',
       license=license,
       entry_points={
         "console_scripts": ["tsgm-gd=cli.gd:main", "tsgm-eval=cli.eval:main"],
