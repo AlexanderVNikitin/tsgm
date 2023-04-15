@@ -44,7 +44,7 @@ readme_text = read_file("README.md")
 
 
 setup(name='tsgm',
-      version='0.0.1',
+      version='0.0.2',
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',

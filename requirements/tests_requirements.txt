@@ -1,5 +1,4 @@
 black
-codecov
 click
 flake8
 isort
