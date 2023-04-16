@@ -174,7 +174,7 @@ class ModelSelection:
         #    objective_to_optimize = self.learn(model, optimizer, valid_ds, "eval")
         model.fit(data=train_ds, epochs=EPOCHS)
         _y = model.generate(n_samples=10)
-        objective_to_optimize = self.metric_to_optimize(_y, valid_ds)
+        objective_to_optimize = self.metric_to_optimize(_y, np.array(valid_ds[:10]))
         # Return last validation score
         # return objective_to_optimize.result()
         return objective_to_optimize
