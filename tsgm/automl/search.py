@@ -59,6 +59,9 @@ class ModelSelection:
 
         self.study = optuna.create_study(direction=self.direction)
 
+        # optimize for
+        self.metric_to_optimize = None
+
         # data
         self.X_train = None
         self.X_val = None
@@ -124,8 +127,7 @@ class ModelSelection:
 
     def learn(self, model, optimizer, dataset, mode="eval"):
         # objective
-        objective_to_optimize = tf.metrics.Accuracy("accuracy", dtype=tf.float32)
-        # objective_to_optimize = tf.metrics.KLDivergence(name='kullback_leibler_divergence', dtype=tf.float32)
+        objective_to_optimize = self.metric_to_optimize
         for batch, (images, labels) in enumerate(dataset):
             with tf.GradientTape() as tape:
                 logits = model(images, training=(mode == "train"))
@@ -170,6 +172,7 @@ class ModelSelection:
 
     def start(
         self,
+        metric_to_optimize: typing.Callable,
         X_train: TensorLike,
         X_val: TensorLike,
         y_train: typing.Optional[TensorLike] = None,
@@ -178,6 +181,7 @@ class ModelSelection:
         """
         Run the optimization
         """
+        self.metric_to_optimize = metric_to_optimize
         self.X_train = X_train
         self.X_val = X_val
         self.y_train = y_train
@@ -212,4 +216,10 @@ if __name__ == "__main__":
     X_train, y_train, X_val, y_val = get_mnist()
     ModelSelection(
         search_space=search_space, **dict(seq_len=28, feat_dim=28, output_dim=10)
-    ).start(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
+    ).start(
+        metric_to_optimize=tf.metrics.Accuracy("accuracy", dtype=tf.float32),
+        X_train=X_train,
+        y_train=y_train,
+        X_val=X_val,
+        y_val=y_val,
+    )
