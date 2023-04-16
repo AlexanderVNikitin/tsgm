@@ -95,10 +95,37 @@ class ModelSelection:
                 pass
         return
 
+    def _create_optimizer(self, trial):
+        # optimize the choice of optimizers as well as their parameters
+        kwargs = {}
+        optimizer_options = ["RMSprop", "Adam", "SGD"]
+        optimizer_selected = trial.suggest_categorical("optimizer", optimizer_options)
+        if optimizer_selected == "RMSprop":
+            kwargs["learning_rate"] = trial.suggest_float(
+                "rmsprop_learning_rate", 1e-5, 1e-1, log=True
+            )
+            kwargs["momentum"] = trial.suggest_float(
+                "rmsprop_momentum", 1e-5, 1e-1, log=True
+            )
+        elif optimizer_selected == "Adam":
+            kwargs["learning_rate"] = trial.suggest_float(
+                "adam_learning_rate", 1e-5, 1e-1, log=True
+            )
+        elif optimizer_selected == "SGD":
+            kwargs["learning_rate"] = trial.suggest_float(
+                "sgd_opt_learning_rate", 1e-5, 1e-1, log=True
+            )
+            kwargs["momentum"] = trial.suggest_float(
+                "sgd_opt_momentum", 1e-5, 1e-1, log=True
+            )
+
+        optimizer = getattr(tf.optimizers, optimizer_selected)(**kwargs)
+        return optimizer
+
     def learn(self, model, optimizer, dataset, mode="eval"):
         # objective
-        accuracy = tf.metrics.Accuracy("accuracy", dtype=tf.float32)
-        # accuracy = tf.metrics.KLDivergence(name='kullback_leibler_divergence', dtype=tf.float32)
+        objective_to_optimize = tf.metrics.Accuracy("accuracy", dtype=tf.float32)
+        # objective_to_optimize = tf.metrics.KLDivergence(name='kullback_leibler_divergence', dtype=tf.float32)
         for batch, (images, labels) in enumerate(dataset):
             with tf.GradientTape() as tape:
                 logits = model(images, training=(mode == "train"))
@@ -108,7 +135,7 @@ class ModelSelection:
                     )
                 )
                 if mode == "eval":
-                    accuracy(
+                    objective_to_optimize(
                         tf.argmax(logits, axis=1, output_type=tf.int64),
                         tf.cast(labels, tf.int64),
                     )
@@ -117,7 +144,7 @@ class ModelSelection:
                     optimizer.apply_gradients(zip(grads, model.variables))
 
         if mode == "eval":
-            return accuracy
+            return objective_to_optimize
 
     def objective(self, trial):
         # Get data
@@ -128,7 +155,7 @@ class ModelSelection:
         n_layers = getattr(self, "n_layers")
         num_hidden = getattr(self, "num_hidden")
         model = self.model(n_conv_blocks=n_layers, **self.model_args).model
-        optimizer = create_optimizer(trial)
+        optimizer = self._create_optimizer(trial)
 
         # Training and validating cycle.
         EPOCHS = 2
@@ -136,10 +163,10 @@ class ModelSelection:
             for _ in range(EPOCHS):
                 self.learn(model, optimizer, train_ds, "train")
 
-            accuracy = self.learn(model, optimizer, valid_ds, "eval")
+            objective_to_optimize = self.learn(model, optimizer, valid_ds, "eval")
 
-        # Return last validation accuracy.
-        return accuracy.result()
+        # Return last validation score
+        return objective_to_optimize.result()
 
     def start(
         self,
@@ -175,34 +202,6 @@ def get_mnist():
     y_valid = y_valid.astype("int32")
 
     return x_train, y_train, x_valid, y_valid
-
-
-def create_optimizer(trial):
-    # optimize the choice of optimizers as well as their parameters
-    kwargs = {}
-    optimizer_options = ["RMSprop", "Adam", "SGD"]
-    optimizer_selected = trial.suggest_categorical("optimizer", optimizer_options)
-    if optimizer_selected == "RMSprop":
-        kwargs["learning_rate"] = trial.suggest_float(
-            "rmsprop_learning_rate", 1e-5, 1e-1, log=True
-        )
-        kwargs["momentum"] = trial.suggest_float(
-            "rmsprop_momentum", 1e-5, 1e-1, log=True
-        )
-    elif optimizer_selected == "Adam":
-        kwargs["learning_rate"] = trial.suggest_float(
-            "adam_learning_rate", 1e-5, 1e-1, log=True
-        )
-    elif optimizer_selected == "SGD":
-        kwargs["learning_rate"] = trial.suggest_float(
-            "sgd_opt_learning_rate", 1e-5, 1e-1, log=True
-        )
-        kwargs["momentum"] = trial.suggest_float(
-            "sgd_opt_momentum", 1e-5, 1e-1, log=True
-        )
-
-    optimizer = getattr(tf.optimizers, optimizer_selected)(**kwargs)
-    return optimizer
 
 
 if __name__ == "__main__":
