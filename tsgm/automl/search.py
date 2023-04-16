@@ -32,7 +32,9 @@ class ModelSelection:
         | tsgm.models.cgan.GAN = None,
         n_trials: int = 100,
         optimize_towards: str = "maximize",
-        search_space: typing.Optional[optuna.trial.Trial] = None,
+        search_space: typing.Optional[
+            typing.Dict[str, typing.Tuple[str, typing.Dict[str, typing.Any]]]
+        ] = None,
         **model_kwargs,
     ):
         """
@@ -66,6 +68,9 @@ class ModelSelection:
         return
 
     def _get_dataset(self) -> typing.Tuple[tf.data.Dataset, tf.data.Dataset]:
+        """
+        :return: (train dataset, validation dataset)
+        """
         N_TRAIN_EXAMPLES = 3000
         N_VALID_EXAMPLES = 1000
         BATCHSIZE = 128
@@ -79,6 +84,16 @@ class ModelSelection:
         train_ds = train_ds.shuffle(60000).batch(BATCHSIZE).take(N_TRAIN_EXAMPLES)
         valid_ds = valid_ds.shuffle(10000).batch(BATCHSIZE).take(N_VALID_EXAMPLES)
         return train_ds, valid_ds
+
+    def _set_search_space_params(self, trial):
+        for name, (type_to_search, search_args) in self.search_space.items():
+            if type_to_search == "int":
+                setattr(self, name, trial.suggest_int(name=name, **search_args))
+            elif type_to_search == "float":
+                setattr(self, name, trial.suggest_float(name=name, **search_args))
+            else:
+                pass
+        return
 
     def learn(self, model, optimizer, dataset, mode="eval"):
         # objective
@@ -109,8 +124,9 @@ class ModelSelection:
         train_ds, valid_ds = self._get_dataset()
 
         # Build model and optimizer
-        n_layers = trial.suggest_int("n_layers", 1, 10)
-        num_hidden = trial.suggest_int("n_units", 4, 128, log=True)
+        self._set_search_space_params(trial)
+        n_layers = getattr(self, "n_layers")
+        num_hidden = getattr(self, "num_hidden")
         model = self.model(n_conv_blocks=n_layers, **self.model_args).model
         optimizer = create_optimizer(trial)
 
@@ -190,7 +206,11 @@ def create_optimizer(trial):
 
 
 if __name__ == "__main__":
+    search_space = {
+        "n_layers": ("int", dict(low=1, high=10)),
+        "num_hidden": ("int", dict(low=4, high=128, log=True)),
+    }
     X_train, y_train, X_val, y_val = get_mnist()
-    ModelSelection(**dict(seq_len=28, feat_dim=28, output_dim=10)).start(
-        X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val
-    )
+    ModelSelection(
+        search_space=search_space, **dict(seq_len=28, feat_dim=28, output_dim=10)
+    ).start(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
