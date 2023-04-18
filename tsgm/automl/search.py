@@ -9,14 +9,12 @@ import logging
 
 import tsgm
 
-from tsgm.metrics.metrics import SimilarityMetric
-from tsgm.models.timeGAN import TimeGAN
-# from tsgm.models.architectures.zoo import ConvnArchitecture
-
 # TODO: remove those when everything works
+import functools
+from tsgm.metrics.metrics import SimilarityMetric
+from tsgm.metrics.statistics import axis_mean_s
+from tsgm.models.timeGAN import TimeGAN
 import numpy as np
-import urllib
-from tensorflow.keras.datasets import mnist
 
 
 logger = logging.getLogger("automl")
@@ -28,10 +26,12 @@ class ModelSelection:
 
     def __init__(
         self,
-        model: tsgm.models.timeGAN.TimeGAN
-        | tsgm.models.cvae.BetaVAE
-        | tsgm.models.cvae.cBetaVAE
-        | tsgm.models.cgan.GAN = None,
+        model: typing.Union[
+            tsgm.models.timeGAN.TimeGAN,
+            tsgm.models.cvae.BetaVAE,
+            tsgm.models.cvae.cBetaVAE,
+            tsgm.models.cgan.GAN,
+        ],
         n_trials: int = 100,
         optimize_towards: str = "maximize",
         search_space: typing.Optional[
@@ -52,7 +52,6 @@ class ModelSelection:
         self.n_trials = n_trials
         self.direction = optimize_towards
         self.model = model
-        # self.model = ConvnArchitecture
         self.model_args = model_kwargs
         self.search_space = search_space
         # if self.search_space is None:
@@ -74,6 +73,7 @@ class ModelSelection:
 
     def _get_dataset(self) -> typing.Tuple[tf.data.Dataset, tf.data.Dataset]:
         """
+        TODO: NOT SURE IF NEEDED
         :return: (train dataset, validation dataset)
         """
         N_TRAIN_EXAMPLES = 3000
@@ -127,32 +127,9 @@ class ModelSelection:
         optimizer = getattr(tf.optimizers, optimizer_selected)(**kwargs)
         return optimizer
 
-    def learn(self, model, optimizer, dataset, mode="eval"):
-        # objective
-        objective_to_optimize = self.metric_to_optimize
-        for batch, (images, labels) in enumerate(dataset):
-            with tf.GradientTape() as tape:
-                logits = model(images, training=(mode == "train"))
-                loss_value = tf.reduce_mean(
-                    tf.nn.sparse_softmax_cross_entropy_with_logits(
-                        logits=logits, labels=labels
-                    )
-                )
-                if mode == "eval":
-                    objective_to_optimize(
-                        tf.argmax(logits, axis=1, output_type=tf.int64),
-                        tf.cast(labels, tf.int64),
-                    )
-                else:
-                    grads = tape.gradient(loss_value, model.variables)
-                    optimizer.apply_gradients(zip(grads, model.variables))
-
-        if mode == "eval":
-            return objective_to_optimize
-
     def objective(self, trial):
         # Get data
-        # train_ds, valid_ds = self._get_dataset()
+        # TODO: check if need to use train_ds, valid_ds = self._get_dataset()
         train_ds, valid_ds = self.X_train, self.X_val
 
         # Build model and optimizer
@@ -160,23 +137,16 @@ class ModelSelection:
         n_layers = getattr(self, "n_layers")
         num_hidden = getattr(self, "num_hidden")
 
-        # model = self.model(n_conv_blocks=n_layers, **self.model_args).model
         model = self.model(n_layers=n_layers)
         optimizer = self._create_optimizer(trial)
         model.compile(optimizer)
 
-        # Training and validating cycle.
+        # Training and validating
         EPOCHS = 2
-        # with tf.device("/cpu:0"):
-        #     for _ in range(EPOCHS):
-        #         self.learn(model, optimizer, train_ds, "train")
-
-        #    objective_to_optimize = self.learn(model, optimizer, valid_ds, "eval")
         model.fit(data=train_ds, epochs=EPOCHS)
         _y = model.generate(n_samples=10)
         objective_to_optimize = self.metric_to_optimize(_y, np.array(valid_ds[:10]))
         # Return last validation score
-        # return objective_to_optimize.result()
         return objective_to_optimize
 
     def start(
@@ -200,74 +170,58 @@ class ModelSelection:
 
 
 # TODO: Remove below once everything is ok.
-# Register a global custom opener to avoid HTTP Error 403: Forbidden when downloading MNIST.
-opener = urllib.request.build_opener()
-opener.addheaders = [("User-agent", "Mozilla/5.0")]
-urllib.request.install_opener(opener)
-
-
-def get_mnist():
-    (x_train, y_train), (x_valid, y_valid) = mnist.load_data()
-    x_train = x_train.astype("float32") / 255
-    x_valid = x_valid.astype("float32") / 255
-
-    y_train = y_train.astype("int32")
-    y_valid = y_valid.astype("int32")
-
-    return x_train, y_train, x_valid, y_valid
-
 
 def MinMaxScaler(data):
-  """Min Max normalizer.
+    """Min Max normalizer.
 
-  Args:
-    - data: original data
+    Args:
+      - data: original data
 
-  Returns:
-    - norm_data: normalized data
-  """
-  numerator = data - np.min(data, 0)
-  denominator = np.max(data, 0) - np.min(data, 0)
-  norm_data = numerator / (denominator + 1e-7)
-  return norm_data
+    Returns:
+      - norm_data: normalized data
+    """
+    numerator = data - np.min(data, 0)
+    denominator = np.max(data, 0) - np.min(data, 0)
+    norm_data = numerator / (denominator + 1e-7)
+    return norm_data
 
 
-def sine_data_generation (no, seq_len, dim):
-  """Sine data generation.
+def sine_data_generation(no, seq_len, dim):
+    """Sine data generation.
 
-  Args:
-    - no: the number of samples
-    - seq_len: sequence length of the time-series
-    - dim: feature dimensions
+    Args:
+      - no: the number of samples
+      - seq_len: sequence length of the time-series
+      - dim: feature dimensions
 
-  Returns:
-    - data: generated data
-  """
-  # Initialize the output
-  data = list()
+    Returns:
+      - data: generated data
+    """
+    # Initialize the output
+    data = list()
 
-  # Generate sine data
-  for i in range(no):
-    # Initialize each time-series
-    temp = list()
-    # For each feature
-    for k in range(dim):
-      # Randomly drawn frequency and phase
-      freq = np.random.uniform(0, 0.1)
-      phase = np.random.uniform(0, 0.1)
+    # Generate sine data
+    for i in range(no):
+        # Initialize each time-series
+        temp = list()
+        # For each feature
+        for k in range(dim):
+            # Randomly drawn frequency and phase
+            freq = np.random.uniform(0, 0.1)
+            phase = np.random.uniform(0, 0.1)
 
-      # Generate sine signal based on the drawn frequency and phase
-      temp_data = [np.sin(freq * j + phase) for j in range(seq_len)]
-      temp.append(temp_data)
+            # Generate sine signal based on the drawn frequency and phase
+            temp_data = [np.sin(freq * j + phase) for j in range(seq_len)]
+            temp.append(temp_data)
 
-    # Align row/column
-    temp = np.transpose(np.asarray(temp))
-    # Normalize to [0,1]
-    temp = (temp + 1)*0.5
-    # Stack the generated data
-    data.append(temp)
+        # Align row/column
+        temp = np.transpose(np.asarray(temp))
+        # Normalize to [0,1]
+        temp = (temp + 1) * 0.5
+        # Stack the generated data
+        data.append(temp)
 
-  return data
+    return data
 
 
 if __name__ == "__main__":
@@ -275,14 +229,21 @@ if __name__ == "__main__":
         "n_layers": ("int", dict(low=1, high=10)),
         "num_hidden": ("int", dict(low=4, high=128, log=True)),
     }
-    # X_train, y_train, X_val, y_val = get_mnist()
     X = sine_data_generation(2000, 24, 6)
     ModelSelection(
-        model=TimeGAN, search_space=search_space, **dict(seq_len=28, feat_dim=28, output_dim=10)
+        model=TimeGAN,
+        search_space=search_space,
+        **dict(seq_len=28, feat_dim=28, output_dim=10),
     ).start(
-        metric_to_optimize= SimilarityMetric, # tf.metrics.Accuracy("accuracy", dtype=tf.float32),
+        metric_to_optimize=SimilarityMetric(
+            statistics=[
+                functools.partial(tsgm.metrics.statistics.axis_max_s, axis=None),
+                functools.partial(tsgm.metrics.statistics.axis_min_s, axis=None),
+                functools.partial(tsgm.metrics.statistics.axis_max_s, axis=1),
+                functools.partial(tsgm.metrics.statistics.axis_min_s, axis=1),
+            ],
+            discrepancy=lambda x, y: np.linalg.norm(x - y),
+        ),
         X_train=X,
         X_val=X,
-        # y_train=y_train,
-        # y_val=y_val,
     )
