@@ -1,6 +1,10 @@
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow_privacy as tf_privacy
+try:
+    import tensorflow_privacy as tf_privacy
+    __tf_privacy_available = True
+except ModuleNotFoundError:
+    __tf_privacy_available = False
 
 import logging
 
@@ -12,9 +16,10 @@ logger.setLevel(logging.DEBUG)
 
 
 def _is_dp_optimizer(optimizer: keras.optimizers.Optimizer) -> bool:
-    return isinstance(optimizer, tf_privacy.DPKerasAdagradOptimizer) or \
-        isinstance(optimizer, tf_privacy.DPKerasAdamOptimizer) or \
-        isinstance(optimizer, tf_privacy.DPKerasSGDOptimizer)
+    return __tf_privacy_available \
+        and (isinstance(optimizer, tf_privacy.DPKerasAdagradOptimizer)
+             or isinstance(optimizer, tf_privacy.DPKerasAdamOptimizer)
+             or isinstance(optimizer, tf_privacy.DPKerasSGDOptimizer))
 
 
 class GAN(keras.Model):
