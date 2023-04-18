@@ -2,7 +2,11 @@ import pytest
 import tsgm
 
 import tensorflow as tf
-import tensorflow_privacy as tf_privacy
+try:
+    import tensorflow_privacy as tf_privacy
+    __tf_privacy_available = True
+except ModuleNotFoundError:
+    __tf_privacy_available = False
 import numpy as np
 from tensorflow import keras
 
@@ -203,6 +207,7 @@ def test_temporal_cgan_seq_len_123():
     assert generated_samples.shape == (10, 123, 1)
 
 
+@pytest.mark.skipif(not __tf_privacy_available, reason="TF privacy is required for this test")
 def test_dp_compiler():
     latent_dim = 2
     output_dim = 1

@@ -2,7 +2,6 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.types.core import TensorLike
 import numpy as np
-from copy import deepcopy
 from tqdm import tqdm, trange
 from collections import OrderedDict
 import typing
@@ -128,19 +127,16 @@ class TimeGAN:
         # ----------------------------
         # Optimizers: call .compile() to set them
         # ----------------------------
-        DEFAULT_ADAM = keras.optimizers.Adam()
-        self.autoencoder_opt = deepcopy(DEFAULT_ADAM)
-        self.adversarialsup_opt = deepcopy(DEFAULT_ADAM)
-        self.generator_opt = deepcopy(DEFAULT_ADAM)
-        self.embedder_opt = deepcopy(DEFAULT_ADAM)
-        self.discriminator_opt = deepcopy(DEFAULT_ADAM)
+        self.autoencoder_opt = keras.optimizers.Adam()
+        self.adversarialsup_opt = keras.optimizers.Adam()
+        self.generator_opt = keras.optimizers.Adam()
+        self.embedder_opt = keras.optimizers.Adam()
+        self.discriminator_opt = keras.optimizers.Adam()
         # ----------------------------
         # Loss functions: call .compile() to set them
         # ----------------------------
-        DEFAULT_MSE = keras.losses.MeanSquaredError()
-        DEFAULT_BCE = keras.losses.BinaryCrossentropy()
-        self._mse = DEFAULT_MSE
-        self._bce = DEFAULT_BCE
+        self._mse = keras.losses.MeanSquaredError()
+        self._bce = keras.losses.BinaryCrossentropy()
 
         # --------------------------
         # All losses: will be populated in .fit()

@@ -1,5 +1,5 @@
 <div style="text-align:center">
-<img src="./docs/_static/logo.png">
+<img src="https://github.com/AlexanderVNikitin/tsgm/raw/main/docs/_static/logo.png">
 </div>
 
 [![unit-tests](https://github.com/AlexanderVNikitin/tsgm/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/AlexanderVNikitin/tsgm/actions?query=workflow%3ATests+branch%3Amain)
@@ -29,6 +29,7 @@ To install TSGM run
 ```
 pip install tsgm
 ```
+
 
 ## Train your generative model
 For more examples, see [our tutorials](./tutorials).
@@ -71,12 +72,12 @@ We provide:
 ```bash
 git clone github.com/AlexanderVNikitin/tsgm
 cd tsgm
-make install
+pip install -e .
 ```
 
 Run tests:
 ```bash
-make test
+python -m pytest
 ```
 
 To check static typing:
@@ -90,6 +91,7 @@ We provide two CLIs for convenient synthetic data generation:
 - `tsgm-eval` evaluates the generated time series.
 
 Use `tsgm-gd --help` or `tsgm-eval --help` for documentation.
+
 
 ## Datasets
 TSGM provides API for convenient use of many time-series datasets (currently more than 15 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
