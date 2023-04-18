@@ -2,19 +2,11 @@ import optuna
 import typing
 from tensorflow.python.types.core import TensorLike
 import tensorflow as tf
-
-import tqdm
+import numpy as np
 
 import logging
 
 import tsgm
-
-# TODO: remove those when everything works
-import functools
-from tsgm.metrics.metrics import SimilarityMetric
-from tsgm.metrics.statistics import axis_mean_s
-from tsgm.models.timeGAN import TimeGAN
-import numpy as np
 
 
 logger = logging.getLogger("automl")
@@ -133,11 +125,12 @@ class ModelSelection:
         train_ds, valid_ds = self.X_train, self.X_val
 
         # Build model and optimizer
+        # TODO: set the search parameters depending on the model
         self._set_search_space_params(trial)
         n_layers = getattr(self, "n_layers")
         num_hidden = getattr(self, "num_hidden")
 
-        model = self.model(n_layers=n_layers)
+        model = self.model(n_layers=n_layers, hidden_dim=num_hidden)
         optimizer = self._create_optimizer(trial)
         model.compile(optimizer)
 
@@ -169,71 +162,21 @@ class ModelSelection:
         return
 
 
-# TODO: Remove below once everything is ok.
-
-def MinMaxScaler(data):
-    """Min Max normalizer.
-
-    Args:
-      - data: original data
-
-    Returns:
-      - norm_data: normalized data
-    """
-    numerator = data - np.min(data, 0)
-    denominator = np.max(data, 0) - np.min(data, 0)
-    norm_data = numerator / (denominator + 1e-7)
-    return norm_data
-
-
-def sine_data_generation(no, seq_len, dim):
-    """Sine data generation.
-
-    Args:
-      - no: the number of samples
-      - seq_len: sequence length of the time-series
-      - dim: feature dimensions
-
-    Returns:
-      - data: generated data
-    """
-    # Initialize the output
-    data = list()
-
-    # Generate sine data
-    for i in range(no):
-        # Initialize each time-series
-        temp = list()
-        # For each feature
-        for k in range(dim):
-            # Randomly drawn frequency and phase
-            freq = np.random.uniform(0, 0.1)
-            phase = np.random.uniform(0, 0.1)
-
-            # Generate sine signal based on the drawn frequency and phase
-            temp_data = [np.sin(freq * j + phase) for j in range(seq_len)]
-            temp.append(temp_data)
-
-        # Align row/column
-        temp = np.transpose(np.asarray(temp))
-        # Normalize to [0,1]
-        temp = (temp + 1) * 0.5
-        # Stack the generated data
-        data.append(temp)
-
-    return data
-
-
 if __name__ == "__main__":
+    from tsgm.utils.datasets import gen_sine_dataset
+    import functools
+    from tsgm.metrics.metrics import SimilarityMetric
+    from tsgm.models.timeGAN import TimeGAN
+
     search_space = {
         "n_layers": ("int", dict(low=1, high=10)),
         "num_hidden": ("int", dict(low=4, high=128, log=True)),
     }
-    X = sine_data_generation(2000, 24, 6)
+    X = gen_sine_dataset(2000, 24, 6, 1)
     ModelSelection(
         model=TimeGAN,
         search_space=search_space,
-        **dict(seq_len=28, feat_dim=28, output_dim=10),
+        # add here **dict() with model specific parameters that need to stay constant,
     ).start(
         metric_to_optimize=SimilarityMetric(
             statistics=[
