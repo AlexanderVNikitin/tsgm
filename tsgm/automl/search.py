@@ -63,25 +63,6 @@ class ModelSelection:
 
         return
 
-    def _get_dataset(self) -> typing.Tuple[tf.data.Dataset, tf.data.Dataset]:
-        """
-        TODO: NOT SURE IF NEEDED
-        :return: (train dataset, validation dataset)
-        """
-        N_TRAIN_EXAMPLES = 3000
-        N_VALID_EXAMPLES = 1000
-        BATCHSIZE = 128
-        if self.y_train is not None and self.y_val is not None:
-            train_ds = tf.data.Dataset.from_tensor_slices((self.X_train, self.y_train))
-            valid_ds = tf.data.Dataset.from_tensor_slices((self.X_val, self.y_val))
-        else:
-            train_ds = tf.data.Dataset.from_tensor_slices((self.X_train))
-            valid_ds = tf.data.Dataset.from_tensor_slices((self.X_val))
-
-        train_ds = train_ds.shuffle(60000).batch(BATCHSIZE).take(N_TRAIN_EXAMPLES)
-        valid_ds = valid_ds.shuffle(10000).batch(BATCHSIZE).take(N_VALID_EXAMPLES)
-        return train_ds, valid_ds
-
     def _set_search_space_params(self, trial):
         for name, (type_to_search, search_args) in self.search_space.items():
             if type_to_search == "int":
@@ -121,7 +102,6 @@ class ModelSelection:
 
     def objective(self, trial):
         # Get data
-        # TODO: check if need to use train_ds, valid_ds = self._get_dataset()
         train_ds, valid_ds = self.X_train, self.X_val
 
         # Build model and optimizer
