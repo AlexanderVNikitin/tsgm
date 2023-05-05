@@ -11,7 +11,7 @@
 
 
 
-# Time Series Generative Modeling Framework (TSGM)
+# Time Series Generative Modeling (TSGM)
 
 [Documentation](https://tsgm.readthedocs.io/en/latest/) |
 [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials)
