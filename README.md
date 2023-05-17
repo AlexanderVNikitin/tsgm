@@ -8,6 +8,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/AlexanderVNikitin/tsgm)](https://github.com/AlexanderVNikitin/tsgm/commits/main)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 
 
 
