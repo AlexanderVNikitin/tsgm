@@ -11,9 +11,14 @@ Datasets
     :members:
     :undoc-members:
 
-Generators
+.. automodule:: tsgm.utils.dataset
+    :members:
+    :undoc-members:
+
+
+Augmentations
 --------------
-.. autoclass:: tsgm.utils.SineConstGenerator
+.. automodule:: tsgm.models.augmentations
     :members:
     :undoc-members:
 
@@ -32,3 +37,8 @@ VAEs
     :undoc-members:
 
 
+Visualization
+--------------
+.. automodule:: tsgm.utils.visualization
+    :members:
+    :undoc-members:

@@ -38,14 +38,4 @@ jobs:
         run: |
           pytest
 
-      - name: Generate coverage report
-        if: success()
-        run: |
-          pip install coverage
-          coverage run -m pytest
-          coverage xml
-      - name: Upload coverage report to codecov
-        uses: codecov/codecov-action@v3
-        if: success()
-        with:
-          file: coverage.xml
+
