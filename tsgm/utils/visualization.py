@@ -180,7 +180,7 @@ def visualize_tsne(
 
 
 def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
-"""
+    """
     Visualizes time series tensor.
 
     This function generates a plot to visualize time series data. It displays a specified number of time series
