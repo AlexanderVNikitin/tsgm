@@ -4,14 +4,14 @@ TSGM
 .. contents:: Contents
     :local:
 
-Stored Datasets
+Datasets
 --------------
 
 .. autoclass:: tsgm.utils.UCRDataManager
     :members:
     :undoc-members:
 
-Model-based Generators
+Generators
 --------------
 .. autoclass:: tsgm.utils.SineConstGenerator
     :members:
@@ -23,6 +23,7 @@ GANs
 .. automodule:: tsgm.models.cgan
     :members:
     :undoc-members:
+
 
 VAEs
 --------------
