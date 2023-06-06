@@ -3,6 +3,7 @@ import zipfile
 import typing
 import hashlib
 import logging
+import tarfile
 import urllib
 
 import urllib.request
@@ -26,9 +27,21 @@ def _extract_zip(from_path: str, to_path: str, pwd: typing.Optional[bytes]) -> N
         zip.extractall(to_path, pwd=pwd)
 
 
+def _extract_targz(from_path: str, to_path: str, pwd: typing.Optional[bytes] = None) -> None:
+    try:
+        # Open the tar.gz file
+        with tarfile.open(from_path, "r:gz") as tar:
+            # Extract all the files in the archive
+            tar.extractall(to_path)
+            logger.info("Files extracted successfully.")
+    except tarfile.TarError as e:
+        logger.error(f"Failed to extract tar.gz file: {e}")
+
+
 EXTRACTORS = {
     #  TODO add ".tar" & ".bz2"
     ".zip": _extract_zip,
+    ".gz": _extract_targz,
 }
 
 
