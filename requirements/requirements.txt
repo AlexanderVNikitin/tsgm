@@ -3,6 +3,7 @@ tensorflow==2.9.1
 tensorflow_probability==0.17.0
 scipy>=1.7.3
 numpy>=1.21.6
+optuna
 networkx
 optuna
 seaborn

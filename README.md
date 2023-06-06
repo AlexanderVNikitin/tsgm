@@ -2,37 +2,44 @@
 <img src="https://github.com/AlexanderVNikitin/tsgm/raw/main/docs/_static/logo.png">
 </div>
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1l2VB6eUwvrxyu8iB30faGiQM5AKthc82?usp=sharing)
+[![Pypi version](https://img.shields.io/pypi/v/tsgm)](https://pypi.org/project/tsgm/)
 [![unit-tests](https://github.com/AlexanderVNikitin/tsgm/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/AlexanderVNikitin/tsgm/actions?query=workflow%3ATests+branch%3Amain)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/AlexanderVNikitin/tsgm)](https://github.com/AlexanderVNikitin/tsgm/commits/main)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 
 
-# Time Series Generative Modeling Framework (TSGM)
+
+# Time Series Generative Modeling (TSGM)
 
 [Documentation](https://tsgm.readthedocs.io/en/latest/) |
 [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials)
 
 ## About TSGM
 
-TSGM is an open-source framework for synthetic time series generation.
+TSGM is an open-source framework for synthetic time series generation and augmentation. 
 
 The framework can be used for:
 - creating synthetic data, using historical data, black-box models, or a combined approach,
 - augmenting time series data,
-- researching new approaches for synthetic data generation,
-- comparison of different generative methods for time series.
+- evaluating synthetic data with respect to consistency, privacy, downstream performance, and more.
 
 
 ## Install TSGM
-
-To install TSGM run
 ```
 pip install tsgm
 ```
 
 
 ## Train your generative model
+
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1l2VB6eUwvrxyu8iB30faGiQM5AKthc82?usp=sharing) Introductory Tutorial "[Getting started with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/GANs/cGAN.ipynb)"
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1wpf9WeNVj5TkUcPF6EavVx-hUCOfyvUd?usp=sharing) Tutorial on using [multiple GPUs or TPU with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Using%20Multiple%20GPUs%20or%20TPU.ipynb)
+
 For more examples, see [our tutorials](./tutorials).
+
 ```python
 import tsgm
 
@@ -64,8 +71,8 @@ result = gan.generate(100)
 ## Getting started
 
 We provide:
-* [Documentation](https://tsgm.readthedocs.io/en/latest/) where we give complete overview of the implemented methods,
-* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) with tutorials that describe practical use-cases of the framework.
+* [Documentation](https://tsgm.readthedocs.io/en/latest/) with a complete overview of the implemented methods,
+* [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) that describe practical use-cases of the framework.
 
 
 #### For contributors

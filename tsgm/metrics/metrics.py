@@ -130,7 +130,7 @@ class DownstreamPerformanceMetric(Metric):
         """
         self._evaluator = evaluator
 
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: typing.Optional[tsgm.dataset.DatasetOrTensor]) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: typing.Optional[tsgm.dataset.DatasetOrTensor], return_std=False) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor.
@@ -148,7 +148,11 @@ class DownstreamPerformanceMetric(Metric):
                 D1D2 = np.concatenate((D1, D2))
         evaluations1 = self._evaluator.evaluate(D1, D_test)
         evaluations2 = self._evaluator.evaluate(D1D2, D_test)
-        return np.mean(evaluations2 - evaluations1)
+        if return_std:
+            diff = evaluations2 - evaluations1
+            return np.mean(diff), np.std(diff)
+        else:
+            return np.mean(evaluations2 - evaluations1)
 
 
 class PrivacyMembershipInferenceMetric:
