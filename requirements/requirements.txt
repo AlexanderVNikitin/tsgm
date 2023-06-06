@@ -5,7 +5,6 @@ scipy>=1.7.3
 numpy>=1.21.6
 optuna
 networkx
-optuna
 seaborn
 scikit-learn
 prettytable
