@@ -333,7 +333,7 @@ def download_physionet2012():
     file_utils.download(_base_url + y_b, _destination_folder)
     file_utils.download(_base_url + X_c, _destination_folder)
     file_utils.download(_base_url + y_c, _destination_folder)
-    
+
     file_utils.extract_archive(_destination_folder + X_a, _destination_folder)
     file_utils.extract_archive(_destination_folder + X_b, _destination_folder)
     file_utils.extract_archive(_destination_folder + X_c, _destination_folder)
