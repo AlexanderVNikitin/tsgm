@@ -18,10 +18,11 @@ def visualize_dataset(
     path: str = "/tmp/generated_data.pdf",
 ) -> None:
     """
-    The function visualizes time series dataset with target values.
-    It can be handy for regression problems.
     :param dataset: A time series dataset.
     :type dataset: tsgm.dataset.DatasetOrTensor.
+
+    The function visualizes time series dataset with target values.
+    It can be handy for regression problems.
     """
     plt.figure(
         num=None, figsize=(8, 4), dpi=80, palette=palette, facecolor="w", edgecolor="k"
@@ -55,7 +56,26 @@ def visualize_tsne_unlabeled(
     feature_averaging: bool = False,
 ):
     """
-    Visualizes TSNE of real and synthetic data.
+    Visualizes t-SNE embeddings of unlabeled data.
+
+    :param X: The original data tensor of shape (num_samples, num_features).
+    :type X: tsgm.types.Tensor
+    :param X_gen: The generated data tensor of shape (num_samples, num_features).
+    :type X_gen: tsgm.types.Tensor
+    :param palette: A dictionary mapping class labels to colors. Defaults to DEFAULT_PALETTE_TSNE.
+    :type palette: dict, optional
+    :param alpha: The transparency level of the plotted points. Defaults to 0.25.
+    :type alpha: float, optional
+    :param path: The path to save the visualization as a PDF file. Defaults to "/tmp/tsne_embeddings.pdf".
+    :type path: str, optional
+    :param fontsize: The font size of the class labels in the legend. Defaults to 20.
+    :type fontsize: int, optional
+    :param markerscale: The scaling factor for the size of the markers in the legend. Defaults to 3.
+    :type markerscale: int, optional
+    :param markersize: The size of the markers in the scatter plot. Defaults to 1.
+    :type markersize: int, optional
+    :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
+    :type feature_averaging: bool, optional
     """
     tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
 
@@ -105,7 +125,24 @@ def visualize_tsne(
     feature_averaging: bool = False,
 ):
     """
-    Visualizes TSNE of real and synthetic data.
+    Visualizes t-SNE embeddings of real and synthetic data.
+
+    This function generates a scatter plot of t-SNE embeddings for real and synthetic data.
+    Each data point is represented by a marker on the plot, and the colors of the markers
+    correspond to the corresponding class labels of the data points.
+
+    :param X: The original real data tensor of shape (num_samples, num_features).
+    :type X: tsgm.types.Tensor
+    :param y: The labels of the original real data tensor of shape (num_samples,).
+    :type y: tsgm.types.Tensor
+    :param X_gen: The generated synthetic data tensor of shape (num_samples, num_features).
+    :type X_gen: tsgm.types.Tensor
+    :param y_gen: The labels of the generated synthetic data tensor of shape (num_samples,).
+    :type y_gen: tsgm.types.Tensor
+    :param path: The path to save the visualization as a PDF file. Defaults to "/tmp/tsne_embeddings.pdf".
+    :type path: str, optional
+    :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
+    :type feature_averaging: bool, optional
     """
     tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
 
@@ -145,6 +182,20 @@ def visualize_tsne(
 def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
     """
     Visualizes time series tensor.
+
+    This function generates a plot to visualize time series data. It displays a specified number of time series
+    from the input tensor.
+
+    :param ts: The time series data tensor of shape (num_samples, num_timesteps, num_features).
+    :type ts: tsgm.types.Tensor
+    :param num: The number of time series to display. Defaults to 5.
+    :type num: int, optional
+
+    Raises:
+        AssertionError: If the input tensor does not have three dimensions.
+
+    Example:
+        >>> visualize_ts(time_series_tensor, num=10)
     """
     assert len(ts.shape) == 3
 

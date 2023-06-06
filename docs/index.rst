@@ -10,11 +10,11 @@ The package is built on top of `Tensorflow <https://www.tensorflow.org/>`_ that 
 
 .. code-block:: latex
 
-    >@article{
-        nikitin2022gen,
-        author = {Alexander Nikitin and Samuel Kaski},
+    @article{
+        nikitin2023gen,
+        author = {Nikitin, Alexander and Iannucci, Letizia and Kaski, Samuel},
         title = {{TSGM} --- A Flexible Framework for Synthetic Time Series Generative Modeling},
-        year = {2022},
+        year = {2023},
     }
 
 .. toctree::

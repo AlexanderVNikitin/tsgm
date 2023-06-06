@@ -4,42 +4,26 @@ Introduction
 `Time Series Generative Modeling (TSGM) <https://github.com/AlexanderVNikitin/tsgm>`_ is a generative modeling framework for synthetic time series data. It builds on open-source libraries and implements various methods, such as GANs, VAEs, or ABC, for synthetic time series simulation. Moreover, *TSGM* provides many approaches for evaluating synthetic time series data. It is built on top of `TensorFlow <https://www.tensorflow.org/>`_.
 
 
-Citing
-=======================
-If you find the *Time Series Generator Modeling framework* useful, please consider citing our paper:
+Key Features
+------------
 
-.. code-block:: latex
+TSGM offers a wide range of features to support the generation and evaluation of synthetic time series data. Some of its key features include:
 
-    >@article{
-        nikitin2022gen,
-        author = {Alexander Nikitin and Samuel Kaski},
-        title = {TSGM --- A Flexible Framework for Synthetic Time Series Generative Modeling},
-        year = {2022},
-    }
+- **Generative Models:** TSGM integrates popular generative modeling techniques such as GANs, VAEs, and ABC to simulate realistic time series data. These models enable the generation of diverse and representative synthetic time series.
+
+- **Augmentations:** TSGM allows users to easily augment their time series data.
+
+- **Evaluation Approaches:** TSGM provides multiple approaches for evaluating the quality of synthetic time series data. These evaluation methods help assess the fidelity of the generated data by comparing it to real-world time series, enabling researchers to measure the accuracy and statistical properties of the synthetic data.
+
+- **Built on TensorFlow:** TSGM is built on top of the `TensorFlow <https://www.tensorflow.org/>`_ deep learning framework. TensorFlow offers efficient computation and enables seamless integration with other TensorFlow-based models and libraries, allowing users to leverage its extensive ecosystem for further customization and experimentation.
 
 Next, we explain the main concepts by considering several examples.
 
 Generators
 =============================
-A central concept of TSGM is `Generator`. We classify generators into three types:
+A central concept of TSGM is `Generator`. The generator can be trained on historical data using method `.fit` in a standard for Keras models way.
 
-- `simulator-based` - if you **do not have any real data**, but you **can program the generative process**,
-- `data-driven` - if you have **collected real data**, and you **do not wish to model generative process**,
-- `combined` - if you have **collected real data**, and you **can program generative process** without feasible inference procedure for all the parameters.
-
-NB, all `combined` simulators become `model-based` when data are unavailable.
-
-The generators implement a method `.generate()`, that returns simulated time series. Next, we consider some examples of generators.
-
-Simulator-based generators
---------------------------
-
-TSGM allows model-based simulators to be coded. An example of a model-based simulator is provided in `tss.simulators.SineConstSimulator`.
-
-Data-driven generators
---------------------------
-
-Data-driven simulators often use generative approaches for synthetic data generation. The training of data-driven simulators can be done via likelihood optimization, adversarial training procedures, or variational methods. Some of the implemented data-driven simulators include:
+The training of data-driven simulators can be done via likelihood optimization, adversarial training procedures, or variational methods. Some of the implemented data-driven simulators include:
 
 - `tss.models.cgan.GAN` - standard GAN model adapted for time-series simulation,\\
 - `tss.models.cgan.ConditionalGAN` - conditional GAN model for labeled and temporally labeled time-series simulation,\\
@@ -56,9 +40,11 @@ Example, of the use of a combined simulator is provided in `https://github.com/A
 
 Dataset
 =============================
-In TSGM, time series datasets are often stored in one of two ways: wrapped in a `tss.dataset.Dataset` object, or as a tensor with shape `n_samples x n_timestamps x n_features`.
+In TSGM, time series datasets are often stored in one of two ways: wrapped in a `tss.dataset.Dataset` object, or as a Tensor with shape `n_samples x n_timestamps x n_features`.
 
 Class `tsgm.dataset.DatasetProperties` implements generic placeholder for data when they are unavailable.
+
+`tsgm.utils` has a plenty of datasets, see :ref:`datasets-label`.
 
 
 Architectures Zoo
@@ -77,3 +63,18 @@ In `tsgm.metrics`, we implemented several metrics for evaluation of generated ti
 - visual similarity.
 
 Implementations and examples of these methods are described in `tutorials/metrics.ipynb`.
+
+
+Citing
+=======================
+If you find the *Time Series Generator Modeling framework* useful, please consider citing our paper:
+
+.. code-block:: latex
+
+    >@article{
+        nikitin2023tsgm,
+        author = {Alexander Nikitin and Samuel Kaski},
+        title = {TSGM --- A Flexible Framework for Synthetic Time Series Generative Modeling},
+        year = {2022},
+    }
+

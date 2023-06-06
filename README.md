@@ -8,9 +8,9 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/AlexanderVNikitin/tsgm)](https://github.com/AlexanderVNikitin/tsgm/commits/main)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/AlexanderVNikitin/tsgm/blob/main/LICENSE)
 
-
+[![arXiv](https://img.shields.io/badge/arXiv-2305.11567-b31b1b.svg)](https://arxiv.org/abs/2305.11567)
+[![codecov](https://codecov.io/gh/AlexanderVNikitin/tsgm/branch/main/graph/badge.svg?token=UD38ANZ0M1)](https://codecov.io/gh/AlexanderVNikitin/tsgm)
 
 # Time Series Generative Modeling (TSGM)
 

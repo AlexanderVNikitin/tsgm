@@ -1,5 +1,8 @@
+.. _datasets-label:
+
 Datasets
 ============
+
 
 The package provides easy access to many time series datasets.
 

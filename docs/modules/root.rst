@@ -4,16 +4,21 @@ TSGM
 .. contents:: Contents
     :local:
 
-Stored Datasets
+Datasets
 --------------
 
 .. autoclass:: tsgm.utils.UCRDataManager
     :members:
     :undoc-members:
 
-Model-based Generators
+.. automodule:: tsgm.utils.dataset
+    :members:
+    :undoc-members:
+
+
+Augmentations
 --------------
-.. autoclass:: tsgm.utils.SineConstGenerator
+.. automodule:: tsgm.models.augmentations
     :members:
     :undoc-members:
 
@@ -24,6 +29,7 @@ GANs
     :members:
     :undoc-members:
 
+
 VAEs
 --------------
 .. automodule:: tsgm.models.cvae
@@ -31,3 +37,8 @@ VAEs
     :undoc-members:
 
 
+Visualization
+--------------
+.. automodule:: tsgm.utils.visualization
+    :members:
+    :undoc-members:
