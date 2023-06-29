@@ -215,12 +215,15 @@ def get_eeg() -> tuple:
 def get_power_consumption() -> np.ndarray:
     cur_path = os.path.dirname(__file__)
     path = os.path.join(cur_path, '../../data/')
+    fname = "household_power_consumption.txt"
+    fname_path = os.path.join(path, fname)
 
-    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00235/"
-    file_utils.download_all_resources(url, path, resources=[("household_power_consumption.zip", None)])
+    if not os.path.exists(fname_path):
+        url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00235/"
+        file_utils.download_all_resources(url, path, resources=[("household_power_consumption.zip", None)])
 
     df = pd.read_csv(
-        os.path.join(path, "household_power_consumption.txt"), sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
+        fname_path, sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
         low_memory=False, na_values=['nan', '?'], index_col='dt')
     return df.to_numpy()
 
