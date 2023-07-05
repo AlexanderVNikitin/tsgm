@@ -79,8 +79,8 @@ def download(url: str, path: str, md5: typing.Optional[str] = None, max_attempt:
 def download_all_resources(url: str, path: str, resources: list, pwd: typing.Optional[bytes] = None) -> None:
     for resource_name, _ in resources:
         file_name, _ = os.path.splitext(resource_name)
-        resource_to_path = os.path.join(path, file_name)
-        if os.path.exists(resource_to_path):
+        fnames = [os.path.splitext(fname)[0] for fname in os.listdir(path)]
+        if fnames.count(file_name) > 0:
             continue
         else:
             download(urllib.parse.urljoin(url, resource_name), path)
