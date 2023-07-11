@@ -269,7 +269,7 @@ def get_wafer_data() -> tuple:
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "wafer")
 
-    url = "https://www.timeseriesclassification.com/Downloads/"
+    url = "https://www.timeseriesclassification.com/ClassificationDownloads/"
     file_utils.download_all_resources(url, path_to_resource, resources=[("Wafer.zip", None)])
     train_wafer = load_arff(os.path.join(path_to_resource, "Wafer_TRAIN.arff"))
     test_wafer = load_arff(os.path.join(path_to_resource, "Wafer_TEST.arff"))
