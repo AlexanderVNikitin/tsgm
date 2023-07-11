@@ -70,13 +70,14 @@ class GaussianNoise(BaseAugmenter):
         seeds_idx = self._get_seeds(total_num=X.shape[0], n_seeds=n_samples)
 
         sigma = self.variance**0.5
+        has_labels = y is not None
         if self.per_channel:
             gauss = np.random.normal(self.mean, sigma, (n_samples, X.shape[1], X.shape[2]))
         else:
             gauss = np.random.normal(self.mean, sigma, (n_samples, X.shape[1]))
             gauss = np.expand_dims(gauss, -1)
         synthetic_X = X[seeds_idx] + gauss
-        if y is not None:
+        if has_labels:
             synthetic_y = y[seeds_idx]
             return np.array(synthetic_X), np.array(synthetic_y)
         else:
@@ -105,7 +106,9 @@ class SliceAndShuffle(BaseAugmenter):
         seeds_idx = self._get_seeds(n_samples=X.shape[0], n_seeds=n_samples)
 
         synthetic_data = []
-        labels = []
+        has_labels = y is not None
+        if has_labels:
+            new_labels = []
         for i in seeds_idx:
             sequence = X[i]
             if self.per_channel:
@@ -124,10 +127,10 @@ class SliceAndShuffle(BaseAugmenter):
                 slices.append(sequence[start_idx:])
                 np.random.shuffle(slices)
             synthetic_data.append(sequence)
-            if y is not None:
-                labels.append(self._targets[i])
-        if y is not None:
-            return np.array(synthetic_data), np.array(labels)
+            if has_labels:
+                new_labels.append(self._targets[i])
+        if has_labels:
+            return np.array(synthetic_data), np.array(new_labels)
         else:
             return np.array(synthetic_data)
 
@@ -151,15 +154,17 @@ class Shuffle(BaseAugmenter):
         shuffle_ids = [np.random.choice(np.arange(n_features), n_features, replace=False) for _ in range(n_repeats)]
 
         synthetic_data = []
-        labels = []
+        has_labels = y is not None
+        if has_labels:
+            new_labels = []
         for num, i in enumerate(seeds_idx):
             sequence = X[i]
             id_repeat = self._n_repeats(num, total_num=len(X))
             synthetic_data.append(sequence[:, shuffle_ids[id_repeat]])
-            if y is not None:
-                labels.append(y[i])
-        if y is not None:
-            return np.array(synthetic_data), np.array(labels)
+            if has_labels:
+                new_labels.append(y[i])
+        if has_labels:
+            return np.array(synthetic_data), np.array(new_labels)
         else:
             return np.array(synthetic_data)
 
@@ -183,13 +188,22 @@ class MagnitudeWarping(BaseAugmenter):
         warp_steps = (np.ones(
             (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=knot + 2))).T
         result = np.zeros((n_samples, n_timesteps, n_features))
+        has_labels = y is not None
+
+        if has_labels:
+            result_y = np.zeros((n_samples, 1))
+
         for i in range(n_samples):
             random_sample_id = random.randint(0, n_data - 1)
             warper = np.array([scipy.interpolate.CubicSpline(
                 warp_steps[:, dim], random_warps[i, :, dim])(orig_steps) for dim in range(n_features)]).T
             result[i] = X[random_sample_id] * warper
-
-        return result
+            if has_labels:
+                result_y[i] = y[random_sample_id]
+        if has_labels:
+            return result, result_y
+        else:
+            return result
 
 
 class WindowWarping(BaseAugmenter):
@@ -212,6 +226,8 @@ class WindowWarping(BaseAugmenter):
         window_ends = window_starts + warp_size
 
         result = np.zeros((n_samples, n_timesteps, n_features))
+        result_y = np.zeros((n_samples, 1))
+        has_labels = y is not None
         for i in range(n_samples):
             for dim in range(n_features):
                 random_sample_id = random.randint(0, n_data - 1)
@@ -227,7 +243,10 @@ class WindowWarping(BaseAugmenter):
                 result[i, :, dim] = np.interp(
                     np.arange(n_timesteps),
                     np.linspace(0, n_timesteps - 1., num=warped.size), warped).T
-        if y is not None:
-            return result, y
+                if has_labels:
+                    result_y[i] = y[random_sample_id]
+
+        if has_labels:
+            return result, result_y
         else:
             return result
