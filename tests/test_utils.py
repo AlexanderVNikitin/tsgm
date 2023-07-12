@@ -108,6 +108,14 @@ def test_get_power_consumption():
     assert X.shape == (2075259, 7)
 
 
+def test_get_power_consumption_second_call(mocker):
+    X = tsgm.utils.get_power_consumption()
+    file_download_mock = mocker.patch('tsgm.utils.download')
+    file_download_mock.side_effect = tsgm.utils.download
+    X = tsgm.utils.get_power_consumption()
+    assert file_download_mock.call_count == 0
+
+
 def test_get_stock_data():
     X = tsgm.utils.get_stock_data("AAPL")
 
