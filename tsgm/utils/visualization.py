@@ -12,7 +12,7 @@ DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
 
 
 def visualize_dataset(
-    dataset: tsgm.dataset.Dataset,
+    dataset: tsgm.dataset.DatasetOrTensor,
     obj_id: int = 0,
     palette: dict = DEFAULT_PALETTE_TSNE,
     path: str = "/tmp/generated_data.pdf",
@@ -25,19 +25,31 @@ def visualize_dataset(
     It can be handy for regression problems.
     """
     plt.figure(
-        num=None, figsize=(8, 4), dpi=80, palette=palette, facecolor="w", edgecolor="k"
+        num=None, figsize=(8, 4), dpi=80, facecolor="w", edgecolor="k"
     )
+    if isinstance(dataset, tsgm.dataset.Dataset):
+        X = dataset.X
+        y = dataset.y
+    elif isinstance(dataset, tsgm.types.Tensor):
+        X = dataset
+        y = None
+    else:
+        raise ValueError("`dataset` has an unknown type")
 
-    T = dataset.X.shape[-1]
+    T = X.shape[-1]
 
-    sns.lineplot(np.arange(0, T, 1), dataset.X[obj_id, -3], label="Feature #1")
-    sns.lineplot(np.arange(0, T, 1), dataset.X[obj_id, -2], label="Feature #2")
-    sns.lineplot(np.arange(0, T, 1), dataset.X[obj_id, -1], label="Feature #3")
+    if X.shape[1] >= 1:
+        sns.lineplot(x=np.arange(0, T, 1), y=X[obj_id, -1], label="Feature #1")
+    if X.shape[1] >= 2:
+        sns.lineplot(x=np.arange(0, T, 1), y=X[obj_id, -2], label="Feature #2")
+    if X.shape[1] >= 3:
+        sns.lineplot(x=np.arange(0, T, 1), y=X[obj_id, -3], label="Feature #3")
 
     plt.xlabel("Time")
     plt.ylabel("Absolute value (measurements)")
 
-    print([int(el) for el in dataset.y[obj_id]])
+    if y is not None:
+        print([int(el) for el in y[obj_id]])
     plt.ylabel("Target value(y)")
     plt.title("Generated data")
 
@@ -54,6 +66,7 @@ def visualize_tsne_unlabeled(
     markerscale: int = 3,
     markersize: int = 1,
     feature_averaging: bool = False,
+    perplexity: float = 30.0
 ):
     """
     Visualizes t-SNE embeddings of unlabeled data.
@@ -77,7 +90,7 @@ def visualize_tsne_unlabeled(
     :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
     :type feature_averaging: bool, optional
     """
-    tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
+    tsne = sklearn.manifold.TSNE(n_components=2, perplexity=perplexity, learning_rate="auto", init="random")
 
     point_styles = ["hist"] * X.shape[0] + ["gen"] * X_gen.shape[0]
 
@@ -123,6 +136,7 @@ def visualize_tsne(
     y_gen: tsgm.types.Tensor,
     path: str = "/tmp/tsne_embeddings.pdf",
     feature_averaging: bool = False,
+    perplexity=30.0
 ):
     """
     Visualizes t-SNE embeddings of real and synthetic data.
@@ -144,7 +158,7 @@ def visualize_tsne(
     :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
     :type feature_averaging: bool, optional
     """
-    tsne = sklearn.manifold.TSNE(n_components=2, learning_rate="auto", init="random")
+    tsne = sklearn.manifold.TSNE(n_components=2, perplexity=perplexity, learning_rate="auto", init="random")
 
     if feature_averaging:
         X_all = np.concatenate((np.mean(X, axis=2), np.mean(X_gen, axis=2)))
@@ -200,6 +214,8 @@ def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
     assert len(ts.shape) == 3
 
     fig, axs = plt.subplots(num, 1, figsize=(14, 10))
+    if num == 1:
+        axs = [axs]
 
     ids = np.random.choice(ts.shape[0], size=num, replace=False)
     for i, sample_id in enumerate(ids):
