@@ -453,7 +453,7 @@ class TimeGAN:
 
     def fit(
         self,
-        data: TensorLike,
+        data: typing.Union[TensorLike, tf.data.Dataset],
         epochs: int,
         checkpoints_interval: typing.Optional[int] = None,
         generate_synthetic: tuple = (),
@@ -478,15 +478,22 @@ class TimeGAN:
         assert not (
             self._mse is None or self._bce is None
         ), "One of the loss functions is not defined. Please call .compile() to set them"
-
+        
+        # take tf.data.Dataset | TensorLike
+        if isinstance(data, tf.data.Dataset):
+            batches = iter(data.repeat())
+        else:
+            batches = self._get_data_batch(data, n_windows=len(data))
+            
         # Define the model
         self._define_timegan()
+
 
         # 1. Embedding network training
         print("Start Embedding Network Training")
 
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
-            X_ = next(self._get_data_batch(data, n_windows=len(data)))
+            X_ = next(batches)
             step_e_loss_0 = self._train_autoencoder(X_, self.autoencoder_opt)
 
             # Checkpoint
@@ -501,7 +508,7 @@ class TimeGAN:
 
         # Adversarial Supervised network training
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
-            X_ = next(self._get_data_batch(data, n_windows=len(data)))
+            X_ = next(batches)
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
 
             # Checkpoint
@@ -523,7 +530,7 @@ class TimeGAN:
 
             # Generator training (twice more than discriminator training)
             for kk in range(2):
-                X_ = next(self._get_data_batch(data, n_windows=len(data)))
+                X_ = next(batches)
                 Z_ = next(self.get_noise_batch())
                 # --------------------------
                 # Train the generator
@@ -541,7 +548,7 @@ class TimeGAN:
                 # --------------------------
                 _, step_e_loss_t0 = self._train_embedder(X_, self.embedder_opt)
 
-            X_ = next(self._get_data_batch(data, n_windows=len(data)))
+            X_ = next(batches)
             Z_ = next(self.get_noise_batch())
             step_d_loss = self._check_discriminator_loss(X_, Z_)
             if step_d_loss > 0.15:
