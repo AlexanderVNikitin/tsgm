@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import tensorflow as tf
 
 import tsgm
 
@@ -30,7 +31,7 @@ def visualize_dataset(
     if isinstance(dataset, tsgm.dataset.Dataset):
         X = dataset.X
         y = dataset.y
-    elif isinstance(dataset, tsgm.types.Tensor):
+    elif isinstance(dataset, np.ndarray) or tf.is_tensor(dataset):
         X = dataset
         y = None
     else:
