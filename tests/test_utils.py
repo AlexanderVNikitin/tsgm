@@ -192,10 +192,12 @@ def test_mmd_3_test():
 
 
 def test_get_wafer():
-    X_train, y_train, X_test, y_test = tsgm.utils.get_wafer_data()
-
-    assert X_train.shape == (1000, 152, 1)
+    DATASET = "wafer"
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
+    assert ucr_data_manager.summary() is None
+    X_train, y_train, X_test, y_test = ucr_data_manager.get()
+    assert X_train.shape == (1000, 152)
     assert y_train.shape == (1000,)
 
-    assert X_test.shape == (6164, 152, 1)
+    assert X_test.shape == (6164, 152)
     assert y_test.shape == (6164,)
