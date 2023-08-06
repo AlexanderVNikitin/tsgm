@@ -98,6 +98,8 @@ def test_downstream_performance_metric():
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(D2, D1, D_test)
     assert downstream_perf_metric(D1, D2, D_test) == 0
 
+    assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, diff_ts, test_ts)
+
 
 class FlattenTSOneClassSVM:
     def __init__(self, clf):
@@ -140,3 +142,6 @@ def test_mmd_metric():
     mmd_metric = tsgm.metrics.MMDMetric()
     assert mmd_metric(ts, diff_ts) == 1.9725113809108734
     assert mmd_metric(ts, ts) == 0 and mmd_metric(diff_ts, diff_ts) == 0
+
+    assert mmd_metric(D1, D2) == mmd_metric(ts, diff_ts)
+    assert mmd_metric(D1, D1) == 0 and mmd_metric(D2, D2) == 0
