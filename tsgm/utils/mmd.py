@@ -14,11 +14,11 @@ logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
-EXP_QUAD_KERNEL = tfp.math.psd_kernels.ExponentiatedQuadratic()
+EXP_QUAD_KERNEL = tfp.math.psd_kernels.ExponentiatedQuadratic(feature_ndims=2)
 
 
 def exp_quad_kernel(x, y):
-    return EXP_QUAD_KERNEL.apply(x, y)
+    return EXP_QUAD_KERNEL.matrix(x, y)
 
 
 def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel=exp_quad_kernel):

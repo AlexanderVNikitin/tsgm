@@ -203,8 +203,11 @@ class MMDMetric(Metric):
     This metric calculated MMD between real and synthetic samples
     """
 
+    def __init__(self, kernel: typing.Callable = tsgm.utils.mmd.exp_quad_kernel) -> None:
+        self.kernel = kernel
+
     def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
         if isinstance(D1, tsgm.dataset.Dataset) and D1.y is not None or isinstance(D2, tsgm.dataset.Dataset) and D2.y is not None:
             logger.warning("It is currently impossible to run MMD for labeled time series. Labels will be ignored!")
         X1, X2 = _dataset_or_tensor_to_tensor(D1), _dataset_or_tensor_to_tensor(D2)
-        return tsgm.utils.mmd.MMD(X1, X2)
+        return tsgm.utils.mmd.MMD(X1, X2, kernel=self.kernel)

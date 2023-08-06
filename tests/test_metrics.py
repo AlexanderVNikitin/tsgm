@@ -140,7 +140,7 @@ def test_mmd_metric():
     D2 = tsgm.dataset.Dataset(diff_ts, y=None)
 
     mmd_metric = tsgm.metrics.MMDMetric()
-    assert mmd_metric(ts, diff_ts) == 1.9725113809108734
+    assert mmd_metric(ts, diff_ts) == 1.0
     assert mmd_metric(ts, ts) == 0 and mmd_metric(diff_ts, diff_ts) == 0
 
     assert mmd_metric(D1, D2) == mmd_metric(ts, diff_ts)
