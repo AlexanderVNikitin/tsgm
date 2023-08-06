@@ -1,14 +1,26 @@
 import abc
 import typing
+import logging
 import numpy as np
 import itertools
 import sklearn
+from tqdm import tqdm
 
 import tsgm
+
+logger = logging.getLogger('utils')
+logger.setLevel(logging.DEBUG)
 
 
 DEFAULT_SPLIT_STRATEGY = sklearn.model_selection.KFold(
     n_splits=3, random_state=42, shuffle=True)
+
+
+def _dataset_or_tensor_to_tensor(D1):
+    if isinstance(D1, tsgm.dataset.Dataset):
+        return D1.X
+    else:
+        return D1
 
 
 class Metric(abc.ABC):
@@ -102,7 +114,7 @@ class ConsistencyMetric(Metric):
         evaluations2 = self._apply_models(D2, D_test)
         consistencies_cnt = 0
         n_evals = len(evaluations1)
-        for i1 in range(n_evals):
+        for i1 in tqdm(range(n_evals)):
             for i2 in range(i1 + 1, n_evals):
                 if evaluations1[i1] > evaluations1[i2] and evaluations2[i1] > evaluations2[i2] or \
                         evaluations1[i1] < evaluations1[i2] and evaluations2[i1] < evaluations2[i2] or \
@@ -155,7 +167,7 @@ class DownstreamPerformanceMetric(Metric):
             return np.mean(evaluations2 - evaluations1)
 
 
-class PrivacyMembershipInferenceMetric:
+class PrivacyMembershipInferenceMetric(Metric):
     """
     The metric that measures the possibility of membership inference attacks.
     """
@@ -184,3 +196,15 @@ class PrivacyMembershipInferenceMetric:
         labels = self._attacker.predict((d_tr + d_test).Xy_concat)
         correct_labels = [1] * len(d_tr) + [-1] * len(d_test)
         return 1 - self._metric(labels, correct_labels)
+
+
+class MMDMetric(Metric):
+    """
+    This metric calculated MMD between real and synthetic samples
+    """
+
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor) -> float:
+        if isinstance(D1, tsgm.dataset.Dataset) and D1.y is not None or isinstance(D2, tsgm.dataset.Dataset) and D2.y is not None:
+            logger.warning("It is currently impossible to run MMD for labeled time series. Labels will be ignored!")
+        X1, X2 = _dataset_or_tensor_to_tensor(D1), _dataset_or_tensor_to_tensor(D2)
+        return tsgm.utils.mmd.MMD(X1, X2)
