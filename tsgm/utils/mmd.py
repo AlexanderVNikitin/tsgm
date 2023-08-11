@@ -5,7 +5,6 @@ import scipy
 import numpy as np
 import math
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 import tsgm
 
@@ -14,18 +13,11 @@ logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
-EXP_QUAD_KERNEL = tfp.math.psd_kernels.ExponentiatedQuadratic(feature_ndims=2)
-
-
-def exp_quad_kernel(x, y):
-    return EXP_QUAD_KERNEL.matrix(x, y)
-
-
-def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel=exp_quad_kernel):
+def mmd(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: typing.Callable):
     XX = kernel(X, X)
     YY = kernel(Y, Y)
     XY = kernel(X, Y)
-    return np.mean(XX) + np.mean(YY) - 2 * np.mean(XY)
+    return XX.mean() + YY.mean() - 2 * XY.mean()
 
 
 def kernel_median_heuristic(X1: tsgm.types.Tensor, X2: tsgm.types.Tensor) -> float:
