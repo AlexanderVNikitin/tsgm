@@ -47,7 +47,7 @@ class LossTracker(OrderedDict):
         return list(self.keys())
 
 
-class TimeGAN:
+class TimeGAN(keras.Model):
     """
     Time-series Generative Adversarial Networks (TimeGAN)
 
@@ -68,6 +68,7 @@ class TimeGAN:
         batch_size: int = 256,
         gamma: float = 1.0,
     ):
+        super().__init__()
         self.seq_len = seq_len
         self.hidden_dim = hidden_dim
         self.dim = n_features
@@ -457,6 +458,8 @@ class TimeGAN:
         epochs: int,
         checkpoints_interval: typing.Optional[int] = None,
         generate_synthetic: tuple = (),
+        *args,
+        **kwargs,
     ):
         """
         :param data: TensorLike, the training data
