@@ -108,6 +108,14 @@ def test_get_power_consumption():
     assert X.shape == (2075259, 7)
 
 
+def test_get_power_consumption_second_call(mocker):
+    X = tsgm.utils.get_power_consumption()
+    file_download_mock = mocker.patch('tsgm.utils.download')
+    file_download_mock.side_effect = tsgm.utils.download
+    X = tsgm.utils.get_power_consumption()
+    assert file_download_mock.call_count == 0
+
+
 def test_get_stock_data():
     X = tsgm.utils.get_stock_data("AAPL")
 
@@ -184,10 +192,12 @@ def test_mmd_3_test():
 
 
 def test_get_wafer():
-    X_train, y_train, X_test, y_test = tsgm.utils.get_wafer_data()
-
-    assert X_train.shape == (1000, 152, 1)
+    DATASET = "wafer"
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
+    assert ucr_data_manager.summary() is None
+    X_train, y_train, X_test, y_test = ucr_data_manager.get()
+    assert X_train.shape == (1000, 152)
     assert y_train.shape == (1000,)
 
-    assert X_test.shape == (6164, 152, 1)
+    assert X_test.shape == (6164, 152)
     assert y_test.shape == (6164,)

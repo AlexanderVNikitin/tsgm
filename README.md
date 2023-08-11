@@ -122,10 +122,11 @@ We appreciate all contributions. To learn more, please check [CONTRIBUTING.md](C
 If you find this repo useful, please consider citing our paper:
 ```
 @article{
-    nikitin2023gen,
-    author = {Alexander Nikitin and Samuel Kaski},
-    title = {TSGM --- A Flexible Framework for Synthetic Time Series Generative Modeling},
-    year = {2023},
+  nikitin2023tsgm,
+  title={TSGM: A Flexible Framework for Generative Modeling of Synthetic Time Series},
+  author={Nikitin, Alexander and Iannucci, Letizia and Kaski, Samuel},
+  journal={arXiv preprint arXiv:2305.11567},
+  year={2023}
 }
 ```
 

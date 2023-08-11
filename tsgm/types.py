@@ -1,10 +1,10 @@
 import typing
 
 import tensorflow as tf
-import numpy as np
+import numpy.typing as npt
 
 
-Tensor = typing.Union[tf.Tensor, np.ndarray]
+Tensor = typing.Union[tf.Tensor, npt.NDArray]
 OptTensor = typing.Optional[Tensor]
 
 Model = typing.Any  # TODO -- restrict
