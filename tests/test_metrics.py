@@ -98,6 +98,8 @@ def test_downstream_performance_metric():
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(D2, D1, D_test)
     assert downstream_perf_metric(D1, D2, D_test) == 0
 
+    assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, diff_ts, test_ts)
+
 
 class FlattenTSOneClassSVM:
     def __init__(self, clf):
@@ -128,3 +130,18 @@ def test_privacy_inference_attack_metric():
     )
 
     assert isinstance(privacy_metric(D_tr, D_test, D_sim), float)
+
+
+def test_mmd_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    D1 = tsgm.dataset.Dataset(ts, y=None)
+
+    diff_ts = np.array([[[12, 13], [10, 10], [-1, -2]], [[-1, 32], [2, 1], [10, 8]]]).astype(np.float32)
+    D2 = tsgm.dataset.Dataset(diff_ts, y=None)
+
+    mmd_metric = tsgm.metrics.MMDMetric()
+    assert mmd_metric(ts, diff_ts) == 1.0
+    assert mmd_metric(ts, ts) == 0 and mmd_metric(diff_ts, diff_ts) == 0
+
+    assert mmd_metric(D1, D2) == mmd_metric(ts, diff_ts)
+    assert mmd_metric(D1, D1) == 0 and mmd_metric(D2, D2) == 0

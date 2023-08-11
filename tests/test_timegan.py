@@ -53,7 +53,6 @@ def test_timegan():
         seq_len=seq_len, module="gru", hidden_dim=latent_dim, n_features=feature_dim, n_layers=3, batch_size=batch_size
     )
     timegan.compile()
-    
     timegan.fit(dataset, epochs=1)
 
     # Check internal nets
