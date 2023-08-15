@@ -481,16 +481,15 @@ class TimeGAN(keras.Model):
         assert not (
             self._mse is None or self._bce is None
         ), "One of the loss functions is not defined. Please call .compile() to set them"
-        
+
         # take tf.data.Dataset | TensorLike
         if isinstance(data, tf.data.Dataset):
             batches = iter(data.repeat())
         else:
             batches = self._get_data_batch(data, n_windows=len(data))
-            
+
         # Define the model
         self._define_timegan()
-
 
         # 1. Embedding network training
         print("Start Embedding Network Training")
