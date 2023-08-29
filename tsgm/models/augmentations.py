@@ -270,11 +270,14 @@ class DTWBarycentricAveraging(BaseAugmenter):
 
     def __init__(self):
         super(DTWBarycentricAveraging, self).__init__(per_feature=False)
+        self.data = None
 
     def generate(
         self,
-        n_samples: int,
-        sample_size: int,
+        X: TensorLike,
+        y: Optional[TensorLike] = None,
+        n_samples: int = 1,
+        sample_size:Optional[int] = None,
         output_size=None,
         seed_timeseries=None,
         max_iter=30,
@@ -291,8 +294,9 @@ class DTWBarycentricAveraging(BaseAugmenter):
             Size of the timeseries to generate.
             If None, the size is equal to the data provided at fit
             unless seed_timeseries is provided.
-        sample_size : int
-            The number of timeseries to draw from the dataset before computing DTW_BA
+        sample_size : int or None (default: None)
+            The number of timeseries to draw from the dataset before computing DTW_BA.
+            If None, use the entire set.
         seed_timeseries : array or None (default: None)
             Initial timesteries to start from for the optimization process.
         max_iter : int (default: 30)
@@ -318,7 +322,7 @@ class DTWBarycentricAveraging(BaseAugmenter):
             or (n_samples, original_size, d) if output_size is None
             or (n_samples, seed_timeseries_size, d) if seed_timeseries is not None
         """
-        self._check_fitted()
+        self.data = X
         _samples = []
         for _ in range(n_samples):
             _samples.append(
@@ -372,7 +376,7 @@ class DTWBarycentricAveraging(BaseAugmenter):
 
     def _dtwba_iteration(
         self,
-        x: TensorLike,
+        X: TensorLike,
         output_size=None,
         seed_timeseries=None,
         max_iter=30,
@@ -381,7 +385,7 @@ class DTWBarycentricAveraging(BaseAugmenter):
         metric_params=None,
         verbose=False,
     ):
-        X_ = x  # (sample_size, sz, d)
+        X_ = X  # (sample_size, sz, d)
         if output_size is None:
             output_size = X_.shape[1]
         weights = self._set_weights(weights, X_.shape[0])
