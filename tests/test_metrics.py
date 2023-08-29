@@ -47,7 +47,7 @@ def test_similarity_metric():
                   functools.partial(tsgm.metrics.statistics.axis_max_s, axis=1),
                   functools.partial(tsgm.metrics.statistics.axis_min_s, axis=1)]
 
-    sim_metric = tsgm.metrics.SimilarityMetric(
+    sim_metric = tsgm.metrics.DistanceMetric(
         statistics=statistics, discrepancy=lambda x, y: np.linalg.norm(x - y)
     )
     assert sim_metric(ts, diff_ts) < sim_metric(ts, sim_ts)
@@ -145,3 +145,20 @@ def test_mmd_metric():
 
     assert mmd_metric(D1, D2) == mmd_metric(ts, diff_ts)
     assert mmd_metric(D1, D1) == 0 and mmd_metric(D2, D2) == 0
+
+
+def test_discriminative_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    D1 = tsgm.dataset.Dataset(ts, y=None)
+
+    diff_ts = np.array([[[12, 13], [10, 10], [-1, -2]], [[-1, 32], [2, 1], [10, 8]]]).astype(np.float32)
+    D2 = tsgm.dataset.Dataset(diff_ts, y=None)
+
+    model = tsgm.models.zoo["clf_cl_n"](seq_len=ts.shape[1], feat_dim=ts.shape[2], output_dim=1).model
+    model.compile(
+        tf.keras.optimizers.Adam(),
+        tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    )
+    discr_metric = tsgm.metrics.DiscriminativeMetric()
+    assert discr_metric(d_hist=D1, d_syn=D2, model=model, test_size=0.2, random_seed=42, n_epochs=10) == 1.0
+    assert discr_metric(d_hist=D1, d_syn=D2, model=model, metric=sklearn.metrics.precision_score, test_size=0.2, random_seed=42, n_epochs=10) == 1.0

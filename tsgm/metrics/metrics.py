@@ -29,7 +29,7 @@ class Metric(abc.ABC):
         pass
 
 
-class SimilarityMetric(Metric):
+class DistanceMetric(Metric):
     """
     Metric that measures similarity between synthetic and real time series
     """
@@ -211,3 +211,20 @@ class MMDMetric(Metric):
             logger.warning("It is currently impossible to run MMD for labeled time series. Labels will be ignored!")
         X1, X2 = _dataset_or_tensor_to_tensor(D1), _dataset_or_tensor_to_tensor(D2)
         return tsgm.utils.mmd.MMD(X1, X2, kernel=self.kernel)
+
+
+class DiscriminativeMetric(Metric):
+    """
+    The discriminative metric measures how accurately a discriminative model can separate synthetic and real data. 
+    """
+    def __call__(self, d_hist: tsgm.dataset.DatasetOrTensor, d_syn: tsgm.dataset.DatasetOrTensor, model, test_size, n_epochs, metric=None, random_seed=None) -> float:
+        X_hist, X_syn = _dataset_or_tensor_to_tensor(d_hist), _dataset_or_tensor_to_tensor(d_syn)
+        X_all, y_all = np.concatenate([X_hist, X_syn]), np.concatenate([[1] * len(d_hist), [0] * len(d_syn)])
+        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_all, y_all, test_size=test_size, random_state=random_seed)
+        model.fit(X_all, y_all, epochs=n_epochs)
+        import pdb; pdb.set_trace()
+        y_pred = model.predict(X_test)
+        if metric == None:
+            return sklearn.metrics.accuracy_score(y_test, y_pred)
+        else:
+            return metric(y_test, y_pred)
