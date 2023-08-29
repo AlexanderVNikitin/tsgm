@@ -18,6 +18,7 @@ def test_base_compose():
     tsgm.models.augmentations.Shuffle(),
     tsgm.models.augmentations.MagnitudeWarping(),
     tsgm.models.augmentations.WindowWarping(),
+    tsgm.models.augmentations.DTWBarycentricAveraging(),
 ])
 def test_dimensions(aug_model):
     xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
@@ -77,3 +78,14 @@ def test_window_warping():
     assert xs_gen.shape == (17, 2, 4)
     assert ys_gen.shape == (17, 1)
     assert np.allclose(ys_gen, np.ones((17, 1)))
+
+
+def test_dtw_ba():
+    xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
+    ys = np.ones((xs.shape[0], 1))
+    dtw_ba_aug = tsgm.models.augmentations.DTWBarycentricAveraging()
+    xs_gen, ys_gen = dtw_ba_aug.generate(X=xs, y=ys, n_samples=3)
+    assert xs_gen.shape == (3, 2, 4)
+    assert ys_gen.shape == (3, 1)
+    assert np.allclose(ys_gen, np.ones((3, 1)))
+    assert np.allclose(xs_gen, xs)
