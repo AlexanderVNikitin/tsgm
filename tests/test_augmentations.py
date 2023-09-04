@@ -16,6 +16,7 @@ def test_base_compose():
 @pytest.mark.parametrize("aug_model", [
     tsgm.models.augmentations.GaussianNoise(),
     tsgm.models.augmentations.Shuffle(),
+    tsgm.model.augmentations.SliceAndShuffle(),
     tsgm.models.augmentations.MagnitudeWarping(),
     tsgm.models.augmentations.WindowWarping(),
 ])

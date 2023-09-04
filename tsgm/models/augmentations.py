@@ -95,7 +95,7 @@ class SliceAndShuffle(BaseAugmenter):
     def __init__(
         self,
         n_segments: int,
-        per_feature: bool = True,
+        per_feature: bool = False,
     ):
         super(SliceAndShuffle, self).__init__(per_feature)
         self.n_segments = n_segments
@@ -103,7 +103,7 @@ class SliceAndShuffle(BaseAugmenter):
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1) -> TensorLike:
         assert 0 < self.n_segments < X.shape[1]
 
-        seeds_idx = self._get_seeds(n_samples=X.shape[0], n_seeds=n_samples)
+        seeds_idx = self._get_seeds(total_num=X.shape[0], n_seeds=n_samples)
 
         synthetic_data = []
         has_labels = y is not None
@@ -147,7 +147,7 @@ class Shuffle(BaseAugmenter):
         return math.ceil(n / total_num)
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1) -> TensorLike:
-        seeds_idx = self._get_seeds(X.shape[0], n_samples)
+        seeds_idx = self._get_seeds(total_num=X.shape[0], n_seeds=n_samples)
         n_features = X.shape[2]
 
         n_repeats = self._n_repeats(n_samples, total_num=len(X))
@@ -178,15 +178,36 @@ class MagnitudeWarping(BaseAugmenter):
     def __init__(self):
         super(MagnitudeWarping, self).__init__(per_feature=False)
 
-    def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1, sigma: float = 0.2, knot: int = 4) -> TensorLike:
+    def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1, sigma: float = 0.2, n_knots: int = 4) -> TensorLike:
+        """ 
+        Generates augmented samples via MagnitudeWarping for (X, y)
+
+        :param X: Input data tensor of shape (n_data, n_timesteps, n_features).
+        :type X: TensorLike
+
+        :param y: Optional labels tensor. If provided, labels will also be returned
+        :type y: Optional[TensorLike]
+
+        :param n_samples: Number of augmented samples to generate. Default is 1.
+        :type n_samples: int
+
+        :param sigma: Standard deviation for the random warping. Default is 0.2.
+        :type sigma: float
+
+        :param n_knots: Number of knots used for warping curve. Default is 4.
+        :type n_knots: int
+
+        :return: Augmented data tensor of shape (n_samples, n_timesteps, n_features) and optionally augmented labels if 'y' is provided.
+        :rtype: Tensorlike
+        """
         n_data = X.shape[0]
         n_timesteps = X.shape[1]
         n_features = X.shape[2]
 
         orig_steps = np.arange(n_timesteps)
-        random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, knot + 2, n_features))
+        random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, n_knots + 2, n_features))
         warp_steps = (np.ones(
-            (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=knot + 2))).T
+            (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=n_knots + 2))).T
         result = np.zeros((n_samples, n_timesteps, n_features))
         has_labels = y is not None
 
@@ -220,18 +241,19 @@ class WindowWarping(BaseAugmenter):
 
         scales_per_sample = np.random.choice(scales, n_samples)
         warp_size = max(np.round(window_ratio * n_timesteps).astype(np.int64), 1)
-        window_starts = np.random.randint(
-            low=0, high=n_timesteps - warp_size,
-            size=(n_samples))
-        window_ends = window_starts + warp_size
 
         result = np.zeros((n_samples, n_timesteps, n_features))
         result_y = np.zeros((n_samples, 1))
         has_labels = y is not None
         for i in range(n_samples):
+            window_starts = np.random.randint(
+                low=0, high=n_timesteps - warp_size,
+                size=(n_samples))
+            window_ends = window_starts + warp_size
+            random_sample_id = random.randint(0, n_data - 1)
+            random_sample = X[random_sample_id]
+
             for dim in range(n_features):
-                random_sample_id = random.randint(0, n_data - 1)
-                random_sample = X[random_sample_id]
                 start_seg = random_sample[:window_starts[i], dim]
                 warp_ts_size = max(round(warp_size * scales_per_sample[i]), 1)
                 window_seg = np.interp(
