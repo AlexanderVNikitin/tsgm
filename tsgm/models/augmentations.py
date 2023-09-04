@@ -2,7 +2,7 @@ import math
 import numpy as np
 import random
 import scipy.interpolate
-from dtaidistance import dtw
+from dtaidistance import dtw_barycenter
 from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
 
@@ -318,265 +318,77 @@ class DTWBarycentricAveraging(BaseAugmenter):
         X: TensorLike,
         y: Optional[TensorLike] = None,
         n_samples: int = 1,
-        sample_size: Optional[int] = None,
-        output_size=None,
-        seed_timeseries=None,
-        max_iter=30,
-        tol=1e-5,
-        weights=None,
-        metric_params=None,
-        verbose=False,
-        n_init=1,
+        seed_sample_size: Optional[int] = None,
+        seed_timeseries: Optional[TensorLike] = None,
+        **kwargs,
     ) -> TensorLike:
         """
         Parameters
         ----------
-        output_size : int or None (default: None)
-            Size of the timeseries to generate.
-            If None, the size is equal to the data provided at fit
-            unless seed_timeseries is provided.
-        sample_size : int or None (default: None)
-            The number of timeseries to draw from the dataset before computing DTW_BA.
-            If None, use the entire set.
+        X : TensorLike, the timeseries dataset
+        y : TensorLike or None, the classes
+        n_samples : int, number of samples to generate (per class, if y is given)
+        seed_sample_size : int or None (default: None)
+            The number of timeseries to draw (per class) from the dataset before computing DTW_BA.
+            If None, use the entire set (per class).
         seed_timeseries : array or None (default: None)
-            Initial timesteries to start from for the optimization process.
-        max_iter : int (default: 30)
-            Maximum number of iterations for Expectation-Maximization optimization.
-        tol : float (default: 1e-5)
-            Tolerance to use for early stopping: if the decrease in cost is lower
-            than this value, the Expectation-Maximization stops.
-        weights: None or array
-            Weights of each timeseries. Must be the same size as len(X).
-            If None, uniform weights are used.
-        metric_params: dict or None (default: None)
-            DTW constraint parameters to be used.
-            If None, no constraint is used for DTW computations.
-        verbose : boolean (default: False)
-            Whether to log information about the cost at each iteration or not.
-        n_init : int (default: 1)
-            Number of different initializations to be tried (useful only is
-            seed_timeseries is set to None, otherwise all trials will reach the
-            same performance)
+            Initial timesteries to start from for the optimization process, with shape (original_size, d).
+            In case y is given, the shape of seed_timeseries is assumed to be (n_classes, original_size, d)
         Returns
         -------
-        np.array of shape (n_samples, output_size, d)
-            or (n_samples, original_size, d) if output_size is None
-            or (n_samples, seed_timeseries_size, d) if seed_timeseries is not None
+        np.array of shape (n_samples, original_size, d) if y is None
+            or (n_classes * n_samples, original_size, d),
+            and np.array of labels (or None)
         """
         self.data = X
+        _has_labels = y is not None
+        if _has_labels:
+            self.labels = y
+            _unique_classes = sorted(np.unique(y))
+            _y = []
+            _X = []
+            for i, _label in enumerate(_unique_classes):
+                logger.info(f"Class {_label}...")
+                _X_class = X[np.ravel(y) == _label]
+                _seed_timeseries = None
+                if seed_timeseries is not None:
+                    _seed_timeseries = seed_timeseries[i]
+                _y += [_label] * n_samples
+                _X.append(
+                    self._dtwba(
+                        X_subset=_X_class,
+                        n_synth_samples=n_samples,
+                        seed_sample_size=seed_sample_size,
+                        seed_timeseries=_seed_timeseries,
+                        **kwargs,
+                    )
+                )
+            return np.concatenate(_X), np.array(_y).reshape(-1, 1)
+        else:
+            return self._dtwba(
+                X_subset=X,
+                n_synth_samples=n_samples,
+                seed_sample_size=seed_sample_size,
+                seed_timeseries=seed_timeseries,
+                **kwargs,
+            )
+
+    def _dtwba(
+        self,
+        X_subset: TensorLike,
+        n_synth_samples: int,
+        seed_sample_size: Optional[int],
+        seed_timeseries: Optional[TensorLike],
+        **kwargs,
+    ):
         _samples = []
-        for _ in range(n_samples):
+        for _ in range(n_synth_samples):
             _samples.append(
-                self._one_dtwba(
-                    sample_size=sample_size,
-                    output_size=output_size,
-                    seed_timeseries=seed_timeseries,
-                    max_iter=max_iter,
-                    tol=tol,
-                    weights=weights,
-                    metric_params=metric_params,
-                    verbose=verbose,
-                    n_init=n_init,
+                dtw_barycenter.dba(
+                    s=X_subset,
+                    c=seed_timeseries,
+                    nb_initial_samples=seed_sample_size,
+                    **kwargs,
                 )
             )
         return np.array(_samples)
-
-    def _one_dtwba(
-        self,
-        sample_size: int,
-        output_size=None,
-        seed_timeseries=None,
-        max_iter=30,
-        tol=1e-5,
-        weights=None,
-        metric_params=None,
-        verbose=False,
-        n_init=1,
-    ) -> TensorLike:
-        best_cost = np.inf
-        best_barycenter = None
-        for i in range(n_init):
-            data_size = self.data.shape[0]
-            # use the entire dataset, no repetition
-            _sample_from_original = self.data
-            if sample_size is not None and sample_size < data_size:
-                # sample with replacement, with uniform prob
-                _sample_from_original = np.random.choice(
-                    range(data_size), size=sample_size, replace=True
-                )
-                _sample_from_original = self.data[_sample_from_original]
-            if verbose:
-                logger.info(f"Initialization {i + 1}")
-            curr_avg, curr_loss = self._dtwba_iteration(
-                X=_sample_from_original,  # array-like, shape=(sample_size, sz, d)
-                output_size=output_size,
-                seed_timeseries=seed_timeseries,
-                max_iter=max_iter,
-                tol=tol,
-                weights=weights,
-                metric_params=metric_params,
-                verbose=verbose,
-            )
-            if loss < best_cost:
-                best_cost = curr_loss
-                best_barycenter = curr_avg
-        return best_barycenter
-
-    def _dtwba_iteration(
-        self,
-        X: TensorLike,
-        output_size=None,
-        seed_timeseries=None,
-        max_iter=30,
-        tol=1e-5,
-        weights=None,
-        metric_params=None,
-        verbose=False,
-    ):
-        X_ = X  # (sample_size, sz, d)
-        if output_size is None:
-            output_size = X_.shape[1]
-        weights = self._set_weights(weights, X_.shape[0])
-        if seed_timeseries is None:
-            barycenter = self._init_avg(X_, output_size)
-        else:
-            output_size = seed_timeseries.shape[0]
-            barycenter = seed_timeseries
-        cost_prev, cost = np.inf, np.inf
-        for it in range(max_iter):
-            list_p_k, cost = self._mm_assignment(X_, barycenter, weights, metric_params)
-            diag_sum_v_k, list_w_k = self._mm_valence_warping(
-                list_p_k, output_size, weights
-            )
-            if verbose:
-                logger.info(f"[DTW_BA] epoch {it + 1}, cost: {round(cost, 3)}")
-            barycenter = self._mm_update_barycenter(X_, diag_sum_v_k, list_w_k)
-            if abs(cost_prev - cost) < tol:
-                break
-            elif cost_prev < cost:
-                logger.warning("DTW_BA loss is increasing. Stopping optimization.")
-                break
-            else:
-                cost_prev = cost
-        return barycenter, cost
-
-    @staticmethod
-    def _mm_assignment(X, barycenter, weights, metric_params=None):
-        """Computes item assignement based on DTW alignments and return cost.
-        Parameters
-        ----------
-        X : np.array of shape (n, sz, d)
-            Time-series to be averaged
-        barycenter : np.array of shape (barycenter_size, d)
-            Barycenter as computed at the current step of the algorithm.
-        weights: array
-            Weights of each X[i]. Must be the same size as len(X).
-        metric_params: dict or None (default: None)
-            DTW constraint parameters to be used.
-            See :ref:`tslearn.metrics.dtw_path <fun-tslearn.metrics.dtw_path>` for
-            a list of accepted parameters
-            If None, no constraint is used for DTW computations.
-        Returns
-        -------
-        list of index pairs
-            Warping paths
-        float
-            Current alignment cost
-        """
-        if metric_params is None:
-            metric_params = {}
-        n = X.shape[0]
-        cost = 0.0
-        list_p_k = []
-        for i in range(n):
-            dist_i, paths = dtw.warping_paths(barycenter, X[i], **metric_params)
-            path = dtw.best_path(paths)
-            cost += dist_i**2 * weights[i]
-            list_p_k.append(path)
-        cost /= weights.sum()
-        return list_p_k, cost
-
-    @staticmethod
-    def _mm_valence_warping(list_p_k, barycenter_size, weights):
-        """Compute Valence and Warping matrices from paths.
-        Valence matrices are denoted :math:`V^{(k)}` and Warping matrices are
-        :math:`W^{(k)}` in [1]_.
-        This function returns the sum of :math:`V^{(k)}` diagonals (as a vector)
-        and a list of :math:`W^{(k)}` matrices.
-        Parameters
-        ----------
-        list_p_k : list of index pairs
-            Warping paths
-        barycenter_size : int
-            Size of the barycenter to generate.
-        weights: array
-            Weights of each X[i]. Must be the same size as len(X).
-        Returns
-        -------
-        np.array of shape (barycenter_size, )
-            sum of weighted :math:`V^{(k)}` diagonals (as a vector)
-        list of np.array of shape (barycenter_size, sz_k)
-            list of weighted :math:`W^{(k)}` matrices
-        References
-        ----------
-        .. [1] D. Schultz and B. Jain. Nonsmooth Analysis and Subgradient Methods
-           for Averaging in Dynamic Time Warping Spaces.
-           Pattern Recognition, 74, 340-358.
-        """
-        list_v_k, list_w_k = _subgradient_valence_warping(
-            list_p_k=list_p_k, barycenter_size=barycenter_size, weights=weights
-        )
-        diag_sum_v_k = np.zeros(list_v_k[0].shape)
-        for v_k in list_v_k:
-            diag_sum_v_k += v_k
-        return diag_sum_v_k, list_w_k
-
-    @staticmethod
-    def _mm_update_barycenter(X, diag_sum_v_k, list_w_k):
-        """Update barycenters using the formula from Algorithm 2 in [1]_.
-        Parameters
-        ----------
-        X : np.array of shape (n, sz, d)
-            Time-series to be averaged
-        diag_sum_v_k : np.array of shape (barycenter_size, )
-            sum of weighted :math:`V^{(k)}` diagonals (as a vector)
-        list_w_k : list of np.array of shape (barycenter_size, sz_k)
-            list of weighted :math:`W^{(k)}` matrices
-        Returns
-        -------
-        np.array of shape (barycenter_size, d)
-            Updated barycenter
-        References
-        ----------
-        .. [1] D. Schultz and B. Jain. Nonsmooth Analysis and Subgradient Methods
-           for Averaging in Dynamic Time Warping Spaces.
-           Pattern Recognition, 74, 340-358.
-        """
-        d = X.shape[2]
-        barycenter_size = diag_sum_v_k.shape[0]
-        sum_w_x = np.zeros((barycenter_size, d))
-        for k, (w_k, x_k) in enumerate(zip(list_w_k, X)):
-            sum_w_x += w_k.dot(x_k[: ts_size(x_k)])
-        barycenter = np.diag(1.0 / diag_sum_v_k).dot(sum_w_x)
-        return barycenter
-
-    @staticmethod
-    def _set_weights(w, n):
-        """Return w if it is a valid weight vector of size n, and a vector of n 1s
-        otherwise.
-        """
-        if w is None or len(w) != n:
-            w = np.ones((n,))
-        return w
-
-    @staticmethod
-    def _init_avg(X, barycenter_size):
-        if X.shape[1] == barycenter_size:
-            return np.nanmean(X, axis=0)
-        else:
-            X_avg = np.nanmean(X, axis=0)
-            xnew = np.linspace(0, 1, barycenter_size)
-            f = scipy.interpolate(
-                np.linspace(0, 1, X_avg.shape[0]), X_avg, kind="linear", axis=0
-            )
-            return f(xnew)
