@@ -396,8 +396,16 @@ class DTWBarycentricAveraging(BaseAugmenter):
         best_cost = np.inf
         best_barycenter = None
         for i in range(n_init):
-            ## TODO: draw sample_size timeseries at random
-            _sample_from_original = self.data
+            data_size = self.data.shape[0]
+            if sample_size < data_size:
+                # sample with replacement, with uniform prob
+                _sample_from_original = np.random.choice(
+                    range(data_size), size=sample_size, replace=True
+                )
+                _sample_from_original = self.data[_sample_from_original]
+            else:
+                # use the entire dataset, no repetition
+                _sample_from_original = self.data
             if verbose:
                 logger.info(f"Initialization {i + 1}")
             curr_avg, curr_loss = self._dtwba_iteration(
