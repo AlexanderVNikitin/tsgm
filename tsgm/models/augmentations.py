@@ -149,7 +149,6 @@ class Shuffle(BaseAugmenter):
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1) -> TensorLike:
         seeds_idx = self._get_seeds(total_num=X.shape[0], n_seeds=n_samples)
         n_features = X.shape[2]
-
         n_repeats = self._n_repeats(n_samples, total_num=len(X))
         shuffle_ids = [np.random.choice(np.arange(n_features), n_features, replace=False) for _ in range(n_repeats)]
 
@@ -159,8 +158,8 @@ class Shuffle(BaseAugmenter):
             new_labels = []
         for num, i in enumerate(seeds_idx):
             sequence = X[i]
-            id_repeat = self._n_repeats(num, total_num=len(X))
-            synthetic_data.append(sequence[:, shuffle_ids[id_repeat]])
+            id_repeat = self._n_repeats(num + 1, total_num=len(X))
+            synthetic_data.append(sequence[:, shuffle_ids[id_repeat - 1]])
             if has_labels:
                 new_labels.append(y[i])
         if has_labels:
@@ -234,7 +233,7 @@ class WindowWarping(BaseAugmenter):
     def __init__(self):
         super(WindowWarping, self).__init__(per_feature=False)
 
-    def generate(self, X: TensorLike, y: Optional[TensorLike] = None, window_ratio=0.2, scales=[0.25, 1.0], n_samples=1):
+    def generate(self, X: TensorLike, y: Optional[TensorLike] = None, window_ratio=0.2, scales=(0.25, 1.0), n_samples=1):
         n_data = X.shape[0]
         n_timesteps = X.shape[1]
         n_features = X.shape[2]
