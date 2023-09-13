@@ -215,16 +215,15 @@ class MMDMetric(Metric):
 
 class DiscriminativeMetric(Metric):
     """
-    The discriminative metric measures how accurately a discriminative model can separate synthetic and real data. 
+    The discriminative metric measures how accurately a discriminative model can separate synthetic and real data.
     """
     def __call__(self, d_hist: tsgm.dataset.DatasetOrTensor, d_syn: tsgm.dataset.DatasetOrTensor, model, test_size, n_epochs, metric=None, random_seed=None) -> float:
         X_hist, X_syn = _dataset_or_tensor_to_tensor(d_hist), _dataset_or_tensor_to_tensor(d_syn)
         X_all, y_all = np.concatenate([X_hist, X_syn]), np.concatenate([[1] * len(d_hist), [0] * len(d_syn)])
         X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_all, y_all, test_size=test_size, random_state=random_seed)
-        model.fit(X_all, y_all, epochs=n_epochs)
-        import pdb; pdb.set_trace()
+        model.fit(X_train, y_train, epochs=n_epochs)
         y_pred = model.predict(X_test)
-        if metric == None:
+        if metric is None:
             return sklearn.metrics.accuracy_score(y_test, y_pred)
         else:
             return metric(y_test, y_pred)
