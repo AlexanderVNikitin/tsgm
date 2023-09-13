@@ -89,5 +89,3 @@ def test_dtw_ba(initial_labels):
     xs_gen, ys_gen = dtw_ba_aug.generate(X=xs, y=ys, n_samples=17, initial_labels=initial_labels)
     assert xs_gen.shape == (17, 2, 4)
     assert ys_gen.shape == (17, 1)
-
-    # TODO: check values

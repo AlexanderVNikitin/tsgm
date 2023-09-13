@@ -271,6 +271,7 @@ class MagnitudeWarping(BaseAugmenter):
         random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, n_knots + 2, n_features))
         warp_steps = (np.ones(
             (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=n_knots + 2))).T
+
         result = np.zeros((n_samples, n_timesteps, n_features))
         has_labels = y is not None
 
