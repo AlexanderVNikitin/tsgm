@@ -16,9 +16,10 @@ def test_base_compose():
 @pytest.mark.parametrize("aug_model", [
     tsgm.models.augmentations.GaussianNoise(),
     tsgm.models.augmentations.Shuffle(),
-    tsgm.model.augmentations.SliceAndShuffle(),
+    tsgm.models.augmentations.SliceAndShuffle(),
     tsgm.models.augmentations.MagnitudeWarping(),
     tsgm.models.augmentations.WindowWarping(),
+    tsgm.models.augmentations.DTWBarycentricAveraging(),
 ])
 def test_dimensions(aug_model):
     xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]]])
@@ -78,3 +79,15 @@ def test_window_warping():
     assert xs_gen.shape == (17, 2, 4)
     assert ys_gen.shape == (17, 1)
     assert np.allclose(ys_gen, np.ones((17, 1)))
+
+
+@pytest.mark.parametrize("initial_labels", [[0] * 17, None])
+def test_dtw_ba(initial_labels):
+    xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]], [[1, 2, 3, 4], [1, 2, 3, 4]]])
+    ys = [0, 1]
+    dtw_ba_aug = tsgm.models.augmentations.DTWBarycentricAveraging()
+    xs_gen, ys_gen = dtw_ba_aug.generate(X=xs, y=ys, n_samples=17, initial_labels=initial_labels)
+    assert xs_gen.shape == (17, 2, 4)
+    assert ys_gen.shape == (17, 1)
+
+    # TODO: check values
