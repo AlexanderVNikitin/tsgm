@@ -29,7 +29,7 @@ class Metric(abc.ABC):
         pass
 
 
-class SimilarityMetric(Metric):
+class DistanceMetric(Metric):
     """
     Metric that measures similarity between synthetic and real time series
     """
@@ -73,10 +73,6 @@ class SimilarityMetric(Metric):
         :returns: similarity metric between D1 & D2.
         """
 
-        #  TODO: check compatibility of this metric in different versions of python
-        #  typing.get_args() can be used instead
-        #  assert isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset) or\
-        #      isinstance(D1, tsgm.types.Tensor.__args__) and isinstance(D2, tsgm.types.Tensor.__args__)
         if isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset):
             X1, X2 = D1.Xy_concat, D2.Xy_concat
         else:
@@ -151,10 +147,12 @@ class DownstreamPerformanceMetric(Metric):
 
         :returns: downstream performance metric between D1 & D2.
         """
-        if isinstance(D1, tsgm.dataset.Dataset):
+        if isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset):
             D1D2 = D1 | D2
         else:
-            if isinstance(D2, tsgm.dataset.Dataset):
+            if isinstance(D1, tsgm.dataset.Dataset):
+                D1D2 = np.concatenate((D1.X, D2))
+            elif isinstance(D2, tsgm.dataset.Dataset):
                 D1D2 = np.concatenate((D1, D2.X))
             else:
                 D1D2 = np.concatenate((D1, D2))
@@ -211,3 +209,19 @@ class MMDMetric(Metric):
             logger.warning("It is currently impossible to run MMD for labeled time series. Labels will be ignored!")
         X1, X2 = _dataset_or_tensor_to_tensor(D1), _dataset_or_tensor_to_tensor(D2)
         return tsgm.utils.mmd.MMD(X1, X2, kernel=self.kernel)
+
+
+class DiscriminativeMetric(Metric):
+    """
+    The discriminative metric measures how accurately a discriminative model can separate synthetic and real data.
+    """
+    def __call__(self, d_hist: tsgm.dataset.DatasetOrTensor, d_syn: tsgm.dataset.DatasetOrTensor, model, test_size, n_epochs, metric=None, random_seed=None) -> float:
+        X_hist, X_syn = _dataset_or_tensor_to_tensor(d_hist), _dataset_or_tensor_to_tensor(d_syn)
+        X_all, y_all = np.concatenate([X_hist, X_syn]), np.concatenate([[1] * len(d_hist), [0] * len(d_syn)])
+        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_all, y_all, test_size=test_size, random_state=random_seed)
+        model.fit(X_train, y_train, epochs=n_epochs)
+        y_pred = model.predict(X_test)
+        if metric is None:
+            return sklearn.metrics.accuracy_score(y_test, y_pred)
+        else:
+            return metric(y_test, y_pred)

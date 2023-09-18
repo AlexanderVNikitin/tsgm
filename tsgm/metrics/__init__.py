@@ -1,6 +1,6 @@
 import tsgm.metrics.statistics
 from tsgm.metrics.metrics import (
-    SimilarityMetric, ConsistencyMetric, BaseDownstreamEvaluator,
+    DistanceMetric, ConsistencyMetric, BaseDownstreamEvaluator,
     DownstreamPerformanceMetric, PrivacyMembershipInferenceMetric,
-    MMDMetric
+    MMDMetric, DiscriminativeMetric
 )
