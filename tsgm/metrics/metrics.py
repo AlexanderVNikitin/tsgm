@@ -73,10 +73,6 @@ class DistanceMetric(Metric):
         :returns: similarity metric between D1 & D2.
         """
 
-        #  TODO: check compatibility of this metric in different versions of python
-        #  typing.get_args() can be used instead
-        #  assert isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset) or\
-        #      isinstance(D1, tsgm.types.Tensor.__args__) and isinstance(D2, tsgm.types.Tensor.__args__)
         if isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset):
             X1, X2 = D1.Xy_concat, D2.Xy_concat
         else:
@@ -151,10 +147,12 @@ class DownstreamPerformanceMetric(Metric):
 
         :returns: downstream performance metric between D1 & D2.
         """
-        if isinstance(D1, tsgm.dataset.Dataset):
+        if isinstance(D1, tsgm.dataset.Dataset) and isinstance(D2, tsgm.dataset.Dataset):
             D1D2 = D1 | D2
         else:
-            if isinstance(D2, tsgm.dataset.Dataset):
+            if isinstance(D1, tsgm.dataset.Dataset):
+                D1D2 = np.concatenate((D1.X, D2))
+            elif isinstance(D2, tsgm.dataset.Dataset):
                 D1D2 = np.concatenate((D1, D2.X))
             else:
                 D1D2 = np.concatenate((D1, D2))
