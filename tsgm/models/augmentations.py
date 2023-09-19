@@ -2,12 +2,13 @@ import math
 import numpy as np
 import random
 import scipy.interpolate
+from dtaidistance import dtw_barycenter
 from typing import List, Dict, Any, Optional
 from tensorflow.python.types.core import TensorLike
 
 import logging
 
-logger = logging.getLogger("models")
+logger = logging.getLogger("augmentations")
 logger.setLevel(logging.DEBUG)
 
 
@@ -17,35 +18,15 @@ class BaseAugmenter:
         per_feature: bool,
     ):
         self.per_channel = per_feature
-        self._data = None
-        self._targets = None
-        return
 
-    def _get_seeds(self, n: int) -> TensorLike:
-        seeds_idx = np.random.choice(range(self._data.shape[0]), size=n, replace=True)
+    def _get_seeds(self, total_num: int, n_seeds: int) -> TensorLike:
+        seeds_idx = np.random.choice(range(total_num), size=n_seeds, replace=True)
         return seeds_idx
 
-    def _check_fitted(self):
-        if self._data is None:
-            raise AttributeError(
-                "This object is not fitted. Call .fit(your_dataset) first."
-            )
-
-    def fit(self, time_series: TensorLike, y: Optional[TensorLike] = None):
-        assert len(time_series.shape) == 3
-        self._data = time_series
-        if y is not None:
-            self._targets = y
-        return self
-
-    def generate(self, n_samples: int) -> TensorLike:
-        raise NotImplementedError
-
-    def fit_generate(
-        self, time_series: TensorLike, y: Optional[TensorLike], n_samples: int
+    def generate(
+        self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1
     ) -> TensorLike:
-        self.fit(time_series=time_series, y=y)
-        return self.generate(n_samples=n_samples)
+        raise NotImplementedError
 
 
 class BaseCompose:
@@ -80,50 +61,34 @@ class GaussianNoise(BaseAugmenter):
 
     def __init__(
         self,
-        mean: TensorLike = 0,
-        variance: TensorLike = (10.0, 50.0),
+        mean: float = 0,
+        variance: float = 1.0,
         per_feature: bool = True,
     ):
         super(GaussianNoise, self).__init__(per_feature)
-        if isinstance(variance, (tuple, list)):
-            if variance[0] < 0:
-                raise ValueError("Lower var_limit should be non negative.")
-            if variance[1] < 0:
-                raise ValueError("Upper var_limit should be non negative.")
-            self.variance = variance
-        elif isinstance(variance, (int, float)):
-            if variance < 0:
-                raise ValueError("var_limit should be non negative.")
-            self.variance = (0, variance)
-        else:
-            raise TypeError(
-                f"Expected var_limit type to be one of (int, float, tuple, list), got {type(variance)}"
-            )
-
+        self.variance = variance
         self.mean = mean
 
-    def generate(self, n_samples: int) -> TensorLike:
-        self._check_fitted()
-        seeds_idx = self._get_seeds(n_samples)
+    def generate(
+        self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1
+    ) -> TensorLike:
+        seeds_idx = self._get_seeds(total_num=X.shape[0], n_seeds=n_samples)
 
-        synthetic_data = []
-        labels = []
-        for i in seeds_idx:
-            sequence = self._data[i]
-            variance = np.random.uniform(self.variance[0], self.variance[1])
-            sigma = variance**0.5
-            if self.per_channel:
-                gauss = np.random.normal(self.mean, sigma, sequence.shape)
-            else:
-                gauss = np.random.normal(self.mean, sigma, sequence.shape[:2])
-                gauss = np.expand_dims(gauss, -1)
-            synthetic_data.append(sequence + gauss)
-            if self._targets is not None:
-                labels.append(self._targets[i])
-        if self._targets is not None:
-            return np.array(synthetic_data), np.array(labels)
+        sigma = self.variance**0.5
+        has_labels = y is not None
+        if self.per_channel:
+            gauss = np.random.normal(
+                self.mean, sigma, (n_samples, X.shape[1], X.shape[2])
+            )
         else:
-            return np.array(synthetic_data)
+            gauss = np.random.normal(self.mean, sigma, (n_samples, X.shape[1]))
+            gauss = np.expand_dims(gauss, -1)
+        synthetic_X = X[seeds_idx] + gauss
+        if has_labels:
+            synthetic_y = y[seeds_idx]
+            return np.array(synthetic_X), np.array(synthetic_y)
+        else:
+            return np.array(synthetic_X)
 
 
 class SliceAndShuffle(BaseAugmenter):
@@ -140,19 +105,21 @@ class SliceAndShuffle(BaseAugmenter):
         per_feature: bool = True,
     ):
         super(SliceAndShuffle, self).__init__(per_feature)
-
         self.n_segments = n_segments
 
-    def generate(self, n_samples: int) -> TensorLike:
-        self._check_fitted()
-        assert 0 < self.n_segments < self._data.shape[1]
+    def generate(
+        self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1
+    ) -> TensorLike:
+        assert 0 < self.n_segments < X.shape[1]
 
-        seeds_idx = self._get_seeds(n_samples)
+        seeds_idx = self._get_seeds(n_samples=X.shape[0], n_seeds=n_samples)
 
         synthetic_data = []
-        labels = []
+        has_labels = y is not None
+        if has_labels:
+            new_labels = []
         for i in seeds_idx:
-            sequence = self._data[i]
+            sequence = X[i]
             if self.per_channel:
                 raise NotImplementedError(
                     "SliceAndShuffle separately by feature is not supported yet."
@@ -169,10 +136,10 @@ class SliceAndShuffle(BaseAugmenter):
                 slices.append(sequence[start_idx:])
                 np.random.shuffle(slices)
             synthetic_data.append(sequence)
-            if self._targets is not None:
-                labels.append(self._targets[i])
-        if self._targets is not None:
-            return np.array(synthetic_data), np.array(labels)
+            if has_labels:
+                new_labels.append(self._targets[i])
+        if has_labels:
+            return np.array(synthetic_data), np.array(new_labels)
         else:
             return np.array(synthetic_data)
 
@@ -185,28 +152,33 @@ class Shuffle(BaseAugmenter):
     def __init__(self):
         super(Shuffle, self).__init__(per_feature=False)
 
-    def _n_repeats(self, n: int) -> int:
-        return math.ceil(n / len(self._data))
+    def _n_repeats(self, n: int, total_num: int) -> int:
+        return math.ceil(n / total_num)
 
-    def generate(self, n_samples: int) -> TensorLike:
-        self._check_fitted()
+    def generate(
+        self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1
+    ) -> TensorLike:
+        seeds_idx = self._get_seeds(X.shape[0], n_samples)
+        n_features = X.shape[2]
 
-        seeds_idx = self._get_seeds(n_samples)
-        n_features = self._data.shape[2]
-
-        n_repeats = self._n_repeats(n_samples)
-        shuffle_ids = [np.random.choice(np.arange(n_features), n_features, replace=False) for _ in range(n_repeats)]
+        n_repeats = self._n_repeats(n_samples, total_num=len(X))
+        shuffle_ids = [
+            np.random.choice(np.arange(n_features), n_features, replace=False)
+            for _ in range(n_repeats)
+        ]
 
         synthetic_data = []
-        labels = []
+        has_labels = y is not None
+        if has_labels:
+            new_labels = []
         for num, i in enumerate(seeds_idx):
-            sequence = self._data[i]
-            id_repeat = self._n_repeats(num)
+            sequence = X[i]
+            id_repeat = self._n_repeats(num, total_num=len(X))
             synthetic_data.append(sequence[:, shuffle_ids[id_repeat]])
-            if self._targets is not None:
-                labels.append(self._targets[i])
-        if self._targets is not None:
-            return np.array(synthetic_data), np.array(labels)
+            if has_labels:
+                new_labels.append(y[i])
+        if has_labels:
+            return np.array(synthetic_data), np.array(new_labels)
         else:
             return np.array(synthetic_data)
 
@@ -217,61 +189,206 @@ class MagnitudeWarping(BaseAugmenter):
     sample by convolving the data window with a smooth curve varying around one
     https://dl.acm.org/doi/pdf/10.1145/3136755.3136817
     """
+
     def __init__(self):
         super(MagnitudeWarping, self).__init__(per_feature=False)
 
-    def generate(self, n_samples: int, sigma: float = 0.2, knot: int = 4):
-        n_data = self._data.shape[0]
-        n_timesteps = self._data.shape[1]
-        n_features = self._data.shape[2]
+    def generate(
+        self,
+        X: TensorLike,
+        y: Optional[TensorLike] = None,
+        n_samples: int = 1,
+        sigma: float = 0.2,
+        knot: int = 4,
+    ) -> TensorLike:
+        n_data = X.shape[0]
+        n_timesteps = X.shape[1]
+        n_features = X.shape[2]
 
         orig_steps = np.arange(n_timesteps)
-        random_warps = np.random.normal(loc=1.0, scale=sigma, size=(n_samples, knot + 2, n_features))
-        warp_steps = (np.ones(
-            (n_features, 1)) * (np.linspace(0, n_timesteps - 1., num=knot + 2))).T
+        random_warps = np.random.normal(
+            loc=1.0, scale=sigma, size=(n_samples, knot + 2, n_features)
+        )
+        warp_steps = (
+            np.ones((n_features, 1)) * (np.linspace(0, n_timesteps - 1.0, num=knot + 2))
+        ).T
         result = np.zeros((n_samples, n_timesteps, n_features))
+        has_labels = y is not None
+
+        if has_labels:
+            result_y = np.zeros((n_samples, 1))
+
         for i in range(n_samples):
             random_sample_id = random.randint(0, n_data - 1)
-            warper = np.array([scipy.interpolate.CubicSpline(
-                warp_steps[:, dim], random_warps[i, :, dim])(orig_steps) for dim in range(n_features)]).T
-            result[i] = self._data[random_sample_id] * warper
-
-        return result
+            warper = np.array(
+                [
+                    scipy.interpolate.CubicSpline(
+                        warp_steps[:, dim], random_warps[i, :, dim]
+                    )(orig_steps)
+                    for dim in range(n_features)
+                ]
+            ).T
+            result[i] = X[random_sample_id] * warper
+            if has_labels:
+                result_y[i] = y[random_sample_id]
+        if has_labels:
+            return result, result_y
+        else:
+            return result
 
 
 class WindowWarping(BaseAugmenter):
     """
     https://halshs.archives-ouvertes.fr/halshs-01357973/document
     """
+
     def __init__(self):
         super(WindowWarping, self).__init__(per_feature=False)
 
-    def generate(self, n_samples, window_ratio=0.2, scales=[0.25, 1.0]):
-        n_data = self._data.shape[0]
-        n_timesteps = self._data.shape[1]
-        n_features = self._data.shape[2]
+    def generate(
+        self,
+        X: TensorLike,
+        y: Optional[TensorLike] = None,
+        window_ratio=0.2,
+        scales=[0.25, 1.0],
+        n_samples=1,
+    ):
+        n_data = X.shape[0]
+        n_timesteps = X.shape[1]
+        n_features = X.shape[2]
 
         scales_per_sample = np.random.choice(scales, n_samples)
         warp_size = max(np.round(window_ratio * n_timesteps).astype(np.int64), 1)
         window_starts = np.random.randint(
-            low=0, high=n_timesteps - warp_size,
-            size=(n_samples))
+            low=0, high=n_timesteps - warp_size, size=(n_samples)
+        )
         window_ends = window_starts + warp_size
 
         result = np.zeros((n_samples, n_timesteps, n_features))
+        result_y = np.zeros((n_samples, 1))
+        has_labels = y is not None
         for i in range(n_samples):
             for dim in range(n_features):
                 random_sample_id = random.randint(0, n_data - 1)
-                random_sample = self._data[random_sample_id]
-                start_seg = random_sample[:window_starts[i], dim]
+                random_sample = X[random_sample_id]
+                start_seg = random_sample[: window_starts[i], dim]
                 warp_ts_size = max(round(warp_size * scales_per_sample[i]), 1)
                 window_seg = np.interp(
                     x=np.linspace(0, warp_size - 1, num=warp_ts_size),
                     xp=np.arange(warp_size),
-                    fp=random_sample[window_starts[i] : window_ends[i], dim])
-                end_seg = random_sample[window_ends[i]:, dim]
+                    fp=random_sample[window_starts[i] : window_ends[i], dim],
+                )
+                end_seg = random_sample[window_ends[i] :, dim]
                 warped = np.concatenate((start_seg, window_seg, end_seg))
                 result[i, :, dim] = np.interp(
                     np.arange(n_timesteps),
-                    np.linspace(0, n_timesteps - 1., num=warped.size), warped).T
-        return result
+                    np.linspace(0, n_timesteps - 1.0, num=warped.size),
+                    warped,
+                ).T
+                if has_labels:
+                    result_y[i] = y[random_sample_id]
+
+        if has_labels:
+            return result, result_y
+        else:
+            return result
+
+
+class DTWBarycentricAveraging(BaseAugmenter):
+    """
+    DTW Barycenter Averaging (DBA) [1] method estimated through
+        Expectation-Maximization algorithm [2] as in https://github.com/tslearn-team/tslearn/
+    ----------
+    References
+    ----------
+    .. [1] F. Petitjean, A. Ketterlin & P. Gancarski. A global averaging method
+       for dynamic time warping, with applications to clustering. Pattern
+       Recognition, Elsevier, 2011, Vol. 44, Num. 3, pp. 678-693
+    .. [2] D. Schultz and B. Jain. Nonsmooth Analysis and Subgradient Methods
+       for Averaging in Dynamic Time Warping Spaces.
+       Pattern Recognition, 74, 340-358.
+    """
+
+    def __init__(self):
+        super(DTWBarycentricAveraging, self).__init__(per_feature=False)
+        self.data = None
+
+    def generate(
+        self,
+        X: TensorLike,
+        y: Optional[TensorLike] = None,
+        n_samples: int = 1,
+        seed_sample_size: Optional[int] = None,
+        seed_timeseries: Optional[TensorLike] = None,
+        **kwargs,
+    ) -> TensorLike:
+        """
+        Parameters
+        ----------
+        X : TensorLike, the timeseries dataset
+        y : TensorLike or None, the classes
+        n_samples : int, number of samples to generate (per class, if y is given)
+        seed_sample_size : int or None (default: None)
+            The number of timeseries to draw (per class) from the dataset before computing DTW_BA.
+            If None, use the entire set (per class).
+        seed_timeseries : array or None (default: None)
+            Initial timesteries to start from for the optimization process, with shape (original_size, d).
+            In case y is given, the shape of seed_timeseries is assumed to be (n_classes, original_size, d)
+        Returns
+        -------
+        np.array of shape (n_samples, original_size, d) if y is None
+            or (n_classes * n_samples, original_size, d),
+            and np.array of labels (or None)
+        """
+        self.data = X
+        _has_labels = y is not None
+        if _has_labels:
+            self.labels = y
+            _unique_classes = sorted(np.unique(y))
+            _y = []
+            _X = []
+            for i, _label in enumerate(_unique_classes):
+                logger.info(f"Class {_label}...")
+                _X_class = X[np.ravel(y) == _label]
+                _seed_timeseries = None
+                if seed_timeseries is not None:
+                    _seed_timeseries = seed_timeseries[i]
+                _y += [_label] * n_samples
+                _X.append(
+                    self._dtwba(
+                        X_subset=_X_class,
+                        n_synth_samples=n_samples,
+                        seed_sample_size=seed_sample_size,
+                        seed_timeseries=_seed_timeseries,
+                        **kwargs,
+                    )
+                )
+            return np.concatenate(_X), np.array(_y).reshape(-1, 1)
+        else:
+            return self._dtwba(
+                X_subset=X,
+                n_synth_samples=n_samples,
+                seed_sample_size=seed_sample_size,
+                seed_timeseries=seed_timeseries,
+                **kwargs,
+            )
+
+    def _dtwba(
+        self,
+        X_subset: TensorLike,
+        n_synth_samples: int,
+        seed_sample_size: Optional[int],
+        seed_timeseries: Optional[TensorLike],
+        **kwargs,
+    ):
+        _samples = []
+        for _ in range(n_synth_samples):
+            _samples.append(
+                dtw_barycenter.dba(
+                    s=X_subset,
+                    c=seed_timeseries,
+                    nb_initial_samples=seed_sample_size,
+                    **kwargs,
+                )
+            )
+        return np.array(_samples)
