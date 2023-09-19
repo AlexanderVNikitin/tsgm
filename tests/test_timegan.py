@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import Mock
 import tsgm
 
 import tensorflow as tf
@@ -14,7 +15,12 @@ def test_timegan():
 
     dataset = _gen_dataset(batch_size, seq_len, feature_dim)
     timegan = tsgm.models.timeGAN.TimeGAN(
-        seq_len=seq_len, module="gru", hidden_dim=latent_dim, n_features=feature_dim, n_layers=3, batch_size=batch_size
+        seq_len=seq_len,
+        module="gru",
+        hidden_dim=latent_dim,
+        n_features=feature_dim,
+        n_layers=3,
+        batch_size=batch_size,
     )
     timegan.compile()
     timegan.fit(dataset, epochs=1)
@@ -34,7 +40,12 @@ def test_timegan_on_dataset():
 
     dataset = _gen_tf_dataset(batch_size, seq_len, feature_dim)  # tf.data.Dataset
     timegan = tsgm.models.timeGAN.TimeGAN(
-        seq_len=seq_len, module="gru", hidden_dim=latent_dim, n_features=feature_dim, n_layers=3, batch_size=batch_size
+        seq_len=seq_len,
+        module="gru",
+        hidden_dim=latent_dim,
+        n_features=feature_dim,
+        n_layers=3,
+        batch_size=batch_size,
     )
     timegan.compile()
     timegan.fit(dataset, epochs=1)
@@ -111,3 +122,46 @@ def _check_internals(timegan):
     assert timegan.embedder_opt is not None
     assert timegan.autoencoder_opt is not None
     assert timegan.adversarialsup_opt is not None
+
+
+def test_losstracker():
+    losstracker = tsgm.models.timeGAN.LossTracker()
+    losstracker["foo"] = 0.1
+    assert isinstance(losstracker.to_numpy(), np.ndarray)
+    assert isinstance(losstracker.labels(), list)
+
+
+@pytest.fixture
+def mocked_gradienttape(mocker):
+    mock = Mock()
+    mock.gradient.return_value = [1.0, 1.0, 1.0]
+    return mock
+
+
+def test_train_timegan(mocked_gradienttape):
+    latent_dim = 24
+    feature_dim = 6
+    seq_len = 24
+    batch_size = 2
+
+    dataset = _gen_dataset(batch_size, seq_len, feature_dim)
+    timegan = tsgm.models.timeGAN.TimeGAN(
+        seq_len=seq_len,
+        module="gru",
+        hidden_dim=latent_dim,
+        n_features=feature_dim,
+        n_layers=3,
+        batch_size=batch_size,
+    )
+    timegan.compile()
+    timegan.fit(dataset, epochs=1)
+    batches = timegan._get_data_batch(dataset, n_windows=len(dataset))
+    assert timegan._train_autoencoder(next(batches), timegan.autoencoder_opt)
+    assert timegan._train_supervisor(next(batches), timegan.adversarialsup_opt)
+    assert timegan._train_generator(
+        next(batches), next(timegan.get_noise_batch()), timegan.generator_opt
+    )
+    assert timegan._train_embedder(next(batches), timegan.embedder_opt)
+    assert timegan._train_discriminator(
+        next(batches), next(timegan.get_noise_batch()), timegan.discriminator_opt
+    )
