@@ -38,24 +38,38 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_mode_s(ts_tf, axis=None) == [1]).all()
 
 
-def test_similarity_metric():
+def test_distance_metric():
     ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
-    diff_ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]])
     sim_ts = ts + 1e-7
+    diff_ts = 10 * ts
+    y = np.ones((ts.shape[0], 1))
+
     statistics = [functools.partial(tsgm.metrics.statistics.axis_max_s, axis=None),
                   functools.partial(tsgm.metrics.statistics.axis_min_s, axis=None),
                   functools.partial(tsgm.metrics.statistics.axis_max_s, axis=1),
                   functools.partial(tsgm.metrics.statistics.axis_min_s, axis=1)]
 
-    sim_metric = tsgm.metrics.SimilarityMetric(
+    dist_metric = tsgm.metrics.DistanceMetric(
         statistics=statistics, discrepancy=lambda x, y: np.linalg.norm(x - y)
     )
-    assert sim_metric(ts, diff_ts) < sim_metric(ts, sim_ts)
-    stat_results = sim_metric.stats(ts)
+    assert dist_metric(ts, diff_ts) > dist_metric(ts, sim_ts)
+    stat_results = dist_metric.stats(ts)
     
     assert len(stat_results) == 6
-    assert sim_metric._discrepancy(sim_metric.stats(ts), sim_metric.stats(diff_ts)) == sim_metric(ts, diff_ts)
-    assert sim_metric(ts, diff_ts) == sim_metric(diff_ts, ts)
+    assert dist_metric._discrepancy(dist_metric.stats(ts), dist_metric.stats(sim_ts)) == dist_metric(ts, sim_ts)
+    assert dist_metric(ts, sim_ts) != dist_metric(ts, diff_ts)
+    assert dist_metric(ts, ts) == 0
+    assert dist_metric(diff_ts, ts) == dist_metric(ts, diff_ts)
+
+    # with labels
+    ds = tsgm.dataset.Dataset(ts, y)
+    ds_diff = tsgm.dataset.Dataset(diff_ts, y)
+    ds_sim = tsgm.dataset.Dataset(sim_ts, y)
+    assert dist_metric(ts, diff_ts) != 0
+    assert dist_metric(ds, ds) == 0
+    assert dist_metric(ds_sim, ds) < dist_metric(ds_diff, ds)
+    assert dist_metric(ds, ds_diff) == dist_metric(ds_diff, ds)
+
 
 
 class MockEvaluator:
@@ -99,6 +113,10 @@ def test_downstream_performance_metric():
     assert downstream_perf_metric(D1, D2, D_test) == 0
 
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, diff_ts, test_ts)
+    assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(D1, diff_ts, D_test)
+    assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, D2, D_test)
+    mean, std =  downstream_perf_metric(D1, D2, D_test, return_std=True)
+    assert mean == 0 and std == 0
 
 
 class FlattenTSOneClassSVM:
@@ -145,3 +163,20 @@ def test_mmd_metric():
 
     assert mmd_metric(D1, D2) == mmd_metric(ts, diff_ts)
     assert mmd_metric(D1, D1) == 0 and mmd_metric(D2, D2) == 0
+
+
+def test_discriminative_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    D1 = tsgm.dataset.Dataset(ts, y=None)
+
+    diff_ts = np.array([[[12, 13], [10, 10], [-1, -2]], [[-1, 32], [2, 1], [10, 8]]]).astype(np.float32)
+    D2 = tsgm.dataset.Dataset(diff_ts, y=None)
+
+    model = tsgm.models.zoo["clf_cl_n"](seq_len=ts.shape[1], feat_dim=ts.shape[2], output_dim=1).model
+    model.compile(
+        tf.keras.optimizers.Adam(),
+        tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    )
+    discr_metric = tsgm.metrics.DiscriminativeMetric()
+    assert discr_metric(d_hist=D1, d_syn=D2, model=model, test_size=0.2, random_seed=42, n_epochs=10) == 1.0
+    assert discr_metric(d_hist=D1, d_syn=D2, model=model, metric=sklearn.metrics.precision_score, test_size=0.2, random_seed=42, n_epochs=10) == 1.0
