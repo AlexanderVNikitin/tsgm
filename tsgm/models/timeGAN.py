@@ -492,7 +492,7 @@ class TimeGAN(keras.Model):
         self._define_timegan()
 
         # 1. Embedding network training
-        print("Start Embedding Network Training")
+        logger.info("Start Embedding Network Training")
 
         for epoch in tqdm(range(epochs), desc="Autoencoder - training"):
             X_ = next(batches)
@@ -500,13 +500,13 @@ class TimeGAN(keras.Model):
 
             # Checkpoint
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
-                print(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
+                logger.info(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
             self.training_losses_history["autoencoder"] = float(step_e_loss_0)
 
-        print("Finished Embedding Network Training")
+        logger.info("Finished Embedding Network Training")
 
         # 2. Training only with supervised loss
-        print("Start Training with Supervised Loss Only")
+        logger.info("Start Training with Supervised Loss Only")
 
         # Adversarial Supervised network training
         for epoch in tqdm(range(epochs), desc="Adversarial Supervised - training"):
@@ -515,17 +515,17 @@ class TimeGAN(keras.Model):
 
             # Checkpoint
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
-                print(
+                logger.info(
                     f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
             self.training_losses_history["adversarial_supervised"] = float(
                 np.sqrt(step_g_loss_s)
             )
 
-        print("Finished Training with Supervised Loss Only")
+        logger.info("Finished Training with Supervised Loss Only")
 
         # 3. Joint Training
-        print("Start Joint Training")
+        logger.info("Start Joint Training")
 
         # GAN with embedding network training
         for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
@@ -554,12 +554,14 @@ class TimeGAN(keras.Model):
             Z_ = next(self.get_noise_batch())
             step_d_loss = self._check_discriminator_loss(X_, Z_)
             if step_d_loss > 0.15:
-                print("Train Discriminator (discriminator does not work well yet)")
+                logger.info(
+                    "Train Discriminator (discriminator does not work well yet)"
+                )
                 step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
 
             # Print multiple checkpoints
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
-                print(
+                logger.info(
                     f"""step: {epoch}/{epochs},
                     d_loss: {np.round(step_d_loss, 4)},
                     g_loss_u: {np.round(step_g_loss_u, 4)},
@@ -582,7 +584,7 @@ class TimeGAN(keras.Model):
                 _sample = self.generate(n_samples=len(data))
                 self.synthetic_data_generated_in_training[epoch] = _sample
 
-        print("Finished Joint Training")
+        logger.info("Finished Joint Training")
         return
 
     def generate(self, n_samples: int) -> TensorLike:
