@@ -17,7 +17,19 @@ TSGM offers a wide range of features to support the generation and evaluation of
 
 - **Built on TensorFlow:** TSGM is built on top of the `TensorFlow <https://www.tensorflow.org/>`_ deep learning framework. TensorFlow offers efficient computation and enables seamless integration with other TensorFlow-based models and libraries, allowing users to leverage its extensive ecosystem for further customization and experimentation.
 
-Next, we explain the main concepts by considering several examples.
+
+Augmentations
+=============================
+TSGM implements multiple augmentation approaches including window warping, shuffling, slicing, and dynamic time barycentric average. See specific methods in `tsgm.models.augmentations`. A minimalistic example of time series augmentation:
+
+.. code-block:: python
+
+	import tsgm
+	X = tsgm.utils.gen_sine_dataset(100, 64, 2, max_value=20)
+	aug_model = tsgm.models.augmentations.GaussianNoise(variance=0.2)
+	samples = aug_model.generate(X=X, n_samples=10)
+
+More examples are available in `the augmentation tutorial. <https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/augmentations.ipynb>`_
 
 Generators
 =============================
@@ -30,13 +42,23 @@ The training of data-driven simulators can be done via likelihood optimization, 
 - `tss.models.cvae.BetaVAE` - beta-VAE model adapted for time-series simulation,\\
 - `tss.models.cvae.cBetaVAE` - conditional beta-VAE model for labeled and temporally labeled time-series simulation.
 
+A minimalistic example of synthetic data generation with VAEs:
 
-Combined generators
---------------------------
-The combined simulators generate data based on an underlying model, but allow to inference parameters using, for example, approximate Bayesian computation.
+.. code-block:: python
 
-Example, of the use of a combined simulator is provided in `https://github.com/AlexanderVNikitin/tsgm/blob/main/tests/test_abc.py`.
+	import tsgm
+	from tensorflow import keras
+	n, n_ts, n_features  = 1000, 24, 5
+	data = tsgm.utils.gen_sine_dataset(n, n_ts, n_features)
+	scaler = tsgm.utils.TSFeatureWiseScaler()        
+	scaled_data = scaler.fit_transform(data)
+	architecture = tsgm.models.zoo["vae_conv5"](n_ts, n_features, 10)
+	encoder, decoder = architecture.encoder, architecture.decoder
+	vae = tsgm.models.cvae.BetaVAE(encoder, decoder)
+	vae.compile(optimizer=keras.optimizers.Adam())
 
+	vae.fit(scaled_data, epochs=1, batch_size=64)
+	vae.generate(10)
 
 Dataset
 =============================
@@ -71,10 +93,11 @@ If you find the *Time Series Generator Modeling framework* useful, please consid
 
 .. code-block:: latex
 
-    >@article{
-        nikitin2023tsgm,
-        author = {Alexander Nikitin and Samuel Kaski},
-        title = {TSGM --- A Flexible Framework for Synthetic Time Series Generative Modeling},
-        year = {2022},
-    }
+	@article{nikitin2023tsgm,
+	  title={TSGM: A Flexible Framework for Generative Modeling of Synthetic Time Series},
+	  author={Nikitin, Alexander and Iannucci, Letizia and Kaski, Samuel},
+	  journal={arXiv preprint arXiv:2305.11567},
+	  year={2023}
+	}
+
 
