@@ -3,13 +3,19 @@ import numpy as np
 
 import tsgm
 
+@pytest.mark.parametrize("mock_aug", [
+    [tsgm.models.augmentations.GaussianNoise()] * 10,
+    tsgm.models.augmentations.GaussianNoise()
+])
+def test_base_compose(mock_aug):
+    compose = tsgm.models.augmentations.BaseCompose(mock_aug)
 
-def test_base_compose():
-    _mock_aug = tsgm.models.augmentations.GaussianNoise()
-    compose = tsgm.models.augmentations.BaseCompose([_mock_aug] * 10,)
+    if not isinstance(mock_aug, list):
+        mock_aug = [mock_aug]
+    assert len(compose) == len(mock_aug)
 
-    assert len(compose) == 10
-    assert compose[1] == _mock_aug
+    for i in range(len(compose)):
+        assert compose[i] == mock_aug[i]
     with pytest.raises(NotImplementedError) as e:
         compose()
 
@@ -87,5 +93,10 @@ def test_dtw_ba(initial_labels):
     ys = [0, 1]
     dtw_ba_aug = tsgm.models.augmentations.DTWBarycentricAveraging()
     xs_gen, ys_gen = dtw_ba_aug.generate(X=xs, y=ys, n_samples=17, initial_labels=initial_labels)
+    assert xs_gen.shape == (17, 2, 4)
+    assert ys_gen.shape == (17, 1)
+
+    # check with lists
+    xs_gen, ys_gen = dtw_ba_aug.generate(X=list(xs), y=ys, n_samples=17, initial_labels=initial_labels)
     assert xs_gen.shape == (17, 2, 4)
     assert ys_gen.shape == (17, 1)
