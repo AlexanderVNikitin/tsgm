@@ -44,7 +44,7 @@ readme_text = read_file("README.md")
 
 
 setup(name='tsgm',
-      version='0.0.2',
+      version='0.0.3',
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',
@@ -68,8 +68,9 @@ setup(name='tsgm',
           "prettytable",
           "yfinance",
           "tqdm",
-          "tensorflow >= 2.4.0",
-          "tensorflow-probability >= 0.12.0",
+          "dtaidistance >= 2.3.10",
+          "tensorflow",
+          "tensorflow-probability",
       ],
       package_data={'tsgm': ['README.md']},
       packages=find_packages())

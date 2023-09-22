@@ -87,7 +87,7 @@ def test_split_dataset_into_objects():
     X, y = tsgm.utils.get_mauna_loa()
     X, y = tsgm.utils.split_dataset_into_objects(X, y, step=10)
     assert X.shape == (223, 10, 1)
-    assert y.shape == (223,)
+    assert y.shape == (223, 10)
 
     X, y = tsgm.utils.get_mauna_loa()
     X, y = tsgm.utils.split_dataset_into_objects(X, y, step=1)

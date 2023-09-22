@@ -192,7 +192,8 @@ def split_dataset_into_objects(X, y, step=10):
     for start in range(0, X.shape[0], step):
         cur_x, cur_y = X[start:start + step], y[start:start + step]
         Xs.append(np.pad(cur_x, [(0, step - cur_x.shape[0]), (0, 0)]))
-        ys.append(np.pad(cur_y, step - cur_y.shape[0]))
+        ys.append(np.pad(cur_y, [(0, step - cur_y.shape[0])]))
+
     return np.array(Xs), np.array(ys)
 
 
