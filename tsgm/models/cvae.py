@@ -100,8 +100,7 @@ class BetaVAE(keras.Model):
 
 
 class cBetaVAE(keras.Model):
-    # TODO: allow using architecture or encoder & decoder
-    def __init__(self, encoder, decoder, latent_dim, temporal, beta=1.0, **kwargs):
+    def __init__(self, encoder, decoder, latent_dim, temporal: bool, beta=1.0, **kwargs):
         super(cBetaVAE, self).__init__(**kwargs)
         self.beta = beta
         self.encoder = encoder
@@ -137,7 +136,7 @@ class cBetaVAE(keras.Model):
         :returns: a tuple of synthetically generated data and labels.
         """
         batch_size = tf.shape(labels)[0]
-        z = tf.random.normal((batch_size, self._seq_len, self.latent_dim))
+        z = tf.random.normal((batch_size, self._seq_len, self.latent_dim), dtype=labels.dtype)
         decoder_input = self._get_decoder_input(z, labels)
         return (self.decoder(decoder_input), labels)
 

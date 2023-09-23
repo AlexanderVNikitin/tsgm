@@ -49,13 +49,6 @@ def test_sine_generator():
     assert np.max(ts) <= 2 and np.min(ts) >= -2
 
 
-def test_reconstruction_loss():
-    original = np.array([[[0, 2], [1, 0], [1, 2]]])
-    reconstructed = np.array([[[0.1, 1.5], [1.1, 0.1], [1, 2]]])
-
-    # TODO finalize
-
-
 def test_switch_generator():
     Xs, ys = tsgm.utils.gen_sine_const_switch_dataset(10, 100, 20)
 
@@ -193,9 +186,34 @@ def test_mmd_3_test():
     assert pvalue < 1e-10  # the null hypothesis is rejected
 
 
+@pytest.mark.parametrize("dataset_name", [
+    "beef",
+    "coffee",
+    "ecg200",
+    "electric",
+    "freezer",
+    "gunpoint",
+    "insect",
+    "mixed_shapes",
+    "starlight",
+    "wafer"
+])
+def test_ucr_loadable(dataset_name):
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset_name)
+    X_train, y_train, X_test, y_test = ucr_data_manager.get()
+    assert X_train.shape[0] == y_train.shape[0]
+    assert X_test.shape[0] == y_test.shape[0]
+
+
+def test_ucr_raises():
+    with pytest.raises(ValueError) as excinfo:
+        ucr_data_manager = tsgm.utils.UCRDataManager(ds="does not exist")
+        assert "ds should be in" in str(excinfo.value)
+    
+
 def test_get_wafer():
-    DATASET = "wafer"
-    ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
+    dataset = "wafer"
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset)
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
     assert X_train.shape == (1000, 152)
@@ -215,3 +233,28 @@ def test_fix_random_seeds():
     assert random.random() == 0.6394267984578837
     assert np.random.random() == 0.3745401188473625
     assert float(tf.random.uniform([1])[0]) == 0.6645621061325073
+
+
+def test_reconstruction_loss_by_axis():
+    eps = 1e-8
+    original = tf.constant([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])
+    reconstructed = tf.constant([[[1.1, 2.2, 2.9], [3.9, 4.8, 6.1]]])
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed)
+    assert abs(loss.numpy() - 0.119999886) < eps
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed, axis=1)
+    assert abs(loss.numpy()) < eps
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed, axis=2)
+    assert abs(loss.numpy() - 0.00444442) < eps
+
+
+def test_get_physionet2012():
+    train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()
+
+    assert train_X.shape == (1757980, 4)
+    assert train_y.shape == (4000, 6)
+
+    assert test_X.shape == (1762535, 4)
+    assert test_y.shape == (4000, 6)
+
+    assert val_X.shape == (1765303, 4)
+    assert val_y.shape == (4000, 6)

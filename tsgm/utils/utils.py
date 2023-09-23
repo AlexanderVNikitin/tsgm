@@ -1,6 +1,5 @@
 import random
 import numpy as np
-import numpy.typing as npt
 import tensorflow as tf
 
 
@@ -58,34 +57,6 @@ def reconstruction_loss_by_axis(original: tf.Tensor, reconstructed: tf.Tensor, a
         return tf.reduce_sum(tf.math.squared_difference(original, reconstructed))
     else:
         return tf.losses.mean_squared_error(tf.reduce_mean(original, axis=axis), tf.reduce_mean(reconstructed, axis=axis))
-
-
-def generate_slices(X: npt.NDArray, slice_len: int = 10) -> npt.NDArray:
-    """
-    Generate slices of a time series dataset.
-
-    This function takes a time series dataset X
-    and generates slices of each sequence with a specified slice length.
-
-    Parameters:
-    ----------
-    X : list or numpy.ndarray
-        The input list or array of sequences to be sliced.
-
-    slice_len : int, optional (default=10)
-        The desired slice length for each sequence.
-
-    Returns:
-    -------
-    numpy.ndarray
-        A numpy array containing the sliced sequences. Each row of the array represents
-        a slice of a sequence from the input.
-    """
-    new_X = []
-    for el in X:
-        for i in range(0, len(el) - slice_len, slice_len):
-            new_X.append(el[i : i + slice_len])
-    return np.array(new_X)
 
 
 def fix_seeds(seed_value: int = 42) -> None:

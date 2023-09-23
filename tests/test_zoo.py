@@ -1,29 +1,79 @@
 import pytest
+
+import functools
+import numpy as np
+import random
 import tensorflow as tf
+from tensorflow.keras import layers
+
+import sklearn.metrics.pairwise
 
 import tsgm
 
 
-def test_zoo():
-    assert isinstance(tsgm.models.zoo, tsgm.models.architectures.Zoo)
-    assert len(tsgm.models.zoo.keys()) == len(tsgm.models.zoo.values())
+@pytest.mark.parametrize("model_type", [
+    tsgm.models.architectures.zoo["cvae_conv5"],
+])
+def test_zoo_cvae(model_type):
+    seq_len = 10
+    feat_dim = 2
+    latent_dim = 1
+    output_dim = 1
+    
+    arch = model_type(seq_len=seq_len, feat_dim=feat_dim, latent_dim=latent_dim, output_dim=output_dim)
+    arch_dict = arch.get()
 
-    assert tsgm.models.zoo.summary() is None
-
-    assert isinstance(tsgm.models.zoo, dict)
-
-    with pytest.raises(TypeError):
-        result = tsgm.models.architectures.BaseGANArchitecture()
-    with pytest.raises(TypeError):
-        result = tsgm.models.architectures.BaseVAEArchitecture()
-
-
-def test_sampling():
-    input_sampling = [0.0, 1.0]
-    result = tsgm.models.architectures.Sampling()(input_sampling)
-    assert isinstance(result, tf.Tensor)
+    assert arch.encoder == arch_dict["encoder"] and arch.decoder == arch_dict["decoder"]
 
 
-def test_dict_types():
-    for k, v in tsgm.models.zoo.items():
-        assert issubclass(v, tsgm.models.architectures.Architecture)
+@pytest.mark.parametrize("model_type", [
+    tsgm.models.architectures.zoo["cgan_base_c4_l1"],
+    tsgm.models.architectures.zoo["cgan_lstm_n"]
+])
+def test_zoo_cgan(model_type):
+    seq_len = 10
+    feat_dim = 2
+    latent_dim = 1
+    output_dim = 1
+    
+    arch = model_type(
+        seq_len=seq_len, feat_dim=feat_dim,
+        latent_dim=latent_dim, output_dim=output_dim)
+    arch_dict = arch.get()
+
+    assert arch.generator == arch_dict["generator"] and arch.discriminator == arch_dict["discriminator"]
+
+
+@pytest.mark.parametrize("model_type_name", [
+    "clf_cn",
+    "clf_cl_n",
+    "clf_block"],
+)
+def test_zoo_clf(model_type_name):
+    seq_len = 10
+    feat_dim = 2
+    output_dim = 1
+    model_type = tsgm.models.architectures.zoo[model_type_name]
+    if model_type_name == "clf_block":
+        arch = model_type(
+            seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim, blocks=[layers.Conv1D(filters=64, kernel_size=3, activation="relu")])
+    else:
+        arch = model_type(
+            seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim)
+    arch_dict = arch.get()
+
+    assert arch.model == arch_dict["model"]
+
+
+def test_basic_rec():
+    seq_len = 10
+    feat_dim = 2
+    output_dim = 1
+    
+    arch = tsgm.models.zoo["recurrent"](
+        hidden_dim=2,
+        output_dim=output_dim,
+        n_layers=1,
+        network_type="gru")
+    model = arch.build()
+    assert model is not None

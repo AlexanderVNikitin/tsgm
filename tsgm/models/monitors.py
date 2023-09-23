@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 class GANMonitor(keras.callbacks.Callback):
     def __init__(self, num_samples: int, latent_dim: int, labels: tsgm.types.Tensor,
-                 save: bool = True, save_path: typing.Optional[str] = None, mode: str = "clf"):
+                 save: bool = True, save_path: typing.Optional[str] = None, mode: str = "clf") -> None:
         self._num_samples = num_samples
         self._latent_dim = latent_dim
         self._save = save
@@ -37,7 +37,7 @@ class GANMonitor(keras.callbacks.Callback):
                 logger.warning("save_path is specified, but save is False.")
             os.makedirs(self._save_path, exist_ok=True)
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs=None) -> None:
         if self._mode in ["clf", "reg"]:
             random_latent_vectors = tf.random.normal(shape=(self._num_samples, self._latent_dim))
         elif self._mode == "temporal":
@@ -64,14 +64,24 @@ class GANMonitor(keras.callbacks.Callback):
 
 
 class VAEMonitor(keras.callbacks.Callback):
-    def __init__(self, num_samples=6, latent_dim=128, output_dim=2):
+    def __init__(self, num_samples: int = 6, latent_dim: int = 128, output_dim: int = 2,
+                 save: bool = True, save_path: typing.Optional[str] = None) -> None:
         self._num_samples = num_samples
         self._latent_dim = latent_dim
         self._output_dim = output_dim
+        self._save = save
+        self._save_path = save_path
 
-    def on_epoch_end(self, epoch, logs=None):
-        random_latent_vectors = tf.random.normal(shape=(self._output_dim * self._num_samples, self._latent_dim))
+        if self._save and self._save_path is None:
+            self._save_path = "/tmp/"
+            logger.warning("save_path is not specified. Using `/tmp` as the default save_path")
 
+        if self._save_path is not None:
+            if self._save is False:
+                logger.warning("save_path is specified, but save is False.")
+            os.makedirs(self._save_path, exist_ok=True)
+
+    def on_epoch_end(self, epoch, logs=None) -> None:
         labels = []
         for i in range(self._output_dim):
             if not len(labels):
@@ -80,8 +90,11 @@ class VAEMonitor(keras.callbacks.Callback):
                 labels = tf.concat((labels, keras.utils.to_categorical([i], self._output_dim)), 0)
 
         labels = tf.repeat(labels, self._num_samples, axis=0)
-        generated_images = self.model.decoder(tf.concat([random_latent_vectors, labels], 1))
+        generated_images, _ = self.model.generate(labels)
 
         for i in range(self._output_dim * self._num_samples):
             sns.lineplot(x=range(0, generated_images[i].shape[0]), y=tf.squeeze(generated_images[i]))
-            plt.show()
+            if self._save:
+                plt.savefig(os.path.join(self._save_path, "epoch_{}_sample_{}".format(epoch, i)))
+            else:
+                plt.show()

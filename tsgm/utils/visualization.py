@@ -295,7 +295,7 @@ def visualize_training_loss(
     """
     num_of_metrics = loss_vector.shape[0]
     num_of_epochs = loss_vector[0].shape[0]
-    _colors = [
+    colors = [
         {"color": "orange", "linewidth": 1, "alpha": 0.8},
         {"color": "darkorchid"},
         {"color": "pink"},
@@ -306,24 +306,24 @@ def visualize_training_loss(
     ]
     fig, ax = plt.subplots(1, 1, figsize=(12, 5))
     for i in range(num_of_metrics):
-        _label = labels[i] if i < len(labels) else None
-        _loss = loss_vector[i]
+        label = labels[i] if i < len(labels) else ""
+        loss = loss_vector[i]
 
         # scale loss to be in range [0, 0.xxx]
-        _max_magnitude = math.floor(math.log10(np.max(_loss)))
-        if _max_magnitude >= 0:
-            _exp = _max_magnitude + 1
-            _loss /= 10 ** _exp
-            _label += f" ($10^{_exp}$)"
+        max_magnitude = math.floor(math.log10(np.max(loss)))
+        if max_magnitude >= 0:
+            exp = max_magnitude + 1
+            loss /= 10 ** exp
+            label += f" ($10^{exp}$)"
 
-        if i < len(_colors):
+        if i < len(colors):
             # use custom styles until a style is defined
-            ax.plot(range(num_of_epochs), _loss, label=_label, **_colors[i])
+            ax.plot(range(num_of_epochs), loss, label=label, **colors[i])
         else:
             ax.plot(
                 range(num_of_epochs),
-                _loss,
-                label=_label,
+                loss,
+                label=label,
             )
 
     plt.legend()
