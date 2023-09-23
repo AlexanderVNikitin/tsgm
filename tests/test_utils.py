@@ -2,6 +2,8 @@ import pytest
 
 import functools
 import numpy as np
+import random
+import tensorflow as tf
 import sklearn.metrics.pairwise
 
 import tsgm
@@ -201,3 +203,15 @@ def test_get_wafer():
 
     assert X_test.shape == (6164, 152)
     assert y_test.shape == (6164,)
+
+
+def test_fix_random_seeds():
+    assert random.random() != 0.6394267984578837
+    assert np.random.random() != 0.3745401188473625
+    assert float(tf.random.uniform([1])[0]) != 0.68789124
+
+    tsgm.utils.fix_seeds()
+
+    assert random.random() == 0.6394267984578837
+    assert np.random.random() == 0.3745401188473625
+    assert float(tf.random.uniform([1])[0]) == 0.6645621061325073
