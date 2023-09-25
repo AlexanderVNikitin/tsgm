@@ -1,5 +1,7 @@
 import pytest
 
+import os
+import uuid
 import functools
 import numpy as np
 import random
@@ -63,6 +65,10 @@ def test_ucr_manager():
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
     assert X_train.shape == (50, 150) and X_test.shape == (150, 150)
+
+    # test y_all is None
+    ucr_data_manager.y_all = None
+    assert ucr_data_manager.get_classes_distribution() == {}
 
 
 def test_sine_vs_const_dataset():
@@ -261,3 +267,19 @@ def test_get_physionet2012():
 
     assert val_X.shape == (1765303, 4)
     assert val_y.shape == (4000, 6)
+
+
+def test_download(mocker, caplog):
+    file_download_mock = mocker.patch("urllib.request.urlretrieve")
+    resource_name = f"resource_{uuid.uuid4()}"
+    resource_folder = "./tmp/test_download/"
+    os.makedirs(resource_folder, exist_ok=True)
+    resource_path = os.path.join(resource_folder, resource_name)
+    open(resource_path, 'w')
+    try:
+        with pytest.raises(ValueError) as excinfo:
+            tsgm.utils.download(f"https://pseudourl/{resource_name}", resource_folder, md5=123, max_attempt=1)
+        assert "Reference md5 value (123) is not equal to the downloaded" in caplog.text
+        assert "Cannot download dataset" in str(excinfo.value)
+    finally:
+        os.remove(resource_path)

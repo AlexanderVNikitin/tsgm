@@ -4,9 +4,11 @@ import numpy as np
 import tsgm
 
 
-def test_visualize_dataset():
-    Xs = np.array([[[1, 2, 3], [3, 4, 5]]])
-    tsgm.utils.visualize_dataset(Xs)
+@pytest.mark.parametrize("ds", [
+    np.array([[[1, 2, 3], [3, 4, 5]]]), tsgm.dataset.Dataset(np.array([[[1, 2, 3], [3, 4, 5]]]), y=None)
+])
+def test_visualize_dataset(ds):
+    tsgm.utils.visualize_dataset(ds)
 
 
 @pytest.mark.parametrize("feature_averaging", [
@@ -25,7 +27,10 @@ def test_visualize_tsne_unlabeled(feature_averaging):
     tsgm.utils.visualize_tsne_unlabeled(Xs, Xgen, perplexity=2, feature_averaging=feature_averaging)
 
 
-def test_visualize_tsne():
+@pytest.mark.parametrize("feature_averaging", [
+    True, False
+])
+def test_visualize_tsne(feature_averaging):
     Xs = np.array([
         [[1, 2, 3], [3, 4, 5]],
         [[1, 2, 3], [3, 4, 5]],
@@ -36,7 +41,7 @@ def test_visualize_tsne():
     X_gen = Xs
     ys = np.ones((Xs.shape[0], 1))
     y_gen = ys
-    tsgm.utils.visualize_tsne(X=Xs, y=ys, X_gen=X_gen, y_gen=y_gen, perplexity=2)
+    tsgm.utils.visualize_tsne(X=Xs, y=ys, X_gen=X_gen, y_gen=y_gen, perplexity=2, feature_averaging=feature_averaging)
 
 
 def test_visualize_ts():
