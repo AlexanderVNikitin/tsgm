@@ -35,12 +35,7 @@ class Simulator(BaseSimulator):
         raise NotImplementedError
 
     def clone(self):
-        return NNSimulator(copy.deepcopy(self._data))
-
-
-class NNSimulator(Simulator):
-    def clone(self):
-        return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
+        return Simulator(copy.deepcopy(self._data))
 
 
 class ModelBasedSimulator(Simulator):
@@ -59,6 +54,11 @@ class ModelBasedSimulator(Simulator):
     @abc.abstractmethod
     def generate(self, num_samples: int, *args):
         raise NotImplementedError
+
+
+class NNSimulator(Simulator):
+    def clone(self):
+        return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
 
 
 class SineConstSimulator(ModelBasedSimulator):

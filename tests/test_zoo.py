@@ -28,7 +28,8 @@ def test_zoo_cvae(model_type):
 
 @pytest.mark.parametrize("model_type", [
     tsgm.models.architectures.zoo["cgan_base_c4_l1"],
-    tsgm.models.architectures.zoo["cgan_lstm_n"]
+    tsgm.models.architectures.zoo["cgan_lstm_n"],
+    tsgm.models.architectures.zoo["cgan_lstm_3"],
 ])
 def test_zoo_cgan(model_type):
     seq_len = 10
@@ -77,3 +78,26 @@ def test_basic_rec():
         network_type="gru")
     model = arch.build()
     assert model is not None
+
+
+def test_summary(capfd):
+    tsgm.models.zoo.summary()
+    out, err = capfd.readouterr()
+    assert "cgan_base_c4_l1" in out and \
+           "id" in out and "type" in out
+
+
+def test_zoo_lstm_n():
+    seq_len = 10
+    feat_dim = 2
+    latent_dim = 1
+    output_dim = 1
+    model_type = tsgm.models.architectures.zoo["cgan_lstm_n"]
+    arch = model_type(
+        seq_len=seq_len, feat_dim=feat_dim,
+        latent_dim=latent_dim, output_dim=output_dim, n_blocks=2)
+    arch_dict = arch.get()
+
+    assert arch.generator == arch_dict["generator"] and arch.discriminator == arch_dict["discriminator"]
+
+

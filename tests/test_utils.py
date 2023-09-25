@@ -38,6 +38,7 @@ def test_TSGlobalScaler():
     scaler = tsgm.utils.TSGlobalScaler()
     scaler.fit(ts)
     assert np.allclose(scaler.transform(ts), np.array([[[0.0, 1.0], [0.5, 0.0], [0.5, 1.0]]]))
+    assert np.allclose(scaler.inverse_transform(scaler.transform(ts)), ts)
 
     scaler1 = tsgm.utils.TSGlobalScaler()
     assert np.allclose(scaler1.fit_transform(ts), np.array([[[0.0, 1.0], [0.5, 0.0], [0.5, 1.0]]]))
@@ -158,6 +159,8 @@ def test_mmd_kernel_heuristic():
 
     kernel_width = tsgm.utils.kernel_median_heuristic(X1, X11)
     assert kernel_width > 0 and kernel_width < 1
+
+    assert tsgm.utils.kernel_median_heuristic(np.zeros((10, 1)), np.zeros((20, 1))) == 0
 
 
 def test_mmd_diff_var():
