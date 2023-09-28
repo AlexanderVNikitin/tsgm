@@ -1,6 +1,6 @@
 -r requirements.txt
 
-sphinx
+sphinx<7.0.0
 ipython
 pandoc
 nbsphinx
