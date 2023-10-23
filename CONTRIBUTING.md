@@ -17,24 +17,24 @@ The easiest way to make a pull request is to fork the repo, see [GitHub document
 
 ## Development
 To install TSGM in development mode, first install prerequisites:
-```
+```bash
 pip install -r requirements/requirements.txt
 pip install -r requirements/tests_requirements.txt
 pip install -r requirements/docs_requirements.txt
 ```
 
 and then, install TSGM in development mode:
-```
+```bash
 python setup.py develop
 ```
 
 To run tests, use pytest, for example:
-```
+```bash
 pytest tests/test_cgan.py::test_temporal_cgan
 ```
 
 To run linters, use:
-```
+```bash
 flake8 tsgm/
 ```
 
@@ -42,7 +42,7 @@ flake8 tsgm/
 We aim to produce high-quality documentation to help our users to use the library. In your contribution, please edit corresponding documentation pages in [./docs](https://github.com/AlexanderVNikitin/tsgm/tree/main/docs).
 
 To build the documentation, use:
-```
+```bash
 cd docs
 make html
 ```
