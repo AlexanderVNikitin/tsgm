@@ -283,3 +283,14 @@ def test_download(mocker, caplog):
         assert "Cannot download dataset" in str(excinfo.value)
     finally:
         os.remove(resource_path)
+
+
+def test_get_covid_19():
+    X, graph, states = tsgm.utils.get_covid_19()
+    assert len(states) == 51 and "new york" in states and "california" in states
+    assert len(graph[0]) == len(states) # nodes
+    assert len(graph[1]) == 220 # edges
+    assert X.shape[0] == len(states)
+    assert len(X.shape) == 3
+    assert X.shape[2] == 4
+    assert X.shape[1] >= 150
