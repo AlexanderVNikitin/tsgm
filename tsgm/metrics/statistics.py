@@ -15,11 +15,14 @@ All statistics should return lists.
 def _validate_axis(axis: typing.Optional[int]):
     assert axis == 1 or axis == 2 or axis is None
 
+
 def _apply_percacf(x):
     return np.percentile(acf(x), .75)
 
+
 def _apply_power(x):
     return np.power(x, 2).sum() / len(x)
+
 
 def axis_max_s(ts: tsgm.types.Tensor, axis: typing.Optional[int]) -> tsgm.types.Tensor:
     _validate_axis(axis)
@@ -56,11 +59,13 @@ def axis_percentile_s(ts: tsgm.types.Tensor, axis: typing.Optional[int], percent
 
     return np.percentile(ts, percentile, axis=axis).flatten()
 
+
 def axis_percautocorr_s(ts: tsgm.types.Tensor, axis: typing.Optional[int]) -> tsgm.types.Tensor:
     _validate_axis(axis)
 
     return np.array([_apply_percacf(ts.flatten())]) if axis is None else \
         np.apply_along_axis(_apply_percacf, 0, np.apply_along_axis(_apply_percacf, axis, ts))
+
 
 def axis_power_s(ts: tsgm.types.Tensor, axis: typing.Optional[int]) -> tsgm.types.Tensor:
     _validate_axis(axis)
