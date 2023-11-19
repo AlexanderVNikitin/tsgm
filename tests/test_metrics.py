@@ -9,6 +9,7 @@ import tsgm
 
 
 def test_statistics():
+    eps = 1e-8
     ts = np.array([
         [[0, 2], [11, -11], [1, 2]],
         [[10, 21], [1, -1], [6, 8]]])
@@ -23,6 +24,12 @@ def test_statistics():
 
     assert (tsgm.metrics.statistics.axis_mode_s(ts, axis=None) == [1]).all()
 
+    assert (tsgm.metrics.statistics.axis_mean_s(ts, axis=None) - np.asarray([4.16666667]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_mean_s(ts, axis=1) - np.asarray([4.83333333, 3.5]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_mean_s(ts, axis=2) - np.asarray([8.25, 0., 4.25]) < eps).all()
+
+    assert (tsgm.metrics.statistics.axis_percentile_s(ts, axis=None, percentile=50) - np.asarray([2]) < eps).all()
+
     # Now, checking with tf.Tensor
     ts_tf = tf.convert_to_tensor(ts)
 
@@ -36,6 +43,11 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=2) == [0, -11, 1]).all()
 
     assert (tsgm.metrics.statistics.axis_mode_s(ts_tf, axis=None) == [1]).all()
+    assert (tsgm.metrics.statistics.axis_mean_s(ts_tf, axis=None) - np.asarray([4.16666667]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_mean_s(ts_tf, axis=1) - np.asarray([4.83333333, 3.5]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_mean_s(ts, axis=2) - np.asarray([8.25, 0., 4.25]) < eps).all()
+
+    assert (tsgm.metrics.statistics.axis_percentile_s(ts_tf, axis=None, percentile=50) - np.asarray([2]) < eps).all()
 
 
 def test_distance_metric():

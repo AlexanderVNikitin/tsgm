@@ -35,9 +35,6 @@ def test_abc_rejection_sampler_nn_simulator():
     sampler = tsgm.optimization.abc.RejectionSampler(
         data=data, simulator=simulator, statistics=statistics, discrepancy=discrepancy, epsilon=0.4)
 
-    # TODO
-    # sampled_params = sampler.sample_parameters(10)
-
 
 def test_abc_rejection_sampler_model_based_simulator():
     statistics = [tsgm.metrics.statistics.global_max_s, tsgm.metrics.statistics.global_min_s]

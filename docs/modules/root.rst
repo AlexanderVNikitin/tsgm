@@ -22,6 +22,12 @@ Augmentations
     :members:
     :undoc-members:
 
+Metrics
+--------------
+.. automodule:: tsgm.models.metrics
+    :members:
+    :undoc-members:
+
 
 GANs
 --------------

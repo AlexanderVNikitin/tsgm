@@ -336,7 +336,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
 
     def _build_discriminator(self):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
-        x = layers.LSTM(64, 3, strides=2, padding="same")(d_input)
+        x = layers.LSTM(64, return_sequences=True)(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
@@ -539,7 +539,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = d_input
         for i in range(self._n_blocks - 1):
-            x = layers.LSTM(64)(x)
+            x = layers.LSTM(64, return_sequences=True)(x)
             x = layers.Dropout(rate=0.2)(x)
 
         x = layers.LSTM(64, return_sequences=True)(x)
@@ -590,6 +590,7 @@ zoo = Zoo(
         "cgan_base_c4_l1": cGAN_Conv4Architecture,
         "t-cgan_c4": tcGAN_Conv4Architecture,
         "cgan_lstm_n": cGAN_LSTMnArchitecture,
+        "cgan_lstm_3": cGAN_LSTMConv3Architecture,
 
         # Downstream models
         "clf_cn": ConvnArchitecture,

@@ -35,12 +35,7 @@ class Simulator(BaseSimulator):
         raise NotImplementedError
 
     def clone(self):
-        return NNSimulator(copy.deepcopy(self._data))
-
-
-class NNSimulator(Simulator):
-    def clone(self):
-        return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
+        return Simulator(copy.deepcopy(self._data))
 
 
 class ModelBasedSimulator(Simulator):
@@ -48,8 +43,8 @@ class ModelBasedSimulator(Simulator):
         super().__init__(data)
 
     def params(self):
-        params = self.__dict__
-        del params["data"]
+        params = copy.deepcopy(self.__dict__)
+        del params["_data"], params["_driver"]
         return params
 
     def set_params(self, params: dict) -> None:
@@ -61,25 +56,23 @@ class ModelBasedSimulator(Simulator):
         raise NotImplementedError
 
 
+class NNSimulator(Simulator):
+    def clone(self):
+        return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
+
+
 class SineConstSimulator(ModelBasedSimulator):
     def __init__(self, data: tsgm.dataset.DatasetProperties, max_scale: float = 10.0, max_const: float = 5.0):
         super().__init__(data)
 
         self.set_params(max_scale, max_const)
 
-    def set_params(self, max_scale, max_const):
+    def set_params(self, max_scale, max_const, *args, **kwargs):
         self._scale = tfp.distributions.Uniform(0, max_scale)
         self._const = tfp.distributions.Uniform(0, max_const)
         self._shift = tfp.distributions.Uniform(0, 2)
 
-        self._max_scale = max_scale
-        self._max_const = max_const
-
-    def params(self):
-        return {
-            "max_scale": self._max_scale,
-            "max_const": self._max_const,
-        }
+        super().set_params({"max_scale": max_scale, "max_const": max_const})
 
     def generate(self, num_samples: int, *args) -> tsgm.dataset.Dataset:
         result_X, result_y = [], []
@@ -98,5 +91,6 @@ class SineConstSimulator(ModelBasedSimulator):
 
     def clone(self) -> "SineConstSimulator":
         copy_simulator = SineConstSimulator(self._data)
-        copy_simulator.set_params(**self.params())
+        params = self.params()
+        copy_simulator.set_params(max_scale=params["max_scale"], max_const=params["max_const"])
         return copy_simulator

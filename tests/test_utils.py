@@ -1,7 +1,11 @@
 import pytest
 
+import os
+import uuid
 import functools
 import numpy as np
+import random
+import tensorflow as tf
 import sklearn.metrics.pairwise
 
 import tsgm
@@ -36,6 +40,7 @@ def test_TSGlobalScaler():
     scaler = tsgm.utils.TSGlobalScaler()
     scaler.fit(ts)
     assert np.allclose(scaler.transform(ts), np.array([[[0.0, 1.0], [0.5, 0.0], [0.5, 1.0]]]))
+    assert np.allclose(scaler.inverse_transform(scaler.transform(ts)), ts)
 
     scaler1 = tsgm.utils.TSGlobalScaler()
     assert np.allclose(scaler1.fit_transform(ts), np.array([[[0.0, 1.0], [0.5, 0.0], [0.5, 1.0]]]))
@@ -45,13 +50,6 @@ def test_sine_generator():
     ts = tsgm.utils.gen_sine_dataset(10, 100, 20, max_value=2)
     assert ts.shape == (10, 100, 20)
     assert np.max(ts) <= 2 and np.min(ts) >= -2
-
-
-def test_reconstruction_loss():
-    original = np.array([[[0, 2], [1, 0], [1, 2]]])
-    reconstructed = np.array([[[0.1, 1.5], [1.1, 0.1], [1, 2]]])
-
-    # TODO finalize
 
 
 def test_switch_generator():
@@ -67,6 +65,10 @@ def test_ucr_manager():
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
     assert X_train.shape == (50, 150) and X_test.shape == (150, 150)
+
+    # test y_all is None
+    ucr_data_manager.y_all = None
+    assert ucr_data_manager.get_classes_distribution() == {}
 
 
 def test_sine_vs_const_dataset():
@@ -87,7 +89,7 @@ def test_split_dataset_into_objects():
     X, y = tsgm.utils.get_mauna_loa()
     X, y = tsgm.utils.split_dataset_into_objects(X, y, step=10)
     assert X.shape == (223, 10, 1)
-    assert y.shape == (223,)
+    assert y.shape == (223, 10)
 
     X, y = tsgm.utils.get_mauna_loa()
     X, y = tsgm.utils.split_dataset_into_objects(X, y, step=1)
@@ -164,6 +166,8 @@ def test_mmd_kernel_heuristic():
     kernel_width = tsgm.utils.kernel_median_heuristic(X1, X11)
     assert kernel_width > 0 and kernel_width < 1
 
+    assert tsgm.utils.kernel_median_heuristic(np.zeros((10, 1)), np.zeros((20, 1))) == 0
+
 
 def test_mmd_diff_var():
     Kyy = np.array([[1.0, 0.0], [0.0, 1.0]])
@@ -191,9 +195,34 @@ def test_mmd_3_test():
     assert pvalue < 1e-10  # the null hypothesis is rejected
 
 
+@pytest.mark.parametrize("dataset_name", [
+    "beef",
+    "coffee",
+    "ecg200",
+    "electric",
+    "freezer",
+    "gunpoint",
+    "insect",
+    "mixed_shapes",
+    "starlight",
+    "wafer"
+])
+def test_ucr_loadable(dataset_name):
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset_name)
+    X_train, y_train, X_test, y_test = ucr_data_manager.get()
+    assert X_train.shape[0] == y_train.shape[0]
+    assert X_test.shape[0] == y_test.shape[0]
+
+
+def test_ucr_raises():
+    with pytest.raises(ValueError) as excinfo:
+        ucr_data_manager = tsgm.utils.UCRDataManager(ds="does not exist")
+        assert "ds should be in" in str(excinfo.value)
+    
+
 def test_get_wafer():
-    DATASET = "wafer"
-    ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
+    dataset = "wafer"
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset)
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
     assert X_train.shape == (1000, 152)
@@ -201,3 +230,56 @@ def test_get_wafer():
 
     assert X_test.shape == (6164, 152)
     assert y_test.shape == (6164,)
+
+
+def test_fix_random_seeds():
+    assert random.random() != 0.6394267984578837
+    assert np.random.random() != 0.3745401188473625
+    assert float(tf.random.uniform([1])[0]) != 0.68789124
+
+    tsgm.utils.fix_seeds()
+
+    assert random.random() == 0.6394267984578837
+    assert np.random.random() == 0.3745401188473625
+    assert float(tf.random.uniform([1])[0]) == 0.6645621061325073
+
+
+def test_reconstruction_loss_by_axis():
+    eps = 1e-8
+    original = tf.constant([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])
+    reconstructed = tf.constant([[[1.1, 2.2, 2.9], [3.9, 4.8, 6.1]]])
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed)
+    assert abs(loss.numpy() - 0.119999886) < eps
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed, axis=1)
+    assert abs(loss.numpy()) < eps
+    loss = tsgm.utils.reconstruction_loss_by_axis(original, reconstructed, axis=2)
+    assert abs(loss.numpy() - 0.00444442) < eps
+
+
+def test_get_physionet2012():
+    train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()
+
+    assert train_X.shape == (1757980, 4)
+    assert train_y.shape == (4000, 6)
+
+    assert test_X.shape == (1762535, 4)
+    assert test_y.shape == (4000, 6)
+
+    assert val_X.shape == (1765303, 4)
+    assert val_y.shape == (4000, 6)
+
+
+def test_download(mocker, caplog):
+    file_download_mock = mocker.patch("urllib.request.urlretrieve")
+    resource_name = f"resource_{uuid.uuid4()}"
+    resource_folder = "./tmp/test_download/"
+    os.makedirs(resource_folder, exist_ok=True)
+    resource_path = os.path.join(resource_folder, resource_name)
+    open(resource_path, 'w')
+    try:
+        with pytest.raises(ValueError) as excinfo:
+            tsgm.utils.download(f"https://pseudourl/{resource_name}", resource_folder, md5=123, max_attempt=1)
+        assert "Reference md5 value (123) is not equal to the downloaded" in caplog.text
+        assert "Cannot download dataset" in str(excinfo.value)
+    finally:
+        os.remove(resource_path)

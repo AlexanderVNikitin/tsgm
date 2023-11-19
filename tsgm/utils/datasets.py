@@ -192,7 +192,8 @@ def split_dataset_into_objects(X, y, step=10):
     for start in range(0, X.shape[0], step):
         cur_x, cur_y = X[start:start + step], y[start:start + step]
         Xs.append(np.pad(cur_x, [(0, step - cur_x.shape[0]), (0, 0)]))
-        ys.append(np.pad(cur_y, step - cur_y.shape[0]))
+        ys.append(np.pad(cur_y, [(0, step - cur_y.shape[0])]))
+
     return np.array(Xs), np.array(ys)
 
 
@@ -297,8 +298,8 @@ def download_physionet2012():
     Downloads the Physionet 2012 dataset files from the Physionet website
     and extracts them in local folder 'physionet2012'
     """
-    _base_url = "https://physionet.org/files/challenge-2012/1.0.0/"
-    _destination_folder = "physionet2012"
+    base_url = "https://physionet.org/files/challenge-2012/1.0.0/"
+    destination_folder = "physionet2012"
     X_a = "set-a.tar.gz"
     y_a = "Outcomes-a.txt"
 
@@ -308,18 +309,14 @@ def download_physionet2012():
     X_c = "set-c.tar.gz"
     y_c = "Outcomes-c.txt"
 
-    file_utils.download(_base_url + X_a, _destination_folder)
-    file_utils.download(_base_url + y_a, _destination_folder)
-    file_utils.download(_base_url + X_b, _destination_folder)
-    file_utils.download(_base_url + y_b, _destination_folder)
-    file_utils.download(_base_url + X_c, _destination_folder)
-    file_utils.download(_base_url + y_c, _destination_folder)
+    all_files = [(X_a, y_a), (X_b, y_b), (X_c, y_c)]
 
-    file_utils.extract_archive(_destination_folder + X_a, _destination_folder)
-    file_utils.extract_archive(_destination_folder + X_b, _destination_folder)
-    file_utils.extract_archive(_destination_folder + X_c, _destination_folder)
+    for X, y in all_files:
+        file_utils.download(base_url + X, destination_folder)
+        file_utils.download(base_url + y, destination_folder)
 
-    return
+    for X, y in all_files:
+        file_utils.extract_archive(os.path.join(destination_folder, X), destination_folder)
 
 
 def _get_physionet_X_dataframe(dataset_path: str) -> pd.DataFrame:
