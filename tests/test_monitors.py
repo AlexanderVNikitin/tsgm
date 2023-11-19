@@ -45,7 +45,6 @@ def test_vaemonitor(save, monkeypatch):
     vae_monitor = tsgm.models.monitors.VAEMonitor(
         num_samples=3, latent_dim=123, save=save)
     vae_monitor.model =  MagicMock()  # mock the model
-    import pdb; pdb.set_trace()
     vae_monitor.model.generate = lambda x: (x[:, 0][:, None], None)
 
     vae_monitor.on_epoch_end(epoch=2)

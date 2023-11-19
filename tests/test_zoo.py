@@ -66,7 +66,11 @@ def test_zoo_clf(model_type_name):
     assert arch.model == arch_dict["model"]
 
 
-def test_basic_rec():
+@pytest.mark.parametrize("network_type", [
+    "gru",
+    "lstm",
+])
+def test_basic_rec(network_type):
     seq_len = 10
     feat_dim = 2
     output_dim = 1
@@ -75,7 +79,7 @@ def test_basic_rec():
         hidden_dim=2,
         output_dim=output_dim,
         n_layers=1,
-        network_type="gru")
+        network_type=network_type)
     model = arch.build()
     assert model is not None
 
