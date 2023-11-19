@@ -477,7 +477,7 @@ class BasicRecurrentArchitecture(Architecture):
         self.n_layers = n_layers
 
         self.network_type = network_type.lower()
-        assert self.network_type in ["gru", "lstm", "lstmLN"]
+        assert self.network_type in ["gru", "lstm"]
 
         self._name = name
 
@@ -493,11 +493,6 @@ class BasicRecurrentArchitecture(Architecture):
         # LSTM
         elif self.network_type == "lstm":
             cell = keras.layers.LSTMCell(self.hidden_dim, activation="tanh")
-        # LSTM Layer Normalization
-        elif self.network_type == "lstmLN":
-            cell = keras.layers.LayerNormLSTMCell(
-                num_units=self.hidden_dim, activation="tanh"
-            )
         return cell
 
     def _make_network(self, model: keras.models.Model, activation: str, return_sequences: bool) -> keras.models.Model:
