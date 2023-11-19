@@ -93,7 +93,10 @@ class VAEMonitor(keras.callbacks.Callback):
         generated_images, _ = self.model.generate(labels)
 
         for i in range(self._output_dim * self._num_samples):
-            sns.lineplot(x=range(0, generated_images[i].shape[0]), y=tf.squeeze(generated_images[i]))
+            sns.lineplot(
+                x=range(0, generated_images[i].shape[0]),
+                y=tf.squeeze(generated_images[i]).numpy()
+            )
             if self._save:
                 plt.savefig(os.path.join(self._save_path, "epoch_{}_sample_{}".format(epoch, i)))
             else:
