@@ -1,12 +1,15 @@
 import pytest
 
 import os
+import shutil
 import uuid
 import functools
+import urllib
 import numpy as np
 import random
 import tensorflow as tf
 import sklearn.metrics.pairwise
+from unittest import mock
 
 import tsgm
 
@@ -283,3 +286,40 @@ def test_download(mocker, caplog):
         assert "Cannot download dataset" in str(excinfo.value)
     finally:
         os.remove(resource_path)
+
+
+@mock.patch('urllib.request.urlretrieve')
+@mock.patch('hashlib.md5')
+def test_download_mocked(mock_md5, mock_urlretrieve):
+    # Arrange
+    url = "http://example.com/resource.zip"
+    path = "./tmp/downloads"
+    md5 = "12345"
+    max_attempt = 3
+    # Mocking md5.hexdigest to return the provided md5 value
+    mock_md5.return_value.hexdigest.return_value = md5
+    mock_urlretrieve.side_effect = lambda a, b: open(f"{path}/resource.zip", "w").write(" ")
+
+    # Act
+    try:
+        os.makedirs(path, exist_ok=True)
+        tsgm.utils.download(url, path, md5, max_attempt)
+    finally:
+        shutil.rmtree(path)
+
+    # Assert
+    # Verify that the necessary functions are called with the correct arguments
+    mock_urlretrieve.assert_called_once_with(urllib.parse.quote(url, safe=":/"), os.path.join(path, "resource.zip"))
+    mock_md5.assert_called_once_with(b" ")
+    mock_md5.return_value.hexdigest.assert_called_once()
+
+
+def test_get_covid_19():
+    X, graph, states = tsgm.utils.get_covid_19()
+    assert len(states) == 51 and "new york" in states and "california" in states
+    assert len(graph[0]) == len(states) # nodes
+    assert len(graph[1]) == 220 # edges
+    assert X.shape[0] == len(states)
+    assert len(X.shape) == 3
+    assert X.shape[2] == 4
+    assert X.shape[1] >= 150

@@ -59,6 +59,9 @@ def test_visualize_ts_lineplot(unite_features):
     ys = np.array([1, 2])
     tsgm.utils.visualize_ts_lineplot(Xs, ys, num=1, unite_features=unite_features)
 
+    ys = np.array([[1, 2], [1, 2]])
+    tsgm.utils.visualize_ts_lineplot(Xs, ys, num=1, unite_features=unite_features)
+
 
 def test_visualize_training_loss():
     loss = np.array([[10.0], [9.0], [8.0], [7.0]])
@@ -76,3 +79,7 @@ def test_visualize_original_and_reconst_ts():
     reconstructed = original
     tsgm.utils.visualize_original_and_reconst_ts(original, reconstructed)
 
+
+def test_visualize_training_loss():
+    loss_vector = np.ones((100, 100))
+    tsgm.utils.visualize_training_loss(loss_vector, labels=("a", "b"))

@@ -19,7 +19,7 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_max_s(ts, axis=1) == [11, 21]).all()
     assert (tsgm.metrics.statistics.axis_min_s(ts, axis=1) == [0, -11]).all()
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=2) == [21, 11,  8]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts, axis=2) == [21, 11, 8]).all()
     assert (tsgm.metrics.statistics.axis_min_s(ts, axis=2) == [0, -11, 1]).all()
 
     assert (tsgm.metrics.statistics.axis_mode_s(ts, axis=None) == [1]).all()
@@ -30,6 +30,13 @@ def test_statistics():
 
     assert (tsgm.metrics.statistics.axis_percentile_s(ts, axis=None, percentile=50) - np.asarray([2]) < eps).all()
 
+    assert (tsgm.metrics.statistics.axis_percautocorr_s(ts, axis=None) - np.asarray([-0.245016]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_percautocorr_s(ts, axis=1) - np.asarray([-0.48875, -0.48875]) < eps).all()
+
+    assert (tsgm.metrics.statistics.axis_power_s(ts, axis=None) - np.asarray([74.5]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_power_s(ts, axis=1) - np.asarray([1869.61111111, 15148.72222222]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_power_s(ts, axis=2) - np.asarray([36587.13, 7321., 1253.13]) < eps).all()
+
     # Now, checking with tf.Tensor
     ts_tf = tf.convert_to_tensor(ts)
 
@@ -39,7 +46,7 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=1) == [11, 21]).all()
     assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=1) == [0, -11]).all()
 
-    assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=2) == [21, 11,  8]).all()
+    assert (tsgm.metrics.statistics.axis_max_s(ts_tf, axis=2) == [21, 11, 8]).all()
     assert (tsgm.metrics.statistics.axis_min_s(ts_tf, axis=2) == [0, -11, 1]).all()
 
     assert (tsgm.metrics.statistics.axis_mode_s(ts_tf, axis=None) == [1]).all()
@@ -48,6 +55,13 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_mean_s(ts, axis=2) - np.asarray([8.25, 0., 4.25]) < eps).all()
 
     assert (tsgm.metrics.statistics.axis_percentile_s(ts_tf, axis=None, percentile=50) - np.asarray([2]) < eps).all()
+
+    assert (tsgm.metrics.statistics.axis_percautocorr_s(ts_tf, axis=None) - np.asarray([-0.245016]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_percautocorr_s(ts_tf, axis=1) - np.asarray([-0.48875, -0.48875]) < eps).all()
+
+    assert (tsgm.metrics.statistics.axis_power_s(ts_tf, axis=None) - np.asarray([74.5]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_power_s(ts_tf, axis=1) - np.asarray([1869.61111111, 15148.72222222]) < eps).all()
+    assert (tsgm.metrics.statistics.axis_power_s(ts_tf, axis=2) - np.asarray([36587.13, 7321., 1253.13]) < eps).all()
 
 
 def test_distance_metric():
@@ -66,7 +80,7 @@ def test_distance_metric():
     )
     assert dist_metric(ts, diff_ts) > dist_metric(ts, sim_ts)
     stat_results = dist_metric.stats(ts)
-    
+
     assert len(stat_results) == 6
     assert dist_metric._discrepancy(dist_metric.stats(ts), dist_metric.stats(sim_ts)) == dist_metric(ts, sim_ts)
     assert dist_metric(ts, sim_ts) != dist_metric(ts, diff_ts)
@@ -81,7 +95,6 @@ def test_distance_metric():
     assert dist_metric(ds, ds) == 0
     assert dist_metric(ds_sim, ds) < dist_metric(ds_diff, ds)
     assert dist_metric(ds, ds_diff) == dist_metric(ds_diff, ds)
-
 
 
 class MockEvaluator:
@@ -127,7 +140,7 @@ def test_downstream_performance_metric():
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, diff_ts, test_ts)
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(D1, diff_ts, D_test)
     assert downstream_perf_metric(D1, D2, D_test) == downstream_perf_metric(ts, D2, D_test)
-    mean, std =  downstream_perf_metric(D1, D2, D_test, return_std=True)
+    mean, std = downstream_perf_metric(D1, D2, D_test, return_std=True)
     assert mean == 0 and std == 0
 
 
