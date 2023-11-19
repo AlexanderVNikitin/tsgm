@@ -104,4 +104,3 @@ def test_zoo_lstm_n():
 
     assert arch.generator == arch_dict["generator"] and arch.discriminator == arch_dict["discriminator"]
 
-
