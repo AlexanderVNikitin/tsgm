@@ -43,8 +43,22 @@ VAEs
     :undoc-members:
 
 
+ABC
+--------------
+.. automodule:: tsgm.optimization.abc
+    :members:
+    :undoc-members:
+
+
 Visualization
 --------------
 .. automodule:: tsgm.utils.visualization
+    :members:
+    :undoc-members:
+
+
+Monitors
+--------------
+.. automodule:: tsgm.models.monitors
     :members:
     :undoc-members:
