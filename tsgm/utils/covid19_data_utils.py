@@ -2,15 +2,16 @@
 Utils for COVID-19 graph time series dataset:
 The dataset is based on data from The New York Times, based on reports from state and local health agencies [1].
 
-And was adapted to graph case in [2].
+It was adapted to graphs in [2].
 [1] The New York Times. (2021). Coronavirus (Covid-19) Data in the United States. Retrieved [Insert Date Here], from https://github.com/nytimes/covid-19-data.
-[2]
+[2] Nikitin, A.V., John, S.T., Solin, A. and Kaski, S., 2022, May. Non-separable spatio-temporal graph kernels via SPDEs. In International Conference on Artificial Intelligence and Statistics (pp. 10640-10660). PMLR.
 
 The code is an adapted version from:
 https://github.com/AlexanderVNikitin/covid19-on-graphs
 """
 
 import pandas as pd
+import typing as T
 
 
 STATE_ADJACENCIES = {
@@ -128,7 +129,7 @@ STATE_POPULATION = {
 }
 
 
-def aggregate_by_weeks_max(df):
+def aggregate_by_weeks_max(df: pd.DataFrame) -> pd.DataFrame:
     df['date'] = pd.to_datetime(df['date'])  # + pd.to_timedelta(7, unit='d')
     df = df.groupby(['state', pd.Grouper(key='date', freq='W-MON')])\
            .agg({"cases": max, "deaths": max})\
@@ -137,7 +138,7 @@ def aggregate_by_weeks_max(df):
     return df
 
 
-def get_adjacencies_graph():
+def get_adjacencies_graph() -> T.Tuple[T.List, T.List]:
     nodes, edges = [], []
     LIST_OF_STATES = sorted(STATE_ADJACENCIES.keys())
 
@@ -150,7 +151,7 @@ def get_adjacencies_graph():
     return nodes, edges
 
 
-def covid_dataset(path):
+def covid_dataset(path: str) -> T.Tuple[T.Dict, T.Tuple]:
     covid_cases_df = pd.read_csv(path)
     covid_cases_df["state"] = covid_cases_df["state"].str.lower()
     covid_cases_df = aggregate_by_weeks_max(covid_cases_df)

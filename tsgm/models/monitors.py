@@ -3,12 +3,13 @@ import logging
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras
-import typing
+import typing as T
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import tsgm
+import tsgm.types
+import tsgm.utils
 
 
 logger = logging.getLogger('monitors')
@@ -39,7 +40,7 @@ class GANMonitor(keras.callbacks.Callback):
     :warning: If `save_path` is specified but `save` is False, a warning is issued.
     """
     def __init__(self, num_samples: int, latent_dim: int, labels: tsgm.types.Tensor,
-                 save: bool = True, save_path: typing.Optional[str] = None, mode: str = "clf") -> None:
+                 save: bool = True, save_path: T.Optional[str] = None, mode: str = "clf") -> None:
         self._num_samples = num_samples
         self._latent_dim = latent_dim
         self._save = save
@@ -59,7 +60,7 @@ class GANMonitor(keras.callbacks.Callback):
                 logger.warning("save_path is specified, but save is False.")
             os.makedirs(self._save_path, exist_ok=True)
 
-    def on_epoch_end(self, epoch, logs=None) -> None:
+    def on_epoch_end(self, epoch: int, logs: T.Optional[T.Dict] = None) -> None:
         """
         Callback function called at the end of each training epoch.
 
@@ -120,7 +121,7 @@ class VAEMonitor(keras.callbacks.Callback):
     :warning: If `save_path` is specified but `save` is False, a warning is issued.
     """
     def __init__(self, num_samples: int = 6, latent_dim: int = 128, output_dim: int = 2,
-                 save: bool = True, save_path: typing.Optional[str] = None) -> None:
+                 save: bool = True, save_path: T.Optional[str] = None) -> None:
         self._num_samples = num_samples
         self._latent_dim = latent_dim
         self._output_dim = output_dim
@@ -136,7 +137,7 @@ class VAEMonitor(keras.callbacks.Callback):
                 logger.warning("save_path is specified, but save is False.")
             os.makedirs(self._save_path, exist_ok=True)
 
-    def on_epoch_end(self, epoch, logs=None) -> None:
+    def on_epoch_end(self, epoch: int, logs: T.Optional[T.Dict] = None) -> None:
         """
         Callback function called at the end of each training epoch.
 

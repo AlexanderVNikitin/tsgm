@@ -1,4 +1,5 @@
 import tensorflow as tf
+import typing as T
 from tensorflow import keras
 try:
     import tensorflow_privacy as tf_privacy
@@ -26,7 +27,7 @@ class GAN(keras.Model):
     """
     GAN implementation for unlabeled time series.
     """
-    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int):
+    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int) -> None:
         """
         :param discriminator: A discriminator model which takes a time series as input and check
             whether the image is real or fake.
@@ -47,14 +48,14 @@ class GAN(keras.Model):
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
 
     @property
-    def metrics(self) -> list:
+    def metrics(self) -> T.List:
         """
         :returns: A list of metrics trackers (e.g., generator's loss and discriminator's loss).
         """
         return [self.gen_loss_tracker, self.disc_loss_tracker]
 
     def compile(self, d_optimizer: keras.optimizers.Optimizer, g_optimizer: keras.optimizers.Optimizer,
-                loss_fn: keras.losses.Loss):
+                loss_fn: keras.losses.Loss) -> None:
         """
         Compiles the generator and discriminator models.
 
@@ -78,10 +79,10 @@ class GAN(keras.Model):
 
         self.dp = generator_dp and discriminator_dp
 
-    def _get_random_vector_labels(self, batch_size: int, labels=None):
+    def _get_random_vector_labels(self, batch_size: int, labels=None) -> tsgm.types.Tensor:
         return tf.random.normal(shape=(batch_size, self.latent_dim))
 
-    def train_step(self, data: tsgm.types.Tensor) -> dict:
+    def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         """
         Performs a training step using a batch of data, stored in data.
         :param data: A batch of data in a format batch_size x seq_len x feat_dim
@@ -153,7 +154,7 @@ class ConditionalGAN(keras.Model):
     """
     Conditional GAN implementation for labeled and temporally labeled time series.
     """
-    def __init__(self, discriminator, generator, latent_dim, temporal=False):
+    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int, temporal=False) -> None:
         """
         :param discriminator: A discriminator model which takes a time series as input and check
             whether the image is real or fake.
@@ -177,13 +178,13 @@ class ConditionalGAN(keras.Model):
         self._temporal = temporal
 
     @property
-    def metrics(self) -> list:
+    def metrics(self) -> T.List:
         """
         :returns: A list of metrics trackers (e.g., generator's loss and discriminator's loss).
         """
         return [self.gen_loss_tracker, self.disc_loss_tracker]
 
-    def compile(self, d_optimizer, g_optimizer, loss_fn):
+    def compile(self, d_optimizer: keras.optimizers.Optimizer, g_optimizer: keras.optimizers.Optimizer, loss_fn: T.Callable) -> None:
         """
         Compiles the generator and discriminator models.
 
@@ -208,7 +209,7 @@ class ConditionalGAN(keras.Model):
 
         self.dp = generator_dp and discriminator_dp
 
-    def _get_random_vector_labels(self, batch_size: int, labels):
+    def _get_random_vector_labels(self, batch_size: int, labels: tsgm.types.Tensor) -> None:
         if self._temporal:
             random_latent_vectors = tf.random.normal(shape=(batch_size, self._seq_len, self.latent_dim))
             random_vector_labels = tf.concat(
@@ -221,7 +222,7 @@ class ConditionalGAN(keras.Model):
             )
         return random_vector_labels
 
-    def _get_output_shape(self, labels):
+    def _get_output_shape(self, labels: tsgm.types.Tensor) -> int:
         if self._temporal:
             if len(labels.shape) == 2:
                 return 1
@@ -230,7 +231,7 @@ class ConditionalGAN(keras.Model):
         else:
             return labels.shape[1]
 
-    def train_step(self, data: tuple) -> dict:
+    def train_step(self, data: T.Tuple) -> T.Dict[str, float]:
         """
         Compiles the generator and discriminator models.
 

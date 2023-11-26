@@ -2,9 +2,10 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.types.core import TensorLike
 import numpy as np
+import numpy.typing as npt
 from tqdm import tqdm, trange
 from collections import OrderedDict
-import typing
+import typing as T
 
 import logging
 
@@ -22,7 +23,7 @@ class LossTracker(OrderedDict):
             gives {'loss_a': [1, 0.7], 'loss_b': [2], 'loss_c': [1.2]}
     """
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: T.Any, value: T.Any) -> None:
         try:
             # Assumes the key already exists
             # and the value is a list [oldest_value, another_old, ...]
@@ -33,14 +34,14 @@ class LossTracker(OrderedDict):
             # key -> [new_value]
             super(LossTracker, self).__setitem__(key, [value])
 
-    def to_numpy(self) -> np.array:
+    def to_numpy(self) -> npt.NDArray:
         """
         :return 2d vector of losses
         """
         _losses = np.array([np.array(v) for v in self.values() if isinstance(v, list)])
         return _losses
 
-    def labels(self) -> list:
+    def labels(self) -> T.List:
         """
         :return list of keys
         """
@@ -67,7 +68,7 @@ class TimeGAN(keras.Model):
         n_layers: int = 3,
         batch_size: int = 256,
         gamma: float = 1.0,
-    ):
+    ) -> None:
         super().__init__()
         self.seq_len = seq_len
         self.hidden_dim = hidden_dim
@@ -158,7 +159,7 @@ class TimeGAN(keras.Model):
         ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
         emb_loss: keras.losses.Loss = keras.losses.MeanSquaredError(),
         clf_loss: keras.losses.Loss = keras.losses.BinaryCrossentropy(),
-    ):
+    ) -> None:
         """
         Assign optimizers and loss functions.
 
@@ -185,7 +186,7 @@ class TimeGAN(keras.Model):
         self._mse = emb_loss
         self._bce = clf_loss
 
-    def _define_timegan(self):
+    def _define_timegan(self) -> None:
         # --------------------------------
         # Data and Noise Inputs
         # --------------------------------
@@ -297,7 +298,7 @@ class TimeGAN(keras.Model):
     @tf.function
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> typing.Tuple[float, float, float, float, float]:
+    ) -> T.Tuple[float, float, float, float, float]:
         """
         3. Joint training (Generator training twice more than discriminator training): minimize G_loss
         """
@@ -340,7 +341,7 @@ class TimeGAN(keras.Model):
     @tf.function
     def _train_embedder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
-    ) -> typing.Tuple[float, float]:
+    ) -> T.Tuple[float, float]:
         """
         Train embedder during joint training: minimize E_loss
         """
@@ -428,7 +429,7 @@ class TimeGAN(keras.Model):
         while True:
             yield np.random.uniform(low=0, high=1, size=(self.seq_len, self.dim))
 
-    def get_noise_batch(self) -> typing.Iterator:
+    def get_noise_batch(self) -> T.Iterator:
         """
         Return an iterator of random noise vectors
         """
@@ -440,7 +441,7 @@ class TimeGAN(keras.Model):
             .repeat()
         )
 
-    def _get_data_batch(self, data, n_windows: int) -> typing.Iterator:
+    def _get_data_batch(self, data: TensorLike, n_windows: int) -> T.Iterator:
         """
         Return an iterator of shuffled input data
         """
@@ -454,10 +455,10 @@ class TimeGAN(keras.Model):
 
     def fit(
         self,
-        data: typing.Union[TensorLike, tf.data.Dataset],
+        data: T.Union[TensorLike, tf.data.Dataset],
         epochs: int,
-        checkpoints_interval: typing.Optional[int] = None,
-        generate_synthetic: tuple = (),
+        checkpoints_interval: T.Optional[int] = None,
+        generate_synthetic: T.Tuple = (),
         *args,
         **kwargs,
     ):
@@ -529,7 +530,6 @@ class TimeGAN(keras.Model):
 
         # GAN with embedding network training
         for epoch in tqdm(range(epochs), desc="GAN with embedding - training"):
-
             # Generator training (twice more than discriminator training)
             for kk in range(2):
                 X_ = next(batches)

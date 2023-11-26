@@ -1,5 +1,7 @@
 import abc
 import math
+import tsgm
+import typing as T
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -8,7 +10,7 @@ from prettytable import PrettyTable
 
 
 class Sampling(tf.keras.layers.Layer):
-    def call(self, inputs):
+    def call(self, inputs: tsgm.types.Tensor) -> tsgm.types.Tensor:
         z_mean, z_log_var = inputs
         epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
@@ -22,20 +24,20 @@ class Architecture(abc.ABC):
 
 class BaseGANArchitecture(Architecture):
     @property
-    def discriminator(self):
+    def discriminator(self) -> keras.models.Model:
         if hasattr(self, "_discriminator"):
             return self._discriminator
         else:
             raise NotImplementedError
 
     @property
-    def generator(self):
+    def generator(self) -> keras.models.Model:
         if hasattr(self, "_generator"):
             return self._generator
         else:
             raise NotImplementedError
 
-    def get(self):
+    def get(self) -> T.Dict:
         if hasattr(self, "_discriminator") and hasattr(self, "_generator"):
             return {"discriminator": self._discriminator, "generator": self._generator}
         else:
@@ -44,20 +46,20 @@ class BaseGANArchitecture(Architecture):
 
 class BaseVAEArchitecture(Architecture):
     @property
-    def encoder(self):
+    def encoder(self) -> keras.models.Model:
         if hasattr(self, "_encoder"):
             return self._encoder
         else:
             raise NotImplementedError
 
     @property
-    def decoder(self):
+    def decoder(self) -> keras.models.Model:
         if hasattr(self, "_decoder"):
             return self._decoder
         else:
             raise NotImplementedError
 
-    def get(self):
+    def get(self) -> T.Dict:
         if hasattr(self, "_encoder") and hasattr(self, "_decoder"):
             return {"encoder": self._encoder, "decoder": self._decoder}
         else:
@@ -67,7 +69,7 @@ class BaseVAEArchitecture(Architecture):
 class VAE_CONV5Architecture(BaseVAEArchitecture):
     arch_type = "vae:unconditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int) -> None:
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -75,7 +77,7 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         self._encoder = self._build_encoder()
         self._decoder = self._build_decoder()
 
-    def _build_encoder(self):
+    def _build_encoder(self) -> keras.models.Model:
         encoder_inputs = keras.Input(shape=(self._seq_len, self._feat_dim))
         x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(
             encoder_inputs
@@ -98,7 +100,7 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         encoder = keras.Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
         return encoder
 
-    def _build_decoder(self):
+    def _build_decoder(self) -> keras.models.Model:
         latent_inputs = keras.Input(shape=(self._latent_dim,))
         x = layers.Dense(64, activation="relu")(latent_inputs)
         x = layers.Dense(512, activation="relu")(x)
@@ -139,7 +141,7 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
 class cVAE_CONV5Architecture(BaseVAEArchitecture):
     arch_type = "vae:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim=2):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int = 2) -> None:
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
@@ -148,7 +150,7 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         self._encoder = self._build_encoder()
         self._decoder = self._build_decoder()
 
-    def _build_encoder(self):
+    def _build_encoder(self) -> keras.models.Model:
         encoder_inputs = keras.Input(
             shape=(self._seq_len, self._feat_dim + self._output_dim)
         )
@@ -174,7 +176,7 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         encoder = keras.Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
         return encoder
 
-    def _build_decoder(self):
+    def _build_decoder(self) -> keras.models.Model:
         inputs = keras.Input(
             shape=(
                 self._seq_len,
@@ -204,7 +206,7 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
 class cGAN_Conv4Architecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -216,7 +218,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator()
 
-    def _build_discriminator(self):
+    def _build_discriminator(self) -> keras.models.Model:
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.Conv1D(64, 3, strides=2, padding="same")(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -235,7 +237,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         discriminator = keras.Model(d_input, d_output, name="discriminator")
         return discriminator
 
-    def _build_generator(self):
+    def _build_generator(self) -> keras.models.Model:
         g_input = keras.Input((self.generator_in_channels,))
         x = layers.Dense(8 * 8 * self._seq_len)(g_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -264,7 +266,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
 class tcGAN_Conv4Architecture(BaseGANArchitecture):
     arch_type = "gan:t-conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -277,7 +279,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator()
 
-    def _build_discriminator(self):
+    def _build_discriminator(self) -> keras.models.Model:
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.Conv1D(64, 3, strides=2, padding="same")(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -296,7 +298,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         discriminator = keras.Model(d_input, d_output, name="discriminator")
         return discriminator
 
-    def _build_generator(self):
+    def _build_generator(self) -> keras.models.Model:
         g_input = keras.Input((self._seq_len, self.generator_in_channels))
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(g_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -321,7 +323,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
 class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim, output_dim: int):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -334,7 +336,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator()
 
-    def _build_discriminator(self):
+    def _build_discriminator(self) -> keras.models.Model:
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.LSTM(64, return_sequences=True)(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -353,7 +355,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         discriminator = keras.Model(d_input, d_output, name="discriminator")
         return discriminator
 
-    def _build_generator(self):
+    def _build_generator(self) -> keras.models.Model:
         g_input = keras.Input((self.generator_in_channels,))
         x = layers.Dense(8 * 8 * self._seq_len)(g_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
@@ -380,31 +382,31 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
 class BaseClassificationArchitecture(Architecture):
     arch_type = "downstream:classification"
 
-    def __init__(self, seq_len: int, feat_dim: int, output_dim: int):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int) -> None:
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._output_dim = output_dim
         self._model = self._build_model()
 
     @property
-    def model(self):
+    def model(self) -> keras.models.Model:
         return self._model
 
-    def get(self):
+    def get(self) -> T.Dict:
         return {"model": self.model}
 
-    def _build_model(self):
+    def _build_model(self) -> None:
         raise NotImplementedError
 
 
 class ConvnArchitecture(BaseClassificationArchitecture):
     def __init__(
         self, seq_len: int, feat_dim: int, output_dim: int, n_conv_blocks: int = 1
-    ):
+    ) -> None:
         self._n_conv_blocks = n_conv_blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
-    def _build_model(self):
+    def _build_model(self) -> keras.models.Model:
         m_input = keras.Input((self._seq_len, self._feat_dim))
         x = m_input
         for _ in range(self._n_conv_blocks):
@@ -419,11 +421,11 @@ class ConvnArchitecture(BaseClassificationArchitecture):
 class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
     def __init__(
         self, seq_len: int, feat_dim: int, output_dim: int, n_conv_lstm_blocks: int = 1
-    ):
+    ) -> None:
         self._n_conv_lstm_blocks = n_conv_lstm_blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
-    def _build_model(self):
+    def _build_model(self) -> keras.models.Model:
         m_input = keras.Input((self._seq_len, self._feat_dim))
         x = m_input
         for _ in range(self._n_conv_lstm_blocks):
@@ -438,11 +440,11 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
 
 
 class BlockClfArchitecture(BaseClassificationArchitecture):
-    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, blocks: list):
+    def __init__(self, seq_len: int, feat_dim: int, output_dim: int, blocks: list) -> None:
         self._blocks = blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
-    def _build_model(self):
+    def _build_model(self) -> keras.Model:
         m_input = keras.Input((self._seq_len, self._feat_dim))
         x = m_input
         for block in self._blocks:
@@ -463,7 +465,7 @@ class BasicRecurrentArchitecture(Architecture):
         n_layers: int,
         network_type: str,
         name: str = "Sequential",
-    ):
+    ) -> None:
         """
         :param hidden_dim: int, the number of units (e.g. 24)
         :param output_dim: int, the number of output units (e.g. 1)
@@ -515,7 +517,7 @@ class BasicRecurrentArchitecture(Architecture):
 class cGAN_LSTMnArchitecture(BaseGANArchitecture):
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len, feat_dim, latent_dim, output_dim, n_blocks=1, output_activation="tanh"):
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, n_blocks: int = 1, output_activation: str = "tanh") -> None:
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -530,7 +532,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         self._discriminator = self._build_discriminator()
         self._generator = self._build_generator(output_activation=output_activation)
 
-    def _build_discriminator(self):
+    def _build_discriminator(self) -> keras.Model:
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = d_input
         for i in range(self._n_blocks - 1):
@@ -545,7 +547,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         discriminator = keras.Model(d_input, d_output, name="discriminator")
         return discriminator
 
-    def _build_generator(self, output_activation):
+    def _build_generator(self, output_activation: str) -> keras.Model:
         g_input = keras.Input((self.generator_in_channels,))
 
         x = layers.Dense(8 * 8 * self._seq_len)(g_input)
@@ -566,10 +568,10 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
 
 
 class Zoo(dict):
-    def __init__(self, *arg, **kwargs):
+    def __init__(self, *arg, **kwargs) -> None:
         super(Zoo, self).__init__(*arg, **kwargs)
 
-    def summary(self):
+    def summary(self) -> None:
         summary_table = PrettyTable()
         summary_table.field_names = ["id", "type"]
         for k, v in self.items():

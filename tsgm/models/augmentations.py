@@ -21,7 +21,7 @@ class BaseAugmenter:
     def __init__(
         self,
         per_feature: bool,
-    ):
+    ) -> None:
         self.per_channel = per_feature
 
     def _get_seeds(self, total_num: int, n_seeds: int) -> TensorLike:
@@ -38,7 +38,7 @@ class BaseCompose:
     def __init__(
         self,
         augmentations: List[BaseAugmenter],
-    ):
+    ) -> None:
         if isinstance(augmentations, (BaseCompose, BaseAugmenter)):
             augmentations = [augmentations]
 
@@ -67,7 +67,7 @@ class GaussianNoise(BaseAugmenter):
     def __init__(
         self,
         per_feature: bool = True,
-    ):
+    ) -> None:
         super(GaussianNoise, self).__init__(per_feature)
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1,
@@ -122,7 +122,7 @@ class SliceAndShuffle(BaseAugmenter):
     def __init__(
         self,
         per_feature: bool = False,
-    ):
+    ) -> None:
         super(SliceAndShuffle, self).__init__(per_feature)
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1, n_segments: int = 2) -> AugmentationOutput:
@@ -184,7 +184,7 @@ class Shuffle(BaseAugmenter):
     Shuffling is beneficial when each feature corresponds to interchangeable sensors.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(Shuffle, self).__init__(per_feature=False)
 
     def _n_repeats(self, n: int, total_num: int) -> int:
@@ -238,7 +238,7 @@ class MagnitudeWarping(BaseAugmenter):
     https://dl.acm.org/doi/pdf/10.1145/3136755.3136817
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(MagnitudeWarping, self).__init__(per_feature=False)
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, n_samples: int = 1, sigma: float = 0.2, n_knots: int = 4) -> AugmentationOutput:
@@ -302,7 +302,7 @@ class WindowWarping(BaseAugmenter):
     https://halshs.archives-ouvertes.fr/halshs-01357973/document
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(WindowWarping, self).__init__(per_feature=False)
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, window_ratio: float = 0.2, scales: Tuple = (0.25, 1.0), n_samples: int = 1) -> AugmentationOutput:
@@ -397,7 +397,6 @@ class DTWBarycentricAveraging(BaseAugmenter):
         num_initial_samples: Optional[int] = None,
         initial_timeseries: Optional[List[TensorLike]] = None,
         initial_labels: Optional[List[int]] = None,
-
         **kwargs,
     ) -> AugmentationOutput:
         """

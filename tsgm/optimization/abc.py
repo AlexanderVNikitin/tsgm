@@ -15,7 +15,7 @@ class ABCAlgorithm:
     """
     A base class for ABC algorithms.
     """
-    def sample_parameters(self, n_samples: int) -> list:
+    def sample_parameters(self, n_samples: int) -> T.List:
         raise NotImplementedError
 
 
