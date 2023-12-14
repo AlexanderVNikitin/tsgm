@@ -205,3 +205,10 @@ def test_discriminative_metric():
     discr_metric = tsgm.metrics.DiscriminativeMetric()
     assert discr_metric(d_hist=D1, d_syn=D2, model=model, test_size=0.2, random_seed=42, n_epochs=10) == 1.0
     assert discr_metric(d_hist=D1, d_syn=D2, model=model, metric=sklearn.metrics.precision_score, test_size=0.2, random_seed=42, n_epochs=10) == 1.0
+
+
+def test_entropy_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    D1 = tsgm.dataset.Dataset(ts, y=None)
+    spec_entropy_metric = tsgm.metrics.EntropyMetric()
+    assert spec_entropy_metric(D1) == 2.6402430161833763

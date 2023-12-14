@@ -1,10 +1,12 @@
 import abc
+import antropy
 import typing as T
 import logging
 import numpy as np
 import itertools
 import sklearn
 from tqdm import tqdm
+from tensorflow.python.types.core import TensorLike
 
 import tsgm
 
@@ -199,8 +201,19 @@ class PrivacyMembershipInferenceMetric(Metric):
 class MMDMetric(Metric):
     """
     This metric calculated MMD between real and synthetic samples
-    """
 
+    Args:
+        d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
+
+    Returns:
+        float: The computed spectral entropy.
+
+    Example:
+        >>> metric = MMDMetric(kernel)
+        >>> dataset, synth_dataset = tsgm.dataset.Dataset(...), tsgm.dataset.Dataset(...)
+        >>> result = metric(dataset)
+        >>> print(result)
+    """
     def __init__(self, kernel: T.Callable = tsgm.utils.mmd.exp_quad_kernel) -> None:
         self.kernel = kernel
 
@@ -213,7 +226,49 @@ class MMDMetric(Metric):
 
 class DiscriminativeMetric(Metric):
     """
-    The discriminative metric measures how accurately a discriminative model can separate synthetic and real data.
+    The DiscriminativeMetric measures the discriminative performance of a model in distinguishing
+    between synthetic and real datasets.
+
+    This metric evaluates a discriminative model by training it on a combination of synthetic
+    and real datasets and assessing its performance on a test set.
+
+    :param d_hist: Real dataset.
+    :type d_hist: tsgm.dataset.DatasetOrTensor
+    :param d_syn: Synthetic dataset.
+    :type d_syn: tsgm.dataset.DatasetOrTensor
+    :param model: Discriminative model to be evaluated.
+    :type model: T.Callable
+    :param test_size: Proportion of the dataset to include in the test split
+                     or the absolute number of test samples.
+    :type test_size: T.Union[float, int]
+    :param n_epochs: Number of training epochs for the model.
+    :type n_epochs: int
+    :param metric: Optional evaluation metric to use (default: accuracy).
+    :type metric: T.Optional[T.Callable]
+    :param random_seed: Optional random seed for reproducibility.
+    :type random_seed: T.Optional[int]
+
+    :return: Discriminative performance metric.
+    :rtype: float
+
+    Example:
+    --------
+    >>> from my_module import DiscriminativeMetric, MyDiscriminativeModel
+    >>> import tsgm.dataset
+    >>> import numpy as np
+    >>> import sklearn
+    >>>
+    >>> # Create real and synthetic datasets
+    >>> real_dataset = tsgm.dataset.Dataset(...)  # Replace ... with appropriate arguments
+    >>> synthetic_dataset = tsgm.dataset.Dataset(...)  # Replace ... with appropriate arguments
+    >>>
+    >>> # Create a discriminative model
+    >>> model = MyDiscriminativeModel()  # Replace with the actual discriminative model class
+    >>>
+    >>> # Create and use the DiscriminativeMetric
+    >>> metric = DiscriminativeMetric()
+    >>> result = metric(real_dataset, synthetic_dataset, model, test_size=0.2, n_epochs=10)
+    >>> print(result)
     """
     def __call__(self, d_hist: tsgm.dataset.DatasetOrTensor, d_syn: tsgm.dataset.DatasetOrTensor, model: T.Callable, test_size: T.Union[float, int], n_epochs: int, metric: T.Optional[T.Callable] = None, random_seed: T.Optional[int] = None) -> float:
         X_hist, X_syn = _dataset_or_tensor_to_tensor(d_hist), _dataset_or_tensor_to_tensor(d_syn)
@@ -225,3 +280,51 @@ class DiscriminativeMetric(Metric):
             return sklearn.metrics.accuracy_score(y_test, y_pred)
         else:
             return metric(y_test, y_pred)
+
+
+def _spectral_entropy_per_feature(X: TensorLike) -> TensorLike:
+    return antropy.spectral_entropy(X.ravel(), sf=1, method='welch', normalize=True)
+
+
+def _spectral_entropy_per_sample(X: TensorLike) -> TensorLike:
+    if len(X.shape) == 1:
+        X = X[:, None]
+    return np.apply_along_axis(_spectral_entropy_per_feature, 0, X)
+
+
+def _spectral_entropy_sum(X: TensorLike) -> TensorLike:
+    return np.apply_along_axis(_spectral_entropy_per_sample, 1, X)
+
+
+class EntropyMetric(Metric):
+    """
+    Calculates the spectral entropy of a dataset or tensor.
+
+    This metric measures the randomness or disorder in a dataset or tensor
+    using spectral entropy, which is a measure of the distribution of energy
+    in the frequency domain.
+
+    Args:
+        d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
+
+    Returns:
+        float: The computed spectral entropy.
+
+    Example:
+        >>> metric = EntropyMetric()
+        >>> dataset = tsgm.dataset.Dataset(...)
+        >>> result = metric(dataset)
+        >>> print(result)
+    """
+    def __call__(self, d: tsgm.dataset.DatasetOrTensor) -> float:
+        """
+        Calculate the spectral entropy of the input dataset or tensor.
+
+        Args:
+            d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
+
+        Returns:
+            float: The computed spectral entropy.
+        """
+        X = _dataset_or_tensor_to_tensor(d)
+        return np.sum(_spectral_entropy_sum(X), axis=None)

@@ -24,7 +24,7 @@ Augmentations
 
 Metrics
 --------------
-.. automodule:: tsgm.models.metrics
+.. automodule:: tsgm.metrics.metrics
     :members:
     :undoc-members:
 
