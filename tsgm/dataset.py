@@ -86,8 +86,10 @@ class Dataset(DatasetProperties):
         elif len(self._y.shape) == 2:
             if self._y.shape[1] == 1:
                 return np.concatenate((self._x, np.repeat(self._y[:, :, None], self._x.shape[1], axis=1)), axis=2)
-            else:
+            elif self._y.shape[1] == self._x.shape[1]:
                 return np.concatenate((self._x, self._y[:, :, None]), axis=2)
+            else:
+                return np.concatenate((self._x, np.repeat(self._y[:, None, :], self._x.shape[1], axis=1)), axis=2)
         else:
             raise ValueError("X & y are not compatible for Xy_concat operation")
 
