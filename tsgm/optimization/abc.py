@@ -1,5 +1,5 @@
 import itertools
-import typing
+import typing as T
 import tqdm
 
 import numpy as np
@@ -15,7 +15,7 @@ class ABCAlgorithm:
     """
     A base class for ABC algorithms.
     """
-    def sample_parameters(self, n_samples: int) -> list:
+    def sample_parameters(self, n_samples: int) -> T.List:
         raise NotImplementedError
 
 
@@ -24,8 +24,8 @@ class RejectionSampler(ABCAlgorithm):
     Rejection sampling algorithm for approximate Bayesian computation.
     """
     def __init__(self, simulator: tsgm.simulator.ModelBasedSimulator, data: tsgm.dataset.Dataset,
-                 statistics: list, epsilon: float, discrepancy: typing.Callable, priors: dict = None,
-                 **kwargs):
+                 statistics: T.List, epsilon: float, discrepancy: T.Callable, priors: T.Dict = None,
+                 **kwargs) -> None:
         """
         :param simulator: A model based simulator
         :type simulator: class `tsgm.simulator.ModelBasedSimulator`
@@ -53,19 +53,17 @@ class RejectionSampler(ABCAlgorithm):
         # TODO measure both X & y
         return np.array(list(itertools.chain.from_iterable(s(data.X) for s in self._statistics)))
 
-    def sample_parameters(self, n_samples: int) -> list:
+    def sample_parameters(self, n_samples: int) -> T.List:
         """
         Samples parameters from the rejection sampler.
         :param n_samples: Number of samples
         :type simulator: int
-        ...
-        ...
         :return: A list of samples. Each sample is represent as dict.
-        :rtype: typing.List[typing.Dict]
+        :rtype: T.List[T.Dict]
         """
         cur_sim = self._simulator.clone()
 
-        samples: typing.List[typing.Dict] = []
+        samples: T.List[T.Dict] = []
         for i in tqdm.tqdm(range(n_samples)):
             err, params = None, None
             while err is None or err > self._epsilon:
@@ -80,7 +78,30 @@ class RejectionSampler(ABCAlgorithm):
         return samples
 
 
-def prior_samples(priors, params):
+def prior_samples(priors: T.Dict, params: T.List) -> T.List:
+    """
+    Generate prior samples for the specified parameters.
+
+    :param priors: A dictionary containing probability distributions for each parameter.
+                   Keys are parameter names, and values are instances of probability distribution classes.
+                   If a parameter is not present in the dictionary, a default prior distribution is used.
+    :type priors: T.Dict
+
+    :param params: A list of parameter names for which prior samples are to be generated.
+    :type params: T.List
+
+    :returns: A dictionary where keys are parameter names and values are samples drawn from their respective prior distributions.
+    :rtype: T.Dict
+
+    Example:
+
+    .. code-block:: python
+
+        priors = {'mean': NormalDistribution(0, 1), 'std_dev': UniformDistribution(0, 2)}
+        params = ['mean', 'std_dev']
+        samples = prior_samples(priors, params)
+
+    """
     samples = {}
     for var in params:
         distr = priors.get(var, DEFAULT_PRIOR)

@@ -13,15 +13,15 @@ All statistics should return lists.
 '''
 
 
-def _validate_axis(axis: typing.Optional[int]):
+def _validate_axis(axis: typing.Optional[int]) -> int:
     assert axis == 1 or axis == 2 or axis is None
 
 
-def _apply_percacf(x):
+def _apply_percacf(x: tsgm.types.Tensor) -> tsgm.types.Tensor:
     return np.percentile(acf(x), .75)
 
 
-def _apply_power(x):
+def _apply_power(x: tsgm.types.Tensor) -> tsgm.types.Tensor:
     return np.power(x, 2).sum() / len(x)
 
 

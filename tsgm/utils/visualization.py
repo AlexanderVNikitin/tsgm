@@ -68,7 +68,7 @@ def visualize_tsne_unlabeled(
     markersize: int = 1,
     feature_averaging: bool = False,
     perplexity: float = 30.0
-):
+) -> None:
     """
     Visualizes t-SNE embeddings of unlabeled data.
 
@@ -138,7 +138,7 @@ def visualize_tsne(
     path: str = "/tmp/tsne_embeddings.pdf",
     feature_averaging: bool = False,
     perplexity=30.0
-):
+) -> None:
     """
     Visualizes t-SNE embeddings of real and synthetic data.
 
@@ -194,7 +194,7 @@ def visualize_tsne(
     plt.savefig(path)
 
 
-def visualize_ts(ts: tsgm.types.Tensor, num: int = 5):
+def visualize_ts(ts: tsgm.types.Tensor, num: int = 5) -> None:
     """
     Visualizes time series tensor.
 
@@ -228,7 +228,7 @@ def visualize_ts_lineplot(
     ys: tsgm.types.OptTensor = None,
     num: int = 5,
     unite_features: bool = True,
-):
+) -> None:
     assert len(ts.shape) == 3
 
     fig, axs = plt.subplots(num, 1, figsize=(14, 10))
@@ -271,7 +271,7 @@ def visualize_original_and_reconst_ts(
     num: int = 5,
     vmin: int = 0,
     vmax: int = 1,
-):
+) -> None:
     assert original.shape == reconst.shape
 
     fig, axs = plt.subplots(num, 2, figsize=(14, 10))
@@ -286,7 +286,7 @@ def visualize_training_loss(
     loss_vector: tsgm.types.Tensor,
     labels: tuple = (),
     path: str = "/tmp/training_loss.pdf",
-):
+) -> None:
     """
     Plot training losses as a function of the epochs
     :param loss_vector: np.array, having shape num of metrics times number of epochs

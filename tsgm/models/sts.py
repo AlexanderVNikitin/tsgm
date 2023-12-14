@@ -19,7 +19,7 @@ class STS:
         self._elbo_loss = None
 
     def train(self, ds: tsgm.dataset.Dataset, num_variational_steps: int = 200,
-              steps_forw: int = 10):
+              steps_forw: int = 10) -> None:
         assert ds.shape[0] == 1  # now works only with 1 TS
         X = ds.X.astype(np.float32)
         variational_posteriors = tfp.sts.build_factored_surrogate_posterior(
@@ -38,10 +38,10 @@ class STS:
             self._model, observed_time_series=X,
             parameter_samples=q_samples, num_steps_forecast=steps_forw)
 
-    def elbo_loss(self):
+    def elbo_loss(self) -> float:
         return self._elbo_loss
 
-    def generate(self, num_samples: int):
+    def generate(self, num_samples: int) -> tsgm.types.Tensor:
         assert self._dist is not None
 
         return self._dist.sample(num_samples).numpy()[..., 0]

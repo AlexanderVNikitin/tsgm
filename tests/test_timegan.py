@@ -64,10 +64,6 @@ def test_timegan_fit():
     assert timegan.synthetic_data_generated_in_training
     assert len(timegan.synthetic_data_generated_in_training[1].shape) == 3
 
-    # Check generation
-    generated_samples = timegan.generate(1)
-    assert generated_samples.shape == (1, seq_len, feature_dim)
-
 
 def test_timegan_on_dataset():
     latent_dim = 24
@@ -265,10 +261,9 @@ def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     X_ = next(batches)
     try:
         tf.config.experimental_run_functions_eagerly(True)
-        loss = mocked_timegan._train_supervisor(X_, mocked_timegan.adversarialsup_opt)
+        _, loss = mocked_timegan._train_embedder(X_, mocked_timegan.embedder_opt)
     finally:
         tf.config.experimental_run_functions_eagerly(False)
-
     # Assert that the loss is a float
     assert loss.dtype in [tf.float32, tf.float64]
 

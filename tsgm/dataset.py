@@ -1,4 +1,4 @@
-import typing
+import typing as T
 import logging
 import numpy as np
 
@@ -13,7 +13,7 @@ class DatasetProperties:
     """
     Stores the properties of a dataset. Along with dimensions it can store properties of the covariates.
     """
-    def __init__(self, N: int, D: int, T: int, variables=None):
+    def __init__(self, N: int, D: int, T: int, variables: T.Optional[T.List] = None) -> None:
         """
         :param N: The number of samples.
         :type N: int
@@ -35,7 +35,7 @@ class Dataset(DatasetProperties):
     """
     Wrapper for time-series datasets. Additional information is stored in `metadata` field.
     """
-    def __init__(self, x: tsgm.types.Tensor, y: tsgm.types.Tensor, metadata: typing.Optional[typing.Dict] = None):
+    def __init__(self, x: tsgm.types.Tensor, y: tsgm.types.Tensor, metadata: T.Optional[T.Dict] = None):
         """
         :param x: The matrix of time series with dimensions NxDxT
         :type x: tsgm.types.Tensor
@@ -155,4 +155,4 @@ class Dataset(DatasetProperties):
         return len(set(self.y))
 
 
-DatasetOrTensor = typing.Union[Dataset, tsgm.types.Tensor]
+DatasetOrTensor = T.Union[Dataset, tsgm.types.Tensor]

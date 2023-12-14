@@ -1,5 +1,5 @@
 import os
-import typing
+import typing as T
 import glob
 import scipy
 import collections
@@ -10,10 +10,12 @@ import yfinance as yf
 import sklearn
 import sklearn.datasets
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import scipy.io.arff
 
 from tensorflow import keras
+from tensorflow.python.types.core import TensorLike
 
 from tsgm.utils import covid19_data_utils
 from tsgm.utils import file_utils
@@ -23,7 +25,7 @@ logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
-def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> np.ndarray:
+def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> npt.NDArray:
     result = []
     for i in range(N):
         result.append([])
@@ -36,7 +38,7 @@ def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> np.ndarray:
     return np.transpose(np.array(result), [0, 2, 1])
 
 
-def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0, frequency_switch: float = 0.1) -> tuple:
+def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0, frequency_switch: float = 0.1) -> T.Tuple[TensorLike, TensorLike]:
     result_X, result_y = [], []
     cur_y = 0
     scales = np.random.random(D) * max_value
@@ -57,7 +59,7 @@ def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, c
     return np.array(result_X), np.array(result_y)
 
 
-def gen_sine_vs_const_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0) -> tuple:
+def gen_sine_vs_const_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0) -> T.Tuple[TensorLike, TensorLike]:
     result_X, result_y = [], []
     for i in range(N):
         scales = np.random.random(D) * max_value
@@ -96,7 +98,7 @@ class UCRDataManager:
         path = os.path.join(path, "UCRArchive_2018")
 
         self.ds = ds.strip().lower()
-        self.y_all: typing.Optional[typing.Collection[typing.Hashable]] = None
+        self.y_all: T.Optional[T.Collection[T.Hashable]] = None
 
         if ds == "beef":
             self.regular_train_path = os.path.join(path, "Beef")
@@ -145,13 +147,13 @@ class UCRDataManager:
         self.X_test, self.y_test = self.test_df[self.test_df.columns[1:]].to_numpy(), self.test_df[self.test_df.columns[0]].to_numpy()
         self.y_all = np.concatenate((self.y_train, self.y_test), axis=0)
 
-    def get(self) -> tuple:
+    def get(self) -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
         """
         Returns a tuple (X_train, y_train, X_test, y_test).
         """
         return self.X_train, self.y_train, self.X_test, self.y_test
 
-    def get_classes_distribution(self) -> dict:
+    def get_classes_distribution(self) -> T.Dict:
         """
         Returns a dict with fraction for each of classes.
         """
@@ -173,7 +175,7 @@ class UCRDataManager:
         print("Distribution of classes: ", self.get_classes_distribution())
 
 
-def get_mauna_loa() -> tuple:
+def get_mauna_loa() -> T.Tuple[TensorLike, TensorLike]:
     """
     Loads mauna loa dataset.
     """
@@ -186,7 +188,7 @@ def get_mauna_loa() -> tuple:
     return X, y
 
 
-def split_dataset_into_objects(X, y, step=10) -> tuple:
+def split_dataset_into_objects(X: TensorLike, y: TensorLike, step: int = 10) -> T.Tuple[TensorLike, TensorLike]:
     assert X.shape[0] == y.shape[0]
 
     Xs, ys = [], []
@@ -203,7 +205,7 @@ def load_arff(path: str) -> pd.DataFrame:
     return pd.DataFrame(data[0])
 
 
-def get_eeg() -> tuple:
+def get_eeg() -> T.Tuple[TensorLike, TensorLike]:
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00264/EEG Eye State.arff"
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
@@ -217,7 +219,7 @@ def get_eeg() -> tuple:
     return X, y
 
 
-def get_power_consumption() -> np.ndarray:
+def get_power_consumption() -> npt.NDArray:
     cur_path = os.path.dirname(__file__)
     path = os.path.join(cur_path, '../../data/')
 
@@ -230,14 +232,14 @@ def get_power_consumption() -> np.ndarray:
     return df.to_numpy()
 
 
-def get_stock_data(stock_name: str) -> np.ndarray:
+def get_stock_data(stock_name: str) -> npt.NDArray:
     stock_df = yf.download(stock_name)
     if stock_df.empty:
         raise ValueError(f"Cannot download ticker {stock_name}")
     return stock_df.to_numpy()[None, :, :]
 
 
-def get_energy_data() -> np.ndarray:
+def get_energy_data() -> npt.NDArray:
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "energydata_complete.csv")
@@ -249,7 +251,7 @@ def get_energy_data() -> np.ndarray:
     return pd.read_csv(path_to_resource).to_numpy()[None, :, 1:]
 
 
-def get_mnist_data() -> tuple:
+def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "mnist.npz")
@@ -261,12 +263,13 @@ def get_mnist_data() -> tuple:
     return x_train, y_train, x_test, y_test
 
 
-def _exponential_quadratic(x: np.ndarray, y: np.ndarray) -> float:
+def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> float:
     return np.exp(-0.5 * scipy.spatial.distance.cdist(x, y))
 
 
-def get_gp_samples_data(num_samples: int, max_time: int,
-                        covar_func: typing.Callable = _exponential_quadratic) -> np.ndarray:
+def get_gp_samples_data(
+        num_samples: int, max_time: int,
+        covar_func: T.Callable = _exponential_quadratic) -> npt.NDArray:
 
     #  TODO: connect this implementation with `models.gp
     times = np.expand_dims(np.linspace(0, max_time, max_time), 1)
@@ -276,7 +279,7 @@ def get_gp_samples_data(num_samples: int, max_time: int,
         mean=np.zeros(max_time), cov=sigma, size=num_samples)[:, None, :]
 
 
-def get_physionet2012() -> tuple:
+def get_physionet2012() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]:
     """
     Downloads and retrieves the Physionet 2012 dataset.
 
@@ -362,7 +365,7 @@ def _get_physionet_y_dataframe(file_path: str) -> pd.DataFrame:
     return y
 
 
-def get_covid_19() -> tuple:
+def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
     """
     Loads Covid-19 dataset with additional graph information
     The dataset is based on data from The New York Times, based on reports from state and local health agencies [1].

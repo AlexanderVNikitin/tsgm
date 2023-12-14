@@ -1,6 +1,6 @@
 import os
 import zipfile
-import typing
+import typing as T
 import hashlib
 import logging
 import tarfile
@@ -22,12 +22,12 @@ def _archive_type(file: str) -> str:
         raise ValueError(f"Unsupported Extension: {ext}")
 
 
-def _extract_zip(from_path: str, to_path: str, pwd: typing.Optional[bytes]) -> None:
+def _extract_zip(from_path: str, to_path: str, pwd: T.Optional[bytes]) -> None:
     with zipfile.ZipFile(from_path, "r", compression=zipfile.ZIP_STORED) as zip:
         zip.extractall(to_path, pwd=pwd)
 
 
-def _extract_targz(from_path: str, to_path: str, pwd: typing.Optional[bytes] = None) -> None:
+def _extract_targz(from_path: str, to_path: str, pwd: T.Optional[bytes] = None) -> None:
     try:
         # Open the tar.gz file
         with tarfile.open(from_path, "r:gz") as tar:
@@ -45,7 +45,7 @@ EXTRACTORS = {
 }
 
 
-def extract_archive(from_path: str, to_path: typing.Optional[str] = None, pwd: typing.Optional[bytes] = None) -> None:
+def extract_archive(from_path: str, to_path: T.Optional[str] = None, pwd: T.Optional[bytes] = None) -> None:
     ext = _archive_type(from_path)
     extractor = EXTRACTORS[ext]
 
@@ -57,7 +57,7 @@ def extract_archive(from_path: str, to_path: typing.Optional[str] = None, pwd: t
     os.remove(from_path)
 
 
-def download(url: str, path: str, md5: typing.Optional[str] = None, max_attempt: int = 3) -> None:
+def download(url: str, path: str, md5: T.Optional[str] = None, max_attempt: int = 3) -> None:
     logger.info(f"### Downloading from {url} ###")
     os.makedirs(path, exist_ok=True)
     resource_name = url.split("/")[-1]
@@ -76,7 +76,7 @@ def download(url: str, path: str, md5: typing.Optional[str] = None, max_attempt:
     raise ValueError(f"Cannot download dataset from {url}, reference md5={md5}")
 
 
-def download_all_resources(url: str, path: str, resources: list, pwd: typing.Optional[bytes] = None) -> None:
+def download_all_resources(url: str, path: str, resources: list, pwd: T.Optional[bytes] = None) -> None:
     for resource_name, _ in resources:
         file_name, _ = os.path.splitext(resource_name)
         resource_to_path = os.path.join(path, file_name)

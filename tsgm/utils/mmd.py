@@ -1,4 +1,4 @@
-import typing
+import typing as T
 import logging
 import scipy
 
@@ -6,6 +6,7 @@ import numpy as np
 import math
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.types.core import TensorLike
 
 import tsgm
 
@@ -17,11 +18,11 @@ logger.setLevel(logging.DEBUG)
 EXP_QUAD_KERNEL = tfp.math.psd_kernels.ExponentiatedQuadratic(feature_ndims=2)
 
 
-def exp_quad_kernel(x, y):
+def exp_quad_kernel(x: TensorLike, y: TensorLike):
     return EXP_QUAD_KERNEL.matrix(x, y)
 
 
-def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel=exp_quad_kernel):
+def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: T.Callable = exp_quad_kernel) -> TensorLike:
     XX = kernel(X, X)
     YY = kernel(Y, Y)
     XY = kernel(X, Y)
@@ -98,8 +99,9 @@ def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types
     return var_z1 + var_z2
 
 
-def mmd_3_test(X: tsgm.types.Tensor, Y: tsgm.types.Tensor,
-               Z: tsgm.types.Tensor, kernel: typing.Callable) -> tuple:
+def mmd_3_test(
+        X: tsgm.types.Tensor, Y: tsgm.types.Tensor,
+        Z: tsgm.types.Tensor, kernel: T.Callable) -> T.Tuple[float, float, float, float]:
     '''
     Relative MMD test --- returns a test statistic for whether Y is closer to X or than Z.
     See http://arxiv.org/pdf/1511.04581.pdf

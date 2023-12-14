@@ -1,8 +1,9 @@
 import abc
 import copy
-import typing
+import typing as T
 import numpy as np
 import tensorflow_probability as tfp
+from tensorflow.python.types.core import TensorLike
 
 import tsgm
 
@@ -13,28 +14,28 @@ class BaseSimulator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def dump(self, path: str, format: str = "csv"):
+    def dump(self, path: str, format: str = "csv") -> None:
         pass
 
 
 class Simulator(BaseSimulator):
-    def __init__(self, data: tsgm.dataset.DatasetProperties, driver: typing.Optional[tsgm.types.Model] = None):
+    def __init__(self, data: tsgm.dataset.DatasetProperties, driver: T.Optional[tsgm.types.Model] = None):
         self._data = data
         self._driver = driver
 
-    def fit(self, **kwargs):
+    def fit(self, **kwargs) -> None:
         if self._data.y is not None:
             self._driver.fit(self._data.X, self._data.y, **kwargs)
         else:
             self._driver.fit(self._data.X, **kwargs)
 
-    def generate(self, num_samples: int, *args):
+    def generate(self, num_samples: int, *args) -> TensorLike:
         raise NotImplementedError
 
-    def dump(self, path: str, format: str = "csv"):
+    def dump(self, path: str, format: str = "csv") -> None:
         raise NotImplementedError
 
-    def clone(self):
+    def clone(self) -> "Simulator":
         return Simulator(copy.deepcopy(self._data))
 
 
@@ -42,32 +43,32 @@ class ModelBasedSimulator(Simulator):
     def __init__(self, data: tsgm.dataset.DatasetProperties):
         super().__init__(data)
 
-    def params(self):
+    def params(self) -> T.Dict[str, T.Any]:
         params = copy.deepcopy(self.__dict__)
         del params["_data"], params["_driver"]
         return params
 
-    def set_params(self, params: dict) -> None:
+    def set_params(self, params: T.Dict[str, T.Any]) -> None:
         for param_name, param_value in params.items():
             self.__dict__[param_name] = param_value
 
     @abc.abstractmethod
-    def generate(self, num_samples: int, *args):
+    def generate(self, num_samples: int, *args) -> None:
         raise NotImplementedError
 
 
 class NNSimulator(Simulator):
-    def clone(self):
+    def clone(self) -> "NNSimulator":
         return NNSimulator(copy.deepcopy(self._data), self._driver.clone())
 
 
 class SineConstSimulator(ModelBasedSimulator):
-    def __init__(self, data: tsgm.dataset.DatasetProperties, max_scale: float = 10.0, max_const: float = 5.0):
+    def __init__(self, data: tsgm.dataset.DatasetProperties, max_scale: float = 10.0, max_const: float = 5.0) -> None:
         super().__init__(data)
 
         self.set_params(max_scale, max_const)
 
-    def set_params(self, max_scale, max_const, *args, **kwargs):
+    def set_params(self, max_scale: float, max_const: float, *args, **kwargs):
         self._scale = tfp.distributions.Uniform(0, max_scale)
         self._const = tfp.distributions.Uniform(0, max_const)
         self._shift = tfp.distributions.Uniform(0, 2)
