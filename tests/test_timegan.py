@@ -36,6 +36,35 @@ def test_timegan():
     assert generated_samples.shape == (1, seq_len, feature_dim)
 
 
+def test_timegan_fit():
+    latent_dim = 24
+    feature_dim = 6
+    seq_len = 24
+    batch_size = 2
+
+    dataset = _gen_dataset(batch_size, seq_len, feature_dim)
+    timegan = tsgm.models.timeGAN.TimeGAN(
+        seq_len=seq_len,
+        module="gru",
+        hidden_dim=latent_dim,
+        n_features=feature_dim,
+        n_layers=3,
+        batch_size=batch_size,
+    )
+    timegan.compile()
+    try:
+        tf.config.experimental_run_functions_eagerly(True)
+        timegan.fit(dataset, epochs=3, checkpoints_interval=2, generate_synthetic=(1,))
+
+        _check_internals(timegan)
+    finally:
+        tf.config.experimental_run_functions_eagerly(False)
+
+    # Check intermediate generation
+    assert timegan.synthetic_data_generated_in_training
+    assert len(timegan.synthetic_data_generated_in_training[1].shape) == 3
+
+
 def test_timegan_on_dataset():
     latent_dim = 24
     feature_dim = 6
@@ -225,6 +254,20 @@ def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     assert loss.dtype in [tf.float32, tf.float64]
 
 
+def test_timegan_train_supervisor(mocked_data, mocked_timegan):
+    batches = iter(mocked_data.repeat())
+
+    mocked_timegan._define_timegan()
+    X_ = next(batches)
+    try:
+        tf.config.experimental_run_functions_eagerly(True)
+        _, loss = mocked_timegan._train_embedder(X_, mocked_timegan.embedder_opt)
+    finally:
+        tf.config.experimental_run_functions_eagerly(False)
+    # Assert that the loss is a float
+    assert loss.dtype in [tf.float32, tf.float64]
+
+
 def test_timegan_train_embedder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -296,3 +339,49 @@ def test_timegan_train_discriminator(mocked_data, mocked_timegan):
         tf.config.experimental_run_functions_eagerly(False)
     # Assert that the loss is a float
     assert loss.dtype in [tf.float32, tf.float64]
+
+
+def test_generate_noise(mocked_timegan):
+    # Set finite values for sequence length and dimension for testing
+    mocked_timegan.seq_len = 10
+    mocked_timegan.dim = 5
+
+    # Generate noise using the method
+    generator = mocked_timegan._generate_noise()
+
+    # Generate a finite number of noise samples
+    num_samples = 3  # Define the number of samples to generate
+    for _ in range(num_samples):
+        generated_noise = next(generator)
+        assert isinstance(generated_noise, np.ndarray)
+        assert generated_noise.shape == (mocked_timegan.seq_len, mocked_timegan.dim)
+        assert np.all(generated_noise >= 0) and np.all(generated_noise <= 1)
+
+
+def test_compute_generator_moments_loss(mocked_timegan):
+    # Generate some test data
+    y_true_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    y_pred_data = np.array([[1.2, 2.3, 3.1], [4.2, 4.8, 6.2]])
+
+    # Calculate the expected loss manually
+    _eps = 1e-6
+    y_true_mean, y_true_var = tf.nn.moments(x=y_true_data, axes=[0])
+    y_pred_mean, y_pred_var = tf.nn.moments(x=y_pred_data, axes=[0])
+
+    g_loss_mean = tf.reduce_mean(tf.abs(y_true_mean - y_pred_mean))
+    g_loss_var = tf.reduce_mean(
+        tf.abs(tf.sqrt(y_true_var + _eps) - tf.sqrt(y_pred_var + _eps))
+    )
+    expected_loss = g_loss_mean + g_loss_var
+
+    try:
+        tf.config.experimental_run_functions_eagerly(True)
+        # Calculate the loss using the method
+        computed_loss = mocked_timegan._compute_generator_moments_loss(
+            y_true_data, y_pred_data
+        )
+    finally:
+        tf.config.experimental_run_functions_eagerly(False)
+
+    # Assert that the computed loss matches the expected loss
+    np.testing.assert_almost_equal(computed_loss, expected_loss, decimal=5)
