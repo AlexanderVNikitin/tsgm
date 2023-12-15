@@ -44,7 +44,7 @@ readme_text = read_file("README.md")
 
 
 setup(name='tsgm',
-      version='0.0.3',
+      version='0.0.4',
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',
@@ -66,6 +66,7 @@ setup(name='tsgm',
           "seaborn",
           "scikit-learn",
           "prettytable",
+          "antropy==0.1.6",
           "yfinance==0.2.28",
           "tqdm",
           "dtaidistance >= 2.3.10",
