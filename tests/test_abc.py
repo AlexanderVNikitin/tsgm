@@ -50,8 +50,10 @@ def test_abc_rejection_sampler_model_based_simulator():
 
     discrepancy = lambda x, y: np.linalg.norm(x - y)
     sampler = tsgm.optimization.abc.RejectionSampler(
-        data=samples_ref, simulator=simulator, statistics=statistics, discrepancy=discrepancy, epsilon=0.5,
-        priors=priors)
+        data=samples_ref, simulator=simulator,
+        statistics=statistics, discrepancy=discrepancy, epsilon=0.5,
+        priors=priors
+    )
 
     sampled_params = sampler.sample_parameters(10)
     assert abs(np.mean([p["max_scale"] for p in sampled_params]) - max_scale) < 1

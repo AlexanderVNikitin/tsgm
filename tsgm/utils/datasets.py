@@ -304,6 +304,9 @@ def download_physionet2012() -> None:
     """
     base_url = "https://physionet.org/files/challenge-2012/1.0.0/"
     destination_folder = "physionet2012"
+    if os.path.exists(destination_folder) and not os.path.isfile(destination_folder) and len(os.listdir(destination_folder)):
+        logger.info(f"Using downloaded dataset from {destination_folder}")
+        return
     X_a = "set-a.tar.gz"
     y_a = "Outcomes-a.txt"
 
@@ -314,7 +317,6 @@ def download_physionet2012() -> None:
     y_c = "Outcomes-c.txt"
 
     all_files = [(X_a, y_a), (X_b, y_b), (X_c, y_c)]
-
     for X, y in all_files:
         file_utils.download(base_url + X, destination_folder)
         file_utils.download(base_url + y, destination_folder)

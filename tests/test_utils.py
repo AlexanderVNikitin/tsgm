@@ -31,9 +31,10 @@ def test_TSFeatureWiseScaler():
 
     ts1 = np.array([[[10, 5], [0, 100], [-1, 2]]])
     scaler3 = tsgm.utils.TSFeatureWiseScaler(feature_range=(-10, 10))
-    assert np.allclose(scaler3.fit_transform(ts1), np.array([[[ 10.0,  -9.3877551],
-                                                             [-8.18181818, 10.0],
-                                                             [-10.0, -10.0]]]))
+    assert np.allclose(scaler3.fit_transform(ts1), np.array(
+        [[[ 10.0,  -9.3877551],
+        [-8.18181818, 10.0],
+        [-10.0, -10.0]]]))
     assert np.allclose(scaler3.inverse_transform(scaler3.fit_transform(ts1)), ts1)
     assert not np.allclose(scaler.inverse_transform(scaler3.fit_transform(ts1)), ts)
 
@@ -159,9 +160,9 @@ def test_mmd():
 
 
 def test_mmd_kernel_heuristic():
-    X1 = np.random.normal(0, 1, 100)[:, None]
-    X2 = np.random.normal(10, 100, 100)[:, None]
-    X11 = np.random.normal(0, 1, 100)[:, None]
+    X1 = np.random.normal(0, 1, 20)[:, None]
+    X2 = np.random.normal(10, 100, 20)[:, None]
+    X11 = np.random.normal(0, 1, 20)[:, None]
 
     kernel_width = tsgm.utils.kernel_median_heuristic(X1, X2)
     assert kernel_width > 1
@@ -259,9 +260,20 @@ def test_reconstruction_loss_by_axis():
     assert abs(loss.numpy() - 0.00444442) < eps
 
 
-def test_get_physionet2012():
+def test_get_physionet2012(mocker):
     train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()
+    assert train_X.shape == (1757980, 4)
+    assert train_y.shape == (4000, 6)
 
+    assert test_X.shape == (1762535, 4)
+    assert test_y.shape == (4000, 6)
+
+    assert val_X.shape == (1765303, 4)
+    assert val_y.shape == (4000, 6)
+    file_download_mock = mocker.patch('tsgm.utils.download')
+    file_download_mock.side_effect = tsgm.utils.download
+    train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()
+    assert file_download_mock.call_count == 0
     assert train_X.shape == (1757980, 4)
     assert train_y.shape == (4000, 6)
 

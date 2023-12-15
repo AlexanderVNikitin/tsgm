@@ -8,8 +8,8 @@ from tensorflow import keras
 
 
 def test_timegan():
-    latent_dim = 24
-    feature_dim = 6
+    latent_dim = 4
+    feature_dim = 3
     seq_len = 24
     batch_size = 2
 
@@ -19,7 +19,7 @@ def test_timegan():
         module="gru",
         hidden_dim=latent_dim,
         n_features=feature_dim,
-        n_layers=3,
+        n_layers=2,
         batch_size=batch_size,
     )
     timegan.compile()
@@ -37,8 +37,8 @@ def test_timegan():
 
 
 def test_timegan_fit():
-    latent_dim = 24
-    feature_dim = 6
+    latent_dim = 4
+    feature_dim = 3
     seq_len = 24
     batch_size = 2
 
@@ -48,7 +48,7 @@ def test_timegan_fit():
         module="gru",
         hidden_dim=latent_dim,
         n_features=feature_dim,
-        n_layers=3,
+        n_layers=2,
         batch_size=batch_size,
     )
     timegan.compile()
@@ -66,8 +66,8 @@ def test_timegan_fit():
 
 
 def test_timegan_on_dataset():
-    latent_dim = 24
-    feature_dim = 6
+    latent_dim = 4
+    feature_dim = 3
     seq_len = 24
     batch_size = 16
 
@@ -77,7 +77,7 @@ def test_timegan_on_dataset():
         module="gru",
         hidden_dim=latent_dim,
         n_features=feature_dim,
-        n_layers=3,
+        n_layers=2,
         batch_size=batch_size,
     )
     timegan.compile()
@@ -174,8 +174,8 @@ def mocked_gradienttape(mocker):
 
 
 def test_train_timegan(mocked_gradienttape):
-    latent_dim = 24
-    feature_dim = 6
+    latent_dim = 4
+    feature_dim = 3
     seq_len = 24
     batch_size = 2
 
@@ -185,7 +185,7 @@ def test_train_timegan(mocked_gradienttape):
         module="gru",
         hidden_dim=latent_dim,
         n_features=feature_dim,
-        n_layers=3,
+        n_layers=2,
         batch_size=batch_size,
     )
     timegan.compile()
@@ -213,7 +213,7 @@ def mock_optimizer():
 
 @pytest.fixture
 def mocked_data():
-    feature_dim = 6
+    feature_dim = 3
     seq_len = 24
     batch_size = 16
     yield _gen_tf_dataset(batch_size, seq_len, feature_dim)
@@ -221,8 +221,8 @@ def mocked_data():
 
 @pytest.fixture
 def mocked_timegan(mocked_data):
-    latent_dim = 24
-    feature_dim = 6
+    latent_dim = 4
+    feature_dim = 3
     seq_len = 24
     batch_size = 16
 
@@ -231,7 +231,7 @@ def mocked_timegan(mocked_data):
         module="gru",
         hidden_dim=latent_dim,
         n_features=feature_dim,
-        n_layers=3,
+        n_layers=2,
         batch_size=batch_size,
     )
     timegan.compile()

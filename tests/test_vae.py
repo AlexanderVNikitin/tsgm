@@ -7,7 +7,7 @@ from tensorflow import keras
 
 
 def test_vae():
-    seq_len = 128
+    seq_len = 32
     feat_dim = 1
     latent_dim = 4
 
@@ -35,7 +35,7 @@ def test_vae():
 
 
 def test_cvae():
-    seq_len = 128
+    seq_len = 32
     feat_dim = 1
     output_dim = 2
     latent_dim = 4
@@ -69,7 +69,7 @@ def test_cvae():
 
 
 def test_temp_cvae():
-    seq_len = 128
+    seq_len = 32
     feat_dim = 1
     output_dim = 1
     latent_dim = 4

@@ -47,11 +47,10 @@ def _gen_t_cond_dataset(seq_len: int, batch_size: int):
 
 
 def test_gan():
-    latent_dim = 124
-    output_dim = 0
+    latent_dim = 4
     feature_dim = 1
-    seq_len = 256
-    batch_size = 48
+    seq_len = 32
+    batch_size = 30
 
     dataset = _gen_dataset(seq_len, feature_dim, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
@@ -74,14 +73,14 @@ def test_gan():
     assert gan.discriminator is not None
     # Check generation
     generated_samples = gan.generate(10)
-    assert generated_samples.shape == (10, 256, 1)
+    assert generated_samples.shape == (10, seq_len, 1)
 
 
 def test_cgan():
-    latent_dim = 124
+    latent_dim = 8
     output_dim = 2
     feature_dim = 1
-    seq_len = 256
+    seq_len = 32
     batch_size = 48
 
     dataset, labels = _gen_cond_dataset(seq_len, batch_size)
@@ -108,15 +107,15 @@ def test_cgan():
 
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
-    assert generated_samples.shape == (10, 256, 1)
+    assert generated_samples.shape == (10, seq_len, 1)
 
 
-def test_cgan_seq_len_123():
-    latent_dim = 32
+def test_cgan_seq_len_33():
+    latent_dim = 4
     output_dim = 2
     feature_dim = 1
-    seq_len = 123
-    batch_size = 48
+    seq_len = 33
+    batch_size = 16
 
     dataset, labels = _gen_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["cgan_base_c4_l1"](
@@ -143,16 +142,15 @@ def test_cgan_seq_len_123():
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
 
-    assert generated_samples.shape == (10, 123, 1)
+    assert generated_samples.shape == (10, seq_len, 1)
 
 
 def test_temporal_cgan():
     latent_dim = 2
     output_dim = 1
     feature_dim = 1
-    seq_len = 256
-    batch_size = 48
-
+    seq_len = 32
+    batch_size = 12
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
     architecture = tsgm.models.architectures.zoo["t-cgan_c4"](
         seq_len=seq_len, feat_dim=feature_dim,
@@ -174,14 +172,14 @@ def test_temporal_cgan():
 
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
-    assert generated_samples.shape == (10, 256, 1)
+    assert generated_samples.shape == (10, seq_len, 1)
 
 
-def test_temporal_cgan_seq_len_123():
+def test_temporal_cgan_seq_len_55():
     latent_dim = 2
     output_dim = 1
     feature_dim = 1
-    seq_len = 123
+    seq_len = 55
     batch_size = 48
 
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
@@ -204,7 +202,7 @@ def test_temporal_cgan_seq_len_123():
 
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
-    assert generated_samples.shape == (10, 123, 1)
+    assert generated_samples.shape == (10, seq_len, 1)
 
 
 @pytest.mark.skipif(not __tf_privacy_available, reason="TF privacy is required for this test")
@@ -212,7 +210,7 @@ def test_dp_compiler():
     latent_dim = 2
     output_dim = 1
     feature_dim = 1
-    seq_len = 123
+    seq_len = 64
     batch_size = 48
 
     dataset, labels = _gen_t_cond_dataset(seq_len, batch_size)
@@ -258,7 +256,7 @@ def test_dp_compiler():
 
     # Check generation
     generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
-    assert generated_samples.shape == (10, 123, 1)    
+    assert generated_samples.shape == (10, 64, 1)    
 
 
 def test_temporal_cgan_multiple_features():

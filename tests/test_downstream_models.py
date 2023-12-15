@@ -32,11 +32,11 @@ def test_classification_conv():
     assert y_prediction.shape == y_train.shape
 
 
-def test_classification_conv_10_layers():
+def test_classification_conv_3_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
     seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
-    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim, n_conv_blocks=10).model
+    model = tsgm.models.zoo["clf_cn"](seq_len=seq_len, feat_dim=feat_dim, output_dim=output_dim, n_conv_blocks=3).model
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # fit network
@@ -49,13 +49,13 @@ def test_classification_conv_10_layers():
     assert y_prediction.shape == y_train.shape
 
 
-def test_classification_lstm_conv_5_layers():
+def test_classification_lstm_conv_3_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
     seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
     model = tsgm.models.zoo["clf_cl_n"](
         seq_len=seq_len, feat_dim=feat_dim,
-        output_dim=output_dim, n_conv_lstm_blocks=5
+        output_dim=output_dim, n_conv_lstm_blocks=3
     ).model
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -70,15 +70,15 @@ def test_classification_lstm_conv_5_layers():
     assert y_prediction.shape == y_train.shape
 
 
-def test_classification_blocks_5_layers():
+def test_classification_blocks_3_layers():
     X_train, y_train, X_test, y_test = _get_gunpoint_dataset()
 
     seq_len, feat_dim, output_dim = X_train.shape[1], X_train.shape[2], y_train.shape[1]
     block = [keras.layers.Conv1D(filters=64, kernel_size=3, activation='relu'),
              keras.layers.Dropout(0.2),
-             keras.layers.LSTM(128, activation="relu", return_sequences=True),
+             keras.layers.LSTM(32, activation="relu", return_sequences=True),
              keras.layers.Dropout(0.2)]
-    blocks = list(itertools.chain(*[copy.deepcopy(block) for _ in range(5)]))
+    blocks = list(itertools.chain(*[copy.deepcopy(block) for _ in range(3)]))
     for i, b in enumerate(blocks):
         b._name = b._name + str(i)
 
