@@ -48,12 +48,12 @@ If you find this repo useful, please consider citing our paper:
 
 .. code-block:: latex
 
-    @article{
-        nikitin2023gen,
-        author = {Nikitin, Alexander and Iannucci, Letizia and Kaski, Samuel},
-        title = {{TSGM} --- A Flexible Framework for Synthetic Time Series Generative Modeling},
-        year = {2023},
-    }
+	@article{nikitin2023tsgm,
+	    title={TSGM: A Flexible Framework for Generative Modeling of Synthetic Time Series},
+	    author={Nikitin, Alexander and Iannucci, Letizia and Kaski, Samuel},
+	    journal={arXiv preprint arXiv:2305.11567},
+	    year={2023}
+	}
 
 .. toctree::
    :glob:
