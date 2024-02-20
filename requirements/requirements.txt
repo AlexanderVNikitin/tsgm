@@ -1,5 +1,5 @@
 tensorflow_privacy==0.8.11
-tensorflow==2.15.0
+tensorflow==2.13.1
 tensorflow_probability==0.22.0
 scipy>=1.7.3
 antropy==0.1.6
