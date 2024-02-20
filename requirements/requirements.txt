@@ -1,4 +1,4 @@
-tensorflow_privacy==0.8.12
+tensorflow_privacy==0.8.11
 tensorflow==2.15.0
 tensorflow_probability==0.22.0
 scipy>=1.7.3
