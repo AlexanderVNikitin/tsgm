@@ -212,3 +212,24 @@ def test_entropy_metric():
     D1 = tsgm.dataset.Dataset(ts, y=None)
     spec_entropy_metric = tsgm.metrics.EntropyMetric()
     assert spec_entropy_metric(D1) == 2.6402430161833763
+
+
+def test_demographic_parity():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    y = np.array([0, 1, 1])
+    groups = np.array([0, 1 ,2])
+    D = tsgm.dataset.Dataset(ts, y)
+
+    synth_ts = ts
+    synth_y = np.array([0, 1, 1])
+    synth_groups = np.array([1, 2, 3])
+    D_synth = tsgm.dataset.Dataset(synth_ts, synth_y)
+    demographic_parity_metric = tsgm.metrics.DemographicParityMetric()
+    result =  demographic_parity_metric(D, groups, D_synth, synth_groups)
+
+    assert result == {
+        0: np.inf,
+        1: 1.0,
+        2: 0,
+        3: -np.inf
+    }
