@@ -1,6 +1,7 @@
 import pytest
 
 import os
+import tarfile
 import shutil
 import uuid
 import functools
@@ -261,6 +262,7 @@ def test_reconstruction_loss_by_axis():
 
 
 def test_get_physionet2012(mocker):
+    shutil.rmtree("./physionet2012", ignore_errors=True)
     train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()
     assert train_X.shape == (1757980, 4)
     assert train_y.shape == (4000, 6)
@@ -335,3 +337,14 @@ def test_get_covid_19():
     assert len(X.shape) == 3
     assert X.shape[2] == 4
     assert X.shape[1] >= 150
+
+
+def test_extract_targz():
+    resource_folder = "./tmp/test_download/"
+    os.makedirs(resource_folder, exist_ok=True)
+    output_filename = "./tmp/dir.gz"
+    extracted_path = "./tmp/extracted"
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(resource_folder, arcname=os.path.basename(resource_folder))
+    tsgm.utils.file_utils._extract_targz(output_filename, extracted_path)
+    assert os.path.isdir(extracted_path)
