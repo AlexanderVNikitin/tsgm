@@ -32,6 +32,19 @@ The framework can be used for:
 pip install tsgm
 ```
 
+### M1 and M2 chips:
+To install `tsgm` on Apple M1 and M2 chips:
+```bash
+# Install tensorflow
+conda install -c conda-forge tensorflow=2.9.1
+
+# Install tsgm without dependencies
+pip install tsgm --no-deps
+
+# Install rest of the dependencies (separately here for clarity)
+conda install tensorflow-probability scipy antropy statsmodels dtaidistance networkx optuna prettytable seaborn scikit-learn yfinance tqdm
+```
+
 
 ## Train your generative model
 
