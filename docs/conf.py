@@ -50,7 +50,7 @@ copyright = '2022, Alexander Nikitin'
 author = 'Alexander Nikitin'
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.0"
+release = tsgm.__version__
 
 default_role = "any"  # try and turn all `` into links
 add_module_names = False  # Remove namespaces from class/method signatures

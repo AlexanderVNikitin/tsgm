@@ -5,3 +5,5 @@ import tsgm.utils
 import tsgm.models
 import tsgm.metrics
 import tsgm.optimization
+
+from tsgm.version import __version__

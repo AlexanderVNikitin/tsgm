@@ -348,3 +348,7 @@ def test_extract_targz():
         tar.add(resource_folder, arcname=os.path.basename(resource_folder))
     tsgm.utils.file_utils._extract_targz(output_filename, extracted_path)
     assert os.path.isdir(extracted_path)
+
+
+def test_version():
+    assert isinstance(tsgm.__version__, str)
