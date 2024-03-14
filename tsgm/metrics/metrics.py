@@ -332,8 +332,6 @@ class EntropyMetric(Metric):
 
 
 class DemographicParityMetric(Metric):
-    _DEFAULT_KS_METRIC = lambda data1, data2: scipy.stats.ks_2samp(data1, data2).statistic  # noqa: E731
-
     """
     Measuring demographic parity between two datasets.
 
@@ -361,6 +359,9 @@ class DemographicParityMetric(Metric):
         >>> result = metric(dataset_hist, groups_hist, dataset_synth, groups_synth)
         >>> print(result)
     """
+
+    _DEFAULT_KS_METRIC = lambda data1, data2: scipy.stats.ks_2samp(data1, data2).statistic  # noqa: E731
+
     def __call__(self, d_hist: tsgm.dataset.DatasetOrTensor, groups_hist: TensorLike, d_synth: tsgm.dataset.DatasetOrTensor, groups_synth: TensorLike, metric: T.Callable = _DEFAULT_KS_METRIC) -> T.Dict:
         """
         Calculate the demographic parity metric for the input datasets.

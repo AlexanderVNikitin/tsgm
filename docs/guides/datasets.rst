@@ -28,6 +28,9 @@ The package provides easy access to many time series datasets.
    * - Stock data
      - tsgm.utils.get_stock_data(ticker_name)
      - Gets historical stock data from YFinance
+   * - COVID-19 over the US
+     - tsgm.utils.get_stock_data(ticker_name)
+     - https://github.com/AlexanderVNikitin/covid19-on-graphs
    * - Energy Data (UCI)
      - tsgm.utils.get_energy_data
      - https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction
@@ -37,3 +40,6 @@ The package provides easy access to many time series datasets.
    * - Samples from GPs
      - tsgm.utils.get_gp_samples_data
      - https://en.wikipedia.org/wiki/Gaussian_process
+   * - Physionet 2012
+     - tsgm.utils.get_physionet2012
+     - https://archive.physionet.org/pn3/challenge/2012/

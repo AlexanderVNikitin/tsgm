@@ -35,7 +35,6 @@ def test_dataset():
     assert d1.Xy_concat.shape == (10, 20, 23)
 
 
-
 def test_temporally_labeled_ds():
     X = np.ones((10, 100, 2))
     y = np.ones((10, 100))

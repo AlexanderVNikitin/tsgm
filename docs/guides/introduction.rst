@@ -15,7 +15,7 @@ TSGM offers a wide range of features to support the generation and evaluation of
 
 - **Evaluation Approaches:** TSGM provides multiple approaches for evaluating the quality of synthetic time series data. These evaluation methods help assess the fidelity of the generated data by comparing it to real-world time series, enabling researchers to measure the accuracy and statistical properties of the synthetic data.
 
-- **Built on TensorFlow:** TSGM is built on top of the `TensorFlow <https://www.tensorflow.org/>`_ deep learning framework. TensorFlow offers efficient computation and enables seamless integration with other TensorFlow-based models and libraries, allowing users to leverage its extensive ecosystem for further customization and experimentation.
+- **Built on Keras:** TSGM is built on top of the `Keras <https://www.keras.io/>`_ deep learning framework. It offers efficient computation and enables seamless integration with other TensorFlow-based models and libraries, allowing users to leverage its extensive ecosystem for further customization and experimentation.
 
 
 Augmentations
@@ -37,10 +37,12 @@ A central concept of TSGM is `Generator`. The generator can be trained on histor
 
 The training of data-driven simulators can be done via likelihood optimization, adversarial training procedures, or variational methods. Some of the implemented data-driven simulators include:
 
-- `tss.models.cgan.GAN` - standard GAN model adapted for time-series simulation,\\
-- `tss.models.cgan.ConditionalGAN` - conditional GAN model for labeled and temporally labeled time-series simulation,\\
-- `tss.models.cvae.BetaVAE` - beta-VAE model adapted for time-series simulation,\\
-- `tss.models.cvae.cBetaVAE` - conditional beta-VAE model for labeled and temporally labeled time-series simulation.
+- `tsgm.models.sts.STS` - Structural Time Series model for time sires generation,\\
+- `tsgm.models.cgan.GAN` - standard GAN model adapted for time-series simulation,\\
+- `tsgm.models.cgan.ConditionalGAN` - conditional GAN model for labeled and temporally labeled time-series simulation,\\
+- `tsgm.models.cvae.BetaVAE` - beta-VAE model adapted for time-series simulation,\\
+- `tsgm.models.cvae.cBetaVAE` - conditional beta-VAE model for labeled and temporally labeled time-series simulation,\\
+- `tsgm.models.cvae.TimeGAN` - extended GAN-based model for time series generation.
 
 A minimalistic example of synthetic data generation with VAEs:
 
@@ -48,6 +50,7 @@ A minimalistic example of synthetic data generation with VAEs:
 
 	import tsgm
 	from tensorflow import keras
+
 	n, n_ts, n_features  = 1000, 24, 5
 	data = tsgm.utils.gen_sine_dataset(n, n_ts, n_features)
 	scaler = tsgm.utils.TSFeatureWiseScaler()        
@@ -66,30 +69,79 @@ In TSGM, time series datasets are often stored in one of two ways: wrapped in a 
 
 Class `tsgm.dataset.DatasetProperties` implements generic placeholder for data when they are unavailable.
 
-`tsgm.utils` has a plenty of datasets, see :ref:`datasets-label`.
+`tsgm.utils` has a plenty of datasets, see :ref:`datasets-label`. For instance,
+
+.. code-block:: python
+
+    import tsgm
+
+    ucr_data_manager = tsgm.utils.UCRDataManager(ds="gunpoint")
+    assert ucr_data_manager.summary() is None
+    X_train, y_train, X_test, y_test = ucr_data_manager.get()
 
 
 Architectures Zoo
 =============================
-Architectures Zoo is a storage object of NN architectures that can be utilized by the framework users. It provides architectures for GANs, VAEs, and downstream task models. It also provides additional information on the implemented architectures via `zoo.summary()`.
+Architectures Zoo is a storage object of NN architectures that can be utilized by the framework users.
+It provides architectures for GANs, VAEs, and downstream task models. It also provides additional information on the implemented architectures via `tsgm.models.zoo.summary()`. `tsgm.models.zoo` object support API of Python dictionary. In particular the users can add their custom models to it.
+
+For example, the models from zoo can be used as follows:
+
+.. code-block:: python
+
+    import tsgm
+
+    model_type = tsgm.models.architectures.zoo["cgan_lstm_n"]
+    arch = model_type(
+        seq_len=seq_len, feat_dim=feat_dim,
+        latent_dim=latent_dim, output_dim=output_dim)
+    arch_dict = arch.get()
+    # arch will store `.generator` and `.discriminator` fields for cGAN
 
 
 Metrics
 =============================
 In `tsgm.metrics`, we implemented several metrics for evaluation of generated time series. Essentially, these metrics are subdivided into five types:
 
-- data similarity,
+- data similarity / distance,
 - predictive consistency,
+- fairness,
 - privacy,
 - downstream effectiveness,
 - visual similarity.
+
+See the following code for an example of using metrics:
+
+.. code-block:: python
+
+	import tsgm
+	import functools
+	import numpy as np
+
+	Xr, yr = tsgm.utils.gen_sine_vs_const_dataset(10, 100, 20, max_value=2, const=1)  # real data
+	Xs, ys = Xr + 1e-5, yr  # synthetic data
+
+	d_real = tsgm.dataset.Dataset(Xr, yr)
+	d_syn = tsgm.dataset.Dataset(Xs, ys)
+
+	statistics = [
+		functools.partial(tsgm.metrics.statistics.axis_max_s, axis=None),
+        functools.partial(tsgm.metrics.statistics.axis_min_s, axis=None)]
+	sim_metric = tsgm.metrics.DistanceMetric(
+    	statistics=statistics, discrepancy=lambda x, y: np.linalg.norm(x - y)
+	)
+	sim_metric = tsgm.metrics.DistanceMetric(
+    	statistics=statistics, discrepancy=discrepancy_func
+	)
+	sim_metric(d_real, d_syn)
+
 
 Implementations and examples of these methods are described in `tutorials/metrics.ipynb`.
 
 
 Citing
 =======================
-If you find the *Time Series Generator Modeling framework* useful, please consider citing our paper:
+If you find the *TSGM* useful, please consider citing our paper:
 
 .. code-block:: latex
 
