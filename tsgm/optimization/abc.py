@@ -56,9 +56,10 @@ class RejectionSampler(ABCAlgorithm):
     def sample_parameters(self, n_samples: int) -> T.List:
         """
         Samples parameters from the rejection sampler.
+
         :param n_samples: Number of samples
         :type simulator: int
-        :return: A list of samples. Each sample is represent as dict.
+        :returns: A list of samples. Each sample is represent as dict.
         :rtype: T.List[T.Dict]
         """
         cur_sim = self._simulator.clone()
@@ -78,7 +79,7 @@ class RejectionSampler(ABCAlgorithm):
         return samples
 
 
-def prior_samples(priors: T.Dict, params: T.List) -> T.List:
+def prior_samples(priors: T.Dict, params: T.List) -> T.Dict:
     """
     Generate prior samples for the specified parameters.
 

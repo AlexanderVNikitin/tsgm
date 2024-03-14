@@ -46,8 +46,12 @@ class BetaVAE(keras.Model):
     def call(self, X: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """
         Encodes and decodes time series dataset X.
+
         :param X: The size of the noise vector.
         :type X: tsgm.types.Tensor
+
+        :returns: Generated samples
+        :rtype: tsgm.types.Tensor
         """
         z_mean, _, _ = self.encoder(X)
         x_decoded = self.decoder(z_mean)
@@ -64,10 +68,12 @@ class BetaVAE(keras.Model):
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict:
         """
         Performs a training step using a batch of data, stored in data.
+
         :param data: A batch of data in a format batch_size x seq_len x feat_dim
         :type data: tsgm.types.Tensor
 
-        :returns a dict with losses:
+        :returns: A dict with losses
+        :rtype: T.Dict
         """
         with tf.GradientTape() as tape:
             z_mean, z_log_var, z = self.encoder(data)
@@ -94,7 +100,8 @@ class BetaVAE(keras.Model):
         :param n: the number of samples to be generated.
         :type n: int
 
-        :returns: a tensor with generated samples.
+        :returns: A tensor with generated samples.
+        :rtype: tsgm.types.Tensor
         """
         z = tf.random.normal((n, self.latent_dim))
         return self.decoder(z)
@@ -135,6 +142,7 @@ class cBetaVAE(keras.Model):
         :type labels: tsgm.types.Tensor
 
         :returns: a tuple of synthetically generated data and labels.
+        :rtype: T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor]
         """
         batch_size = tf.shape(labels)[0]
         z = tf.random.normal((batch_size, self._seq_len, self.latent_dim), dtype=labels.dtype)
@@ -144,8 +152,12 @@ class cBetaVAE(keras.Model):
     def call(self, data: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """
         Encodes and decodes time series dataset X.
+
         :param X: The size of the noise vector.
         :type X: tsgm.types.Tensor
+
+        :returns: Generated samples
+        :rtype: tsgm.types.Tensor
         """
         X, labels = data
         encoder_input = self._get_encoder_input(X, labels)
@@ -180,10 +192,12 @@ class cBetaVAE(keras.Model):
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         """
         Performs a training step using a batch of data, stored in data.
+
         :param data: A batch of data in a format batch_size x seq_len x feat_dim
         :type data: tsgm.types.Tensor
 
-        :returns a dict with losses:
+        :returns: A dict with losses
+        :rtype: T.Dict[str, float]
         """
         X, labels = data
         with tf.GradientTape() as tape:

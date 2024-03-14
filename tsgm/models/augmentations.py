@@ -412,7 +412,7 @@ class DTWBarycentricAveraging(BaseAugmenter):
             Initial timesteries to start from for the optimization process, with shape (original_size, d).
             In case y is given, the shape of initial_timeseries is assumed to be (n_classes, original_size, d)
         initial_labels: array or None (default: None)
-            TODO
+            Labels for samples from `initial_timeseries`
         Returns
         -------
         np.array of shape (n_samples, original_size, d) if y is None
@@ -437,8 +437,8 @@ class DTWBarycentricAveraging(BaseAugmenter):
 
             y_new = []
             X_new = []
-            unique_lables = np.unique(initial_labels)
-            for i, label in enumerate(unique_lables):
+            unique_labels = np.unique(initial_labels)
+            for i, label in enumerate(unique_labels):
                 logger.debug(f"DTWBA Class {label}...")
                 cur_initial_timeseries = initial_timeseries[np.ravel(initial_labels) == label]
                 n_samples_per_label = len(cur_initial_timeseries)

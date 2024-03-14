@@ -85,8 +85,12 @@ class GAN(keras.Model):
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         """
         Performs a training step using a batch of data, stored in data.
+
         :param data: A batch of data in a format batch_size x seq_len x feat_dim
         :type data: tsgm.types.Tensor
+
+        :returns: A dictionary with generator (key "g_loss") and discriminator (key "d_loss") losses
+        :rtype: T.Dict[str, float]
         """
         real_data = data
         batch_size = tf.shape(real_data)[0]
@@ -140,11 +144,20 @@ class GAN(keras.Model):
 
         :param num: the number of samples to be generated.
         :type num: int
+
+        :returns: Generated samples
+        :rtype: tsgm.types.Tensor
         """
         random_vector_labels = self._get_random_vector_labels(batch_size=num)
         return self.generator(random_vector_labels)
 
     def clone(self) -> "GAN":
+        """
+        Clones GAN object
+
+        :returns: The exact copy of the object
+        :rtype: "GAN"
+        """
         copy_model = GAN(self.discriminator, self.generator, latent_dim=self.latent_dim)
         copy_model = copy_model.set_weights(self.get_weights())
         return copy_model
@@ -181,6 +194,7 @@ class ConditionalGAN(keras.Model):
     def metrics(self) -> T.List:
         """
         :returns: A list of metrics trackers (e.g., generator's loss and discriminator's loss).
+        :rtype: T.List
         """
         return [self.gen_loss_tracker, self.disc_loss_tracker]
 
@@ -233,14 +247,13 @@ class ConditionalGAN(keras.Model):
 
     def train_step(self, data: T.Tuple) -> T.Dict[str, float]:
         """
-        Compiles the generator and discriminator models.
+        Performs a training step using a batch of data, stored in data.
 
-        :param d_optimizer: An optimizer for the GAN's discriminator.
-        :type d_optimizer: keras.Model
-        :param g_optimizer: An optimizer for the GAN's generator.
-        :type generator: keras.Model
-        :param loss_fn: Loss function.
-        :type loss_fn: keras.losses.Loss
+        :param data: A batch of data in a format batch_size x seq_len x feat_dim
+        :type data: tsgm.types.Tensor
+
+        :returns: A dictionary with generator (key "g_loss") and discriminator (key "d_loss") losses
+        :rtype: T.Dict[str, float]
         """
         real_ts, labels = data
         output_dim = self._get_output_shape(labels)
@@ -319,6 +332,9 @@ class ConditionalGAN(keras.Model):
 
         :param labels: the number of samples to be generated.
         :type labels: tsgm.types.Tensor
+
+        :returns: generated samples
+        :rtype: tsgm.types.Tensor
         """
         batch_size = labels.shape[0]
 

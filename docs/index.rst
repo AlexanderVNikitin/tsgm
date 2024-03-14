@@ -1,6 +1,6 @@
 :github_url: https://github.com/
 
-Time Series Simulator (TSGM) Official Documentation
+Time Series Generative Modeling (TSGM) Official Documentation
 ========================================
 
 Time Series Generative Modeling (TSGM) is a Python framework for time series data generation. It include data-driven and model-based approaches to synthetic time-series generation. It uses both generative
