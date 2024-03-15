@@ -71,6 +71,13 @@ Monitors
     :undoc-members:
 
 
+Zoo
+--------------
+.. automodule:: tsgm.models.architectures.zoo
+    :members:
+    :undoc-members:
+
+
 Datasets
 --------------
 .. automodule:: tsgm.utils.datasets

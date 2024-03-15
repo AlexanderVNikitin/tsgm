@@ -10,7 +10,23 @@ from prettytable import PrettyTable
 
 
 class Sampling(tf.keras.layers.Layer):
-    def call(self, inputs: tsgm.types.Tensor) -> tsgm.types.Tensor:
+    """
+    Custom Keras layer for sampling from a latent space.
+
+    This layer samples from a latent space using the reparameterization trick during training.
+    It takes as input the mean and log variance of the latent distribution and generates
+    samples by adding random noise scaled by the standard deviation to the mean.
+    """
+    def call(self, inputs: T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor]) -> tsgm.types.Tensor:
+        """
+        Generates samples from a latent space.
+
+        :param inputs: Tuple containing mean and log variance tensors of the latent distribution.
+        :type inputs: tuple[tsgm.types.Tensor, tsgm.types.Tensor]
+
+        :returns: Sampled latent vector.
+        :rtype: tsgm.types.Tensor
+        """
         z_mean, z_log_var = inputs
         epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
@@ -23,8 +39,18 @@ class Architecture(abc.ABC):
 
 
 class BaseGANArchitecture(Architecture):
+    """
+    Base class for defining architectures of Generative Adversarial Networks (GANs).
+    """
     @property
     def discriminator(self) -> keras.models.Model:
+        """
+        Property for accessing the discriminator model.
+
+        :returns: The discriminator model.
+        :rtype: keras.models.Model
+        :raises NotImplementedError: If the discriminator model is not found.
+        """
         if hasattr(self, "_discriminator"):
             return self._discriminator
         else:
@@ -32,12 +58,26 @@ class BaseGANArchitecture(Architecture):
 
     @property
     def generator(self) -> keras.models.Model:
+        """
+        Property for accessing the generator model.
+
+        :returns: The generator model.
+        :rtype: keras.models.Model
+        :raises NotImplementedError: If the generator model is not implemented.
+        """
         if hasattr(self, "_generator"):
             return self._generator
         else:
             raise NotImplementedError
 
     def get(self) -> T.Dict:
+        """
+        Retrieves both discriminator and generator models as a dictionary.
+
+        :return: A dictionary containing discriminator and generator models.
+        :rtype: dict
+        :raises NotImplementedError: If either discriminator or generator models are not implemented.
+        """
         if hasattr(self, "_discriminator") and hasattr(self, "_generator"):
             return {"discriminator": self._discriminator, "generator": self._generator}
         else:
@@ -45,8 +85,18 @@ class BaseGANArchitecture(Architecture):
 
 
 class BaseVAEArchitecture(Architecture):
+    """
+    Base class for defining architectures of Variational Autoencoders (VAEs).
+    """
     @property
     def encoder(self) -> keras.models.Model:
+        """
+        Property for accessing the encoder model.
+
+        :return: The encoder model.
+        :rtype: keras.models.Model
+        :raises NotImplementedError: If the encoder model is not implemented.
+        """
         if hasattr(self, "_encoder"):
             return self._encoder
         else:
@@ -54,12 +104,26 @@ class BaseVAEArchitecture(Architecture):
 
     @property
     def decoder(self) -> keras.models.Model:
+        """
+        Property for accessing the decoder model.
+
+        :return: The decoder model.
+        :rtype: keras.models.Model
+        :raises NotImplementedError: If the decoder model is not implemented.
+        """
         if hasattr(self, "_decoder"):
             return self._decoder
         else:
             raise NotImplementedError
 
     def get(self) -> T.Dict:
+        """
+        Retrieves both encoder and decoder models as a dictionary.
+
+        :return: A dictionary containing encoder and decoder models.
+        :rtype: dict
+        :raises NotImplementedError: If either encoder or decoder models are not implemented.
+        """
         if hasattr(self, "_encoder") and hasattr(self, "_decoder"):
             return {"encoder": self._encoder, "decoder": self._decoder}
         else:
@@ -67,9 +131,27 @@ class BaseVAEArchitecture(Architecture):
 
 
 class VAE_CONV5Architecture(BaseVAEArchitecture):
+    """
+    This class defines the architecture for a Variational Autoencoder (VAE) with Convolutional Layers.
+
+    Parameters:
+        seq_len (int): Length of input sequence.
+        feat_dim (int): Dimensionality of input features.
+        latent_dim (int): Dimensionality of latent space.
+    """
     arch_type = "vae:unconditional"
 
     def __init__(self, seq_len: int, feat_dim: int, latent_dim: int) -> None:
+        """
+        Initializes the VAE_CONV5Architecture.
+
+        :parameter seq_len: Length of input sequences.
+        :type seq_len: int
+        :parameter feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :parameter latent_dim: Dimensionality of latent space.
+        :type latent_dim: int
+        """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -204,9 +286,24 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
 
 
 class cGAN_Conv4Architecture(BaseGANArchitecture):
+    """
+    Architecture for Conditional Generative Adversarial Network (cGAN) with Convolutional Layers.
+    """
     arch_type = "gan:conditional"
 
     def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+        """
+        Initializes the cGAN_Conv4Architecture.
+
+        :parameter seq_len: Length of input sequence.
+        :type seq_len: int
+        :parameter feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :parameter latent_dim: Dimensionality of latent space.
+        :type latent_dim: int
+        :parameter output_dim: Dimensionality of output.
+        :type output_dim: int
+        """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -264,9 +361,24 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
 
 
 class tcGAN_Conv4Architecture(BaseGANArchitecture):
+    """
+    Architecture for Temporal Conditional Generative Adversarial Network (tcGAN) with Convolutional Layers.
+    """
     arch_type = "gan:t-conditional"
 
     def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+        """
+        Initializes the tcGAN_Conv4Architecture.
+
+        :parameter seq_len: Length of input sequence.
+        :type seq_len: int
+        :parameter feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :parameter latent_dim: Dimensionality of latent space.
+        :type latent_dim: int
+        :parameter output_dim: Dimensionality of output.
+        :type output_dim: int
+        """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -321,9 +433,24 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
 
 
 class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
+    """
+    Architecture for Conditional Generative Adversarial Network (cGAN) with LSTM and Convolutional Layers.
+    """
     arch_type = "gan:conditional"
 
     def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+        """
+        Initializes the cGAN_LSTMConv3Architecture.
+
+        :parameter seq_len: Length of input sequence.
+        :type seq_len: int
+        :parameter feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :parameter latent_dim: Dimensionality of latent space.
+        :type latent_dim: int
+        :parameter output_dim: Dimensionality of output.
+        :type output_dim: int
+        """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -380,9 +507,30 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
 
 
 class BaseClassificationArchitecture(Architecture):
+    """
+    Base class for classification architectures.
+
+    :param seq_len: Length of input sequences.
+    :type seq_len: int
+    :param feat_dim: Dimensionality of input features.
+    :type feat_dim: int
+    :param output_dim: Dimensionality of the output.
+    :type output_dim: int
+    """
+
     arch_type = "downstream:classification"
 
     def __init__(self, seq_len: int, feat_dim: int, output_dim: int) -> None:
+        """
+        Initializes the base classification architecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        """
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._output_dim = output_dim
@@ -390,9 +538,21 @@ class BaseClassificationArchitecture(Architecture):
 
     @property
     def model(self) -> keras.models.Model:
+        """
+        Property to access the underlying Keras model.
+
+        :returns: The Keras model.
+        :rtype: keras.models.Model
+        """
         return self._model
 
     def get(self) -> T.Dict:
+        """
+        Returns a dictionary containing the model.
+
+        :returns: A dictionary containing the model.
+        :rtype: dict
+        """
         return {"model": self.model}
 
     def _build_model(self) -> None:
@@ -400,9 +560,25 @@ class BaseClassificationArchitecture(Architecture):
 
 
 class ConvnArchitecture(BaseClassificationArchitecture):
+    """
+    Convolutional neural network architecture for classification.
+    Inherits from BaseClassificationArchitecture.
+    """
     def __init__(
         self, seq_len: int, feat_dim: int, output_dim: int, n_conv_blocks: int = 1
     ) -> None:
+        """
+        Initializes the convolutional neural network architecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        :param n_conv_blocks: Number of convolutional blocks to use (default is 1).
+        :type n_conv_blocks: int, optional
+        """
         self._n_conv_blocks = n_conv_blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
@@ -440,7 +616,27 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
 
 
 class BlockClfArchitecture(BaseClassificationArchitecture):
+    """
+    Architecture for classification using a sequence of blocks.
+
+    Inherits from BaseClassificationArchitecture.
+    """
+
+    arch_type = "downstream:classification"
+
     def __init__(self, seq_len: int, feat_dim: int, output_dim: int, blocks: list) -> None:
+        """
+        Initializes the BlockClfArchitecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        :param blocks: List of blocks used in the architecture.
+        :type blocks: list
+        """
         self._blocks = blocks
         super().__init__(seq_len, feat_dim, output_dim)
 
@@ -456,6 +652,12 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
 
 
 class BasicRecurrentArchitecture(Architecture):
+    """
+    Base class for basic recurrent neural network architectures.
+
+    Inherits from Architecture.
+    """
+
     arch_type = "rnn_architecture"
 
     def __init__(
@@ -509,15 +711,47 @@ class BasicRecurrentArchitecture(Architecture):
         return model
 
     def build(self, activation: str = "sigmoid", return_sequences: bool = True) -> keras.models.Model:
+        """
+        Builds the recurrent neural network model.
+
+        :param activation: Activation function for the output layer (default is 'sigmoid').
+        :type activation: str
+        :param return_sequences: Whether to return the full sequence of outputs (default is True).
+        :type return_sequences: bool
+        :return: The built Keras model.
+        :rtype: keras.models.Model
+        """
         model = keras.models.Sequential(name=f"{self._name}")
         model = self._make_network(model, activation=activation, return_sequences=return_sequences)
         return model
 
 
 class cGAN_LSTMnArchitecture(BaseGANArchitecture):
+    """
+    Conditional Generative Adversarial Network (cGAN) with LSTM-based architecture.
+
+    Inherits from BaseGANArchitecture.
+    """
+
     arch_type = "gan:conditional"
 
     def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, n_blocks: int = 1, output_activation: str = "tanh") -> None:
+        """
+        Initializes the cGAN_LSTMnArchitecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param latent_dim: Dimensionality of the latent space.
+        :type latent_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        :param n_blocks: Number of LSTM blocks in the architecture (default is 1).
+        :type n_blocks: int, optional
+        :param output_activation: Activation function for the output layer (default is "tanh").
+        :type output_activation: str, optional
+        """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -568,10 +802,19 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
 
 
 class Zoo(dict):
+    """
+    A collection of architectures represented. It behaves like supports Python `dict` API.
+    """
     def __init__(self, *arg, **kwargs) -> None:
+        """
+        Initializes the Zoo.
+        """
         super(Zoo, self).__init__(*arg, **kwargs)
 
     def summary(self) -> None:
+        """
+        Prints a summary of architectures in the Zoo.
+        """
         summary_table = PrettyTable()
         summary_table.field_names = ["id", "type"]
         for k, v in self.items():

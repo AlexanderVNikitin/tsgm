@@ -63,7 +63,6 @@ If you find this repo useful, please consider citing our paper:
    guides/installation
    guides/introduction
    guides/datasets
-   guides/resources
 
 .. toctree::
    :glob:
