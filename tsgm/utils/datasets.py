@@ -26,6 +26,21 @@ logger.setLevel(logging.DEBUG)
 
 
 def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> npt.NDArray:
+    """
+    Generates a dataset of sinusoidal waves with random parameters.
+
+    :param N: Number of samples in the dataset.
+    :type N: int
+    :param T: Length of each time series in the dataset.
+    :type T: int
+    :param D: Number of dimensions (sinusoids) in each time series.
+    :type D: int
+    :param max_value: Maximum value for amplitude and shift of the sinusoids. Defaults to 10.
+    :type max_value: int, optional
+
+    :return: Generated dataset with shape (N, T, D).
+    :rtype: numpy.ndarray
+    """
     result = []
     for i in range(N):
         result.append([])
@@ -39,6 +54,25 @@ def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> npt.NDArray
 
 
 def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0, frequency_switch: float = 0.1) -> T.Tuple[TensorLike, TensorLike]:
+    """
+    Generates a dataset with alternating constant and sinusoidal sequences.
+
+    :param N: Number of samples in the dataset.
+    :type N: int
+    :param T: Length of each sequence in the dataset.
+    :type T: int
+    :param D: Number of dimensions in each sequence.
+    :type D: int
+    :param max_value: Maximum value for amplitude and shift of the sinusoids. Defaults to 10.
+    :type max_value: int, optional
+    :param const: Value indicating whether the sequence is constant or sinusoidal. Defaults to 0.
+    :type const: int, optional
+    :param frequency_switch: Probability of switching between constant and sinusoidal sequences. Defaults to 0.1.
+    :type frequency_switch: float, optional
+
+    :return: Tuple containing input data (X) and target labels (y).
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    """
     result_X, result_y = [], []
     cur_y = 0
     scales = np.random.random(D) * max_value
@@ -60,6 +94,23 @@ def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, c
 
 
 def gen_sine_vs_const_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0) -> T.Tuple[TensorLike, TensorLike]:
+    """
+    Generates a dataset with alternating sinusoidal and constant sequences.
+
+    :param N: Number of samples in the dataset.
+    :type N: int
+    :param T: Length of each sequence in the dataset.
+    :type T: int
+    :param D: Number of dimensions in each sequence.
+    :type D: int
+    :param max_value: Maximum value for amplitude and shift of the sinusoids. Defaults to 10.
+    :type max_value: int, optional
+    :param const: Maximum value for the constant sequence. Defaults to 0.
+    :type const: int, optional
+
+    :return: Tuple containing input data (X) and target labels (y).
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    """
     result_X, result_y = [], []
     for i in range(N):
         scales = np.random.random(D) * max_value
@@ -149,13 +200,19 @@ class UCRDataManager:
 
     def get(self) -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
         """
-        Returns a tuple (X_train, y_train, X_test, y_test).
+        Returns a tuple containing training and testing data.
+
+        :return: A tuple (X_train, y_train, X_test, y_test).
+        :rtype: tuple[TensorLike, TensorLike, TensorLike, TensorLike]
         """
         return self.X_train, self.y_train, self.X_test, self.y_test
 
     def get_classes_distribution(self) -> T.Dict:
         """
-        Returns a dict with fraction for each of classes.
+        Returns a dictionary with the fraction of occurrences for each class.
+
+        :return: A dictionary containing the fraction of occurrences for each class.
+        :rtype: dict[Any, float]
         """
         if self.y_all is not None:
             return {k: v / len(self.y_all) for k, v in collections.Counter(self.y_all).items()}
@@ -177,7 +234,13 @@ class UCRDataManager:
 
 def get_mauna_loa() -> T.Tuple[TensorLike, TensorLike]:
     """
-    Loads mauna loa dataset.
+    Loads the Mauna Loa CO2 dataset.
+
+    This function loads the Mauna Loa CO2 dataset, which contains measurements of atmospheric CO2 concentrations
+    at the Mauna Loa Observatory in Hawaii.
+
+    :return: A tuple containing the input data (X) and target labels (y).
+    :rtype: tuple[TensorLike, TensorLike]
     """
     co2 = sklearn.datasets.fetch_openml(data_id=41187, as_frame=True)
     co2_data = co2.frame
@@ -189,6 +252,22 @@ def get_mauna_loa() -> T.Tuple[TensorLike, TensorLike]:
 
 
 def split_dataset_into_objects(X: TensorLike, y: TensorLike, step: int = 10) -> T.Tuple[TensorLike, TensorLike]:
+    """
+    Splits the dataset into objects of fixed length.
+
+    This function splits the input dataset into objects of fixed length along the first dimension,
+    0-padding if necessary.
+
+    :param X: Input data.
+    :type X: TensorLike
+    :param y: Target labels.
+    :type y: TensorLike
+    :param step: Length of each object. Defaults to 10.
+    :type step: int, optional
+
+    :return: A tuple containing input data objects and corresponding target label objects.
+    :rtype: tuple[TensorLike, TensorLike]
+    """
     assert X.shape[0] == y.shape[0]
 
     Xs, ys = [], []
@@ -201,11 +280,31 @@ def split_dataset_into_objects(X: TensorLike, y: TensorLike, step: int = 10) -> 
 
 
 def load_arff(path: str) -> pd.DataFrame:
+    """
+    Loads data from an ARFF (Attribute-Relation File Format) file.
+
+    This function reads data from an ARFF file located at the specified path and returns it as a pandas DataFrame.
+
+    :param path: Path to the ARFF file.
+    :type path: str
+
+    :return: DataFrame containing the loaded data.
+    :rtype: pandas.DataFrame
+    """
     data = scipy.io.arff.loadarff(path)
     return pd.DataFrame(data[0])
 
 
 def get_eeg() -> T.Tuple[TensorLike, TensorLike]:
+    """
+    Loads the EEG Eye State dataset.
+
+    This function downloads the EEG Eye State dataset from the UCI Machine Learning Repository
+    and returns the input features (X) and target labels (y).
+
+    :return: A tuple containing the input features (X) and target labels (y).
+    :rtype: tuple[TensorLike, TensorLike]
+    """
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00264/EEG Eye State.arff"
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
@@ -220,6 +319,15 @@ def get_eeg() -> T.Tuple[TensorLike, TensorLike]:
 
 
 def get_power_consumption() -> npt.NDArray:
+    """
+    Retrieves the household power consumption dataset.
+
+    This function downloads and loads the household power consumption dataset from the UCI Machine Learning Repository.
+    It returns the dataset as a NumPy array.
+
+    :return: Household power consumption dataset.
+    :rtype: numpy.ndarray
+    """
     cur_path = os.path.dirname(__file__)
     path = os.path.join(cur_path, '../../data/')
 
@@ -233,6 +341,19 @@ def get_power_consumption() -> npt.NDArray:
 
 
 def get_stock_data(stock_name: str) -> npt.NDArray:
+    """
+    Downloads historical stock data for the specified stock ticker.
+
+    This function downloads historical stock data for the specified stock ticker using the Yahoo Finance API.
+    It returns the stock data as a NumPy array with an additional axis representing the batch dimension.
+
+    :param stock_name: Ticker symbol of the stock.
+    :type stock_name: str
+
+    :return: Historical stock data.
+    :rtype: numpy.ndarray
+    :raises ValueError: If the provided stock ticker is invalid or no data is available.
+    """
     stock_df = yf.download(stock_name)
     if stock_df.empty:
         raise ValueError(f"Cannot download ticker {stock_name}")
@@ -240,6 +361,15 @@ def get_stock_data(stock_name: str) -> npt.NDArray:
 
 
 def get_energy_data() -> npt.NDArray:
+    """
+    Retrieves the energy consumption dataset.
+
+    This function downloads and loads the energy consumption dataset from the UCI Machine Learning Repository.
+    It returns the dataset as a NumPy array.
+
+    :return: Energy consumption dataset.
+    :rtype: numpy.ndarray
+    """
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "energydata_complete.csv")
@@ -252,6 +382,15 @@ def get_energy_data() -> npt.NDArray:
 
 
 def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
+    """
+    Retrieves the MNIST dataset.
+
+    This function loads the MNIST dataset, which consists of 28x28 grayscale images of handwritten digits,
+    and returns the training and testing data along with their corresponding labels.
+
+    :return: A tuple containing the training data, training labels, testing data, and testing labels.
+    :rtype: tuple[TensorLike, TensorLike, TensorLike, TensorLike]
+    """
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "mnist.npz")
@@ -264,12 +403,40 @@ def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
 
 
 def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> float:
+    """
+    This function calculates the exponential quadratic kernel matrix between two sets of points,
+    given by matrices `x` and `y`.
+
+    :param x: First set of points.
+    :type x: numpy.ndarray
+    :param y: Second set of points.
+    :type y: numpy.ndarray
+
+    :return: Exponential quadratic kernel matrix.
+    :rtype: numpy.ndarray
+    """
     return np.exp(-0.5 * scipy.spatial.distance.cdist(x, y))
 
 
 def get_gp_samples_data(
         num_samples: int, max_time: int,
         covar_func: T.Callable = _exponential_quadratic) -> npt.NDArray:
+    """
+    Generates samples from a Gaussian process.
+
+    This function generates samples from a Gaussian process using the specified covariance function.
+    It returns the generated samples as a NumPy array.
+
+    :param num_samples: Number of samples to generate.
+    :type num_samples: int
+    :param max_time: Maximum time value for the samples.
+    :type max_time: int
+    :param covar_func: Covariance function to use. Defaults to `_exponential_quadratic`.
+    :type covar_func: Callable, optional
+
+    :return: Generated samples from the Gaussian process.
+    :rtype: numpy.ndarray
+    """
 
     #  TODO: connect this implementation with `models.gp
     times = np.expand_dims(np.linspace(0, max_time, max_time), 1)
@@ -281,11 +448,13 @@ def get_gp_samples_data(
 
 def get_physionet2012() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]:
     """
-    Downloads and retrieves the Physionet 2012 dataset.
+    Retrieves the Physionet 2012 dataset.
 
-    Returns:
-        tuple: A tuple containing the training, testing, and validation dataframes as
-            (train_X, train_y, test_X, test_y, val_X, val_y)
+    This function downloads and retrieves the Physionet 2012 dataset, which consists of physiological data
+    and corresponding outcomes. It returns the training, testing, and validation datasets along with their labels.
+
+    :return: A tuple containing the training, testing, and validation datasets along with their labels.
+    :rtype: tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]
     """
     download_physionet2012()
     train_X = _get_physionet_X_dataframe("physionet2012/set-a")

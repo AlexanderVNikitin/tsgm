@@ -19,11 +19,10 @@ def visualize_dataset(
     path: str = "/tmp/generated_data.pdf",
 ) -> None:
     """
+    The function visualizes time series dataset with target values.
+
     :param dataset: A time series dataset.
     :type dataset: tsgm.dataset.DatasetOrTensor.
-
-    The function visualizes time series dataset with target values.
-    It can be handy for regression problems.
     """
     plt.figure(
         num=None, figsize=(8, 4), dpi=80, facecolor="w", edgecolor="k"
@@ -229,6 +228,22 @@ def visualize_ts_lineplot(
     num: int = 5,
     unite_features: bool = True,
 ) -> None:
+    """
+    Visualizes time series data using line plots.
+
+    This function generates line plots to visualize the time series data. It randomly selects a specified number of samples
+    from the input tensor `ts` and plots each sample as a line plot. If `ys` is provided, it can be either a 1D or 2D tensor
+    representing the target variable(s), and the function will optionally overlay it on the line plot.
+
+    :param ts: Input time series data tensor.
+    :type ts: tsgm.types.Tensor
+    :param ys: Optional target variable(s) tensor, defaults to None.
+    :type ys: tsgm.types.OptTensor, optional
+    :param num: Number of samples to visualize, defaults to 5.
+    :type num: int, optional
+    :param unite_features: Whether to plot all features together or separately, defaults to True.
+    :type unite_features: bool, optional
+    """
     assert len(ts.shape) == 3
 
     fig, axs = plt.subplots(num, 1, figsize=(14, 10))
@@ -272,6 +287,24 @@ def visualize_original_and_reconst_ts(
     vmin: int = 0,
     vmax: int = 1,
 ) -> None:
+    """
+    Visualizes original and reconstructed time series data.
+
+    This function generates side-by-side visualizations of the original and reconstructed time series data.
+    It randomly selects a specified number of samples from the input tensors `original` and `reconst` and
+    displays them as images using imshow.
+
+    :param original: Original time series data tensor.
+    :type original: tsgm.types.Tensor
+    :param reconst: Reconstructed time series data tensor.
+    :type reconst: tsgm.types.Tensor
+    :param num: Number of samples to visualize, defaults to 5.
+    :type num: int, optional
+    :param vmin: Minimum value for colormap normalization, defaults to 0.
+    :type vmin: int, optional
+    :param vmax: Maximum value for colormap normalization, defaults to 1.
+    :type vmax: int, optional
+    """
     assert original.shape == reconst.shape
 
     fig, axs = plt.subplots(num, 2, figsize=(14, 10))
@@ -289,6 +322,7 @@ def visualize_training_loss(
 ) -> None:
     """
     Plot training losses as a function of the epochs
+
     :param loss_vector: np.array, having shape num of metrics times number of epochs
     :param labels: list of strings
     :param path: str, where to save the plot

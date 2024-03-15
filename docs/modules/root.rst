@@ -50,6 +50,13 @@ ABC
     :undoc-members:
 
 
+STS
+--------------
+.. automodule:: tsgm.models.sts
+    :members:
+    :undoc-members:
+
+
 Visualization
 --------------
 .. automodule:: tsgm.utils.visualization
@@ -60,5 +67,19 @@ Visualization
 Monitors
 --------------
 .. automodule:: tsgm.models.monitors
+    :members:
+    :undoc-members:
+
+
+Datasets
+--------------
+.. automodule:: tsgm.utils.datasets
+    :members:
+    :undoc-members:
+
+
+Data Processing Utils
+--------------
+.. automodule:: tsgm.utils.data_processing
     :members:
     :undoc-members:

@@ -19,6 +19,7 @@ logger.setLevel(logging.DEBUG)
 class GANMonitor(keras.callbacks.Callback):
     """
     GANMonitor is a Keras callback for monitoring and visualizing generated samples during training.
+
     :param num_samples: The number of samples to generate and visualize.
     :type num_samples: int
 
