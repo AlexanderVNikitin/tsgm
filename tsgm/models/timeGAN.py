@@ -152,11 +152,11 @@ class TimeGAN(keras.Model):
 
     def compile(
         self,
-        d_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
-        g_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
-        emb_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
-        supgan_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
-        ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.legacy.Adam(),
+        d_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        g_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        emb_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        supgan_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
         emb_loss: keras.losses.Loss = keras.losses.MeanSquaredError(),
         clf_loss: keras.losses.Loss = keras.losses.BinaryCrossentropy(),
     ) -> None:

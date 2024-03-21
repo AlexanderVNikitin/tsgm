@@ -1,5 +1,13 @@
+import os
+
 from setuptools import setup
 from setuptools import find_packages
+
+
+def get_version():
+    with open(os.path.join(os.path.dirname(__file__), '__version__.py')) as f:
+        exec(f.read())
+    return locals()['__version__']
 
 
 name = "tsgm"
@@ -44,7 +52,7 @@ readme_text = read_file("README.md")
 
 
 setup(name='tsgm',
-      version='0.0.4',
+      version=get_version(),
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',
@@ -72,6 +80,7 @@ setup(name='tsgm',
           "dtaidistance >= 2.3.10",
           "tensorflow",
           "tensorflow-probability",
+          "statsmodels",
       ],
       package_data={'tsgm': ['README.md']},
       packages=find_packages())

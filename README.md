@@ -28,8 +28,14 @@ The framework can be used for:
 
 
 ## Install TSGM
-```
+```bash
 pip install tsgm
+```
+
+### TensorFlow 2.16 or higher
+TensorFlow 2.16 uses Keras 3.0. In order to use TensorFlow Keras backend, you need to additionally install `tf-keras`:
+```bash
+pip install tf-keras
 ```
 
 ### M1 and M2 chips:
