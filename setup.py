@@ -70,8 +70,9 @@ setup(name='tsgm',
           "yfinance==0.2.28",
           "tqdm",
           "dtaidistance >= 2.3.10",
-          "tensorflow",
-          "tensorflow-probability",
+          "tensorflow < 2.16",
+          "tensorflow-probability < 0.24.0",
+          "statsmodels"
       ],
       package_data={'tsgm': ['README.md']},
       packages=find_packages())
