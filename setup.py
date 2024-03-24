@@ -1,8 +1,17 @@
+import os
 from setuptools import setup
 from setuptools import find_packages
 
 
+# Function to read version from __version__.py
+def get_version():
+    with open(os.path.join(os.path.dirname(__file__), 'tsgm/version.py')) as f:
+        exec(f.read())
+    return locals()['__version__']
+
+
 name = "tsgm"
+version = get_version()
 
 keywords = [
     "machine learning",
@@ -44,7 +53,7 @@ readme_text = read_file("README.md")
 
 
 setup(name='tsgm',
-      version='0.0.4',
+      version=version,
       description='Time Series Generative Modelling Framework',
       author=author,
       author_email='',
