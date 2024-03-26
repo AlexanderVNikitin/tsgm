@@ -169,6 +169,8 @@ class SliceAndShuffle(BaseAugmenter):
                     slices.append(s)
                 slices.append(sequence[start_idx:])
                 np.random.shuffle(slices)
+            # concatenate the slices
+            sequence = np.concatenate(slices)
             synthetic_data.append(sequence)
             if has_labels:
                 new_labels.append(y[i])
