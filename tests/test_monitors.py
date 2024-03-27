@@ -18,7 +18,7 @@ def _get_labels(num_samples, output_dim):
             labels = keras.utils.to_categorical([sample], output_dim)
         else:
             labels = tf.concat((labels, keras.utils.to_categorical([sample], output_dim)), 0)
-    return labels
+    return keras.ops.cast(labels, "float32")
 
 
 @pytest.mark.parametrize("save", [
@@ -30,8 +30,8 @@ def test_ganmonitor(save, monkeypatch):
     labels = _get_labels(n_samples, n_classes)
     gan_monitor = tsgm.models.monitors.GANMonitor(
         num_samples=3, latent_dim=12, labels=labels, mode="clf", save=save)
-    gan_monitor.model =  MagicMock()  # mock the model
-    gan_monitor.model.generator.side_effect = lambda x: x[:, None]
+    gan_monitor._model =  MagicMock()  # mock the model
+    gan_monitor._model.generator.side_effect = lambda x: x[:, None]
 
     gan_monitor.on_epoch_end(epoch=2)
 
@@ -43,9 +43,9 @@ def test_vaemonitor(save, monkeypatch):
     monkeypatch.setattr(plt, 'show', lambda: None)
     n_samples, n_classes = 3, 2
     vae_monitor = tsgm.models.monitors.VAEMonitor(
-        num_samples=3, latent_dim=12, save=save)
-    vae_monitor.model =  MagicMock()  # mock the model
-    vae_monitor.model.generate = lambda x: (x[:, 0][:, None], None)
+        num_samples=n_samples, latent_dim=12, save=save)
+    vae_monitor._model =  MagicMock()  # mock the model
+    vae_monitor._model.generate = lambda x: (x[:, 0][:, None], None)
 
     vae_monitor.on_epoch_end(epoch=2)
 

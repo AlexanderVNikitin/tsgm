@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import tensorflow as tf
+import keras
 
 
 def reconstruction_loss_by_axis(original: tf.Tensor, reconstructed: tf.Tensor, axis: int = 0) -> tf.Tensor:
@@ -78,3 +79,9 @@ def fix_seeds(seed_value: int = 42) -> None:
     random.seed(seed_value)
     np.random.seed(seed_value)
     tf.random.set_seed(seed_value)
+
+
+def copy_model(model):
+    model_copy = keras.models.clone_model(model)
+    model_copy.set_weights(model.get_weights())
+    return model_copy

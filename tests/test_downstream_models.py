@@ -78,9 +78,9 @@ def test_classification_blocks_3_layers():
              keras.layers.Dropout(0.2),
              keras.layers.LSTM(32, activation="relu", return_sequences=True),
              keras.layers.Dropout(0.2)]
-    blocks = list(itertools.chain(*[copy.deepcopy(block) for _ in range(3)]))
+    blocks = list(itertools.chain(*[[tsgm.utils.copy_model(m) for m in block] for _ in range(3)]))
     for i, b in enumerate(blocks):
-        b._name = b._name + str(i)
+        b.name = b.name + str(i)
 
     model = tsgm.models.zoo["clf_block"](
         seq_len=seq_len, feat_dim=feat_dim,

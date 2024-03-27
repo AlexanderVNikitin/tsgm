@@ -1,24 +1,216 @@
 # Follows the implementation from TensorFlow:
 # https://github.com/keras-team/keras/blob/v2.15.0/keras/layers/locally_connected/locally_connected1d.py
-
-"""Locally-connected layer for 1D input."""
-import tensorflow as tf
-import numpy as np
-from tensorflow import keras
 from keras import activations
 from keras import backend
 from keras import constraints
 from keras import initializers
 from keras import regularizers
-from tensorflow.keras.layers import Layer
+from keras.layers import Layer
 from keras.layers import InputSpec
-from tensorflow.python.keras.utils import tf_utils
 
-# isort: off
-from tensorflow.python.util.tf_export import keras_export
+import itertools
+import numpy as np
+import tensorflow.compat.v2 as tf
 
 from keras import backend
-from tensorflow.python.keras.utils import conv_utils
+
+
+def conv_output_length(input_length, filter_size, padding, stride, dilation=1):
+    """Determines output length of a convolution given input length.
+
+    Args:
+        input_length: integer.
+        filter_size: integer.
+        padding: one of "same", "valid", "full", "causal"
+        stride: integer.
+        dilation: dilation rate, integer.
+
+    Returns:
+        The output length (integer).
+    """
+    if input_length is None:
+        return None
+    assert padding in {"same", "valid", "full", "causal"}
+    dilated_filter_size = filter_size + (filter_size - 1) * (dilation - 1)
+    if padding in ["same", "causal"]:
+        output_length = input_length
+    elif padding == "valid":
+        output_length = input_length - dilated_filter_size + 1
+    elif padding == "full":
+        output_length = input_length + dilated_filter_size - 1
+    return (output_length + stride - 1) // stride
+
+
+def conv_connected_inputs(
+    input_shape, kernel_shape, output_position, strides, padding
+):
+    """Return locations of the input connected to an output position.
+
+    Assume a convolution with given parameters is applied to an input having N
+    spatial dimensions with `input_shape = (d_in1, ..., d_inN)`. This method
+    returns N ranges specifying the input region that was convolved with the
+    kernel to produce the output at position
+    `output_position = (p_out1, ..., p_outN)`.
+
+    Example:
+
+      >>> input_shape = (4, 4)
+      >>> kernel_shape = (2, 1)
+      >>> output_position = (1, 1)
+      >>> strides = (1, 1)
+      >>> padding = "valid"
+      >>> conv_connected_inputs(input_shape, kernel_shape, output_position,
+      ...                       strides, padding)
+      [range(1, 3), range(1, 2)]
+
+    Args:
+      input_shape: tuple of size N: `(d_in1, ..., d_inN)`, spatial shape of the
+        input.
+      kernel_shape: tuple of size N, spatial shape of the convolutional kernel /
+        receptive field.
+      output_position: tuple of size N: `(p_out1, ..., p_outN)`, a single
+        position in the output of the convolution.
+      strides: tuple of size N, strides along each spatial dimension.
+      padding: type of padding, string `"same"` or `"valid"`.
+        `"valid"` means no padding. `"same"` results in padding evenly to
+        the left/right or up/down of the input such that output has the same
+        height/width dimension as the input.
+
+    Returns:
+      N ranges `[[p_in_left1, ..., p_in_right1], ...,
+                [p_in_leftN, ..., p_in_rightN]]` specifying the region in the
+      input connected to output_position.
+    """
+    ranges = []
+
+    ndims = len(input_shape)
+    for d in range(ndims):
+        left_shift = int(kernel_shape[d] / 2)
+        right_shift = kernel_shape[d] - left_shift
+
+        center = output_position[d] * strides[d]
+
+        if padding == "valid":
+            center += left_shift
+
+        start = max(0, center - left_shift)
+        end = min(input_shape[d], center + right_shift)
+
+        ranges.append(range(start, end))
+
+    return ranges
+
+
+def conv_kernel_mask(input_shape, kernel_shape, strides, padding):
+    """Compute a mask representing the connectivity of a convolution operation.
+
+    Assume a convolution with given parameters is applied to an input having N
+    spatial dimensions with `input_shape = (d_in1, ..., d_inN)` to produce an
+    output with shape `(d_out1, ..., d_outN)`. This method returns a boolean
+    array of shape `(d_in1, ..., d_inN, d_out1, ..., d_outN)` with `True`
+    entries indicating pairs of input and output locations that are connected by
+    a weight.
+
+    Example:
+
+      >>> input_shape = (4,)
+      >>> kernel_shape = (2,)
+      >>> strides = (1,)
+      >>> padding = "valid"
+      >>> conv_kernel_mask(input_shape, kernel_shape, strides, padding)
+      array([[ True, False, False],
+             [ True,  True, False],
+             [False,  True,  True],
+             [False, False,  True]])
+
+      where rows and columns correspond to inputs and outputs respectively.
+
+
+    Args:
+      input_shape: tuple of size N: `(d_in1, ..., d_inN)`, spatial shape of the
+        input.
+      kernel_shape: tuple of size N, spatial shape of the convolutional kernel /
+        receptive field.
+      strides: tuple of size N, strides along each spatial dimension.
+      padding: type of padding, string `"same"` or `"valid"`.
+        `"valid"` means no padding. `"same"` results in padding evenly to
+        the left/right or up/down of the input such that output has the same
+        height/width dimension as the input.
+
+    Returns:
+      A boolean 2N-D `np.ndarray` of shape
+      `(d_in1, ..., d_inN, d_out1, ..., d_outN)`, where `(d_out1, ..., d_outN)`
+      is the spatial shape of the output. `True` entries in the mask represent
+      pairs of input-output locations that are connected by a weight.
+
+    Raises:
+      ValueError: if `input_shape`, `kernel_shape` and `strides` don't have the
+          same number of dimensions.
+      NotImplementedError: if `padding` is not in {`"same"`, `"valid"`}.
+    """
+    if padding not in {"same", "valid"}:
+        raise NotImplementedError(
+            f"Padding type {padding} not supported. "
+            'Only "valid" and "same" are implemented.'
+        )
+
+    in_dims = len(input_shape)
+    if isinstance(kernel_shape, int):
+        kernel_shape = (kernel_shape,) * in_dims
+    if isinstance(strides, int):
+        strides = (strides,) * in_dims
+
+    kernel_dims = len(kernel_shape)
+    stride_dims = len(strides)
+    if kernel_dims != in_dims or stride_dims != in_dims:
+        raise ValueError(
+            "Number of strides, input and kernel dimensions must all "
+            f"match. Received: stride_dims={stride_dims}, "
+            f"in_dims={in_dims}, kernel_dims={kernel_dims}"
+        )
+
+    output_shape = conv_output_shape(
+        input_shape, kernel_shape, strides, padding
+    )
+
+    mask_shape = input_shape + output_shape
+    mask = np.zeros(mask_shape, bool)
+
+    output_axes_ticks = [range(dim) for dim in output_shape]
+    for output_position in itertools.product(*output_axes_ticks):
+        input_axes_ticks = conv_connected_inputs(
+            input_shape, kernel_shape, output_position, strides, padding
+        )
+        for input_position in itertools.product(*input_axes_ticks):
+            mask[input_position + output_position] = True
+
+    return mask
+
+
+def normalize_data_format(value):
+    if value is None:
+        value = backend.image_data_format()
+    data_format = value.lower()
+    if data_format not in {"channels_first", "channels_last"}:
+        raise ValueError(
+            "The `data_format` argument must be one of "
+            f'"channels_first", "channels_last". Received: {value}'
+        )
+    return data_format
+
+
+def normalize_padding(value):
+    if isinstance(value, (list, tuple)):
+        return value
+    padding = value.lower()
+    if padding not in {"valid", "same", "causal"}:
+        raise ValueError(
+            "The `padding` argument must be a list/tuple or one of "
+            '"valid", "same" (or "causal", only for `Conv1D). '
+            f"Received: {padding}"
+        )
+    return padding
+
 
 
 def get_locallyconnected_mask(
@@ -63,7 +255,7 @@ def get_locallyconnected_mask(
       ValueError: if `data_format` is neither `"channels_first"` nor
                   `"channels_last"`.
     """
-    mask = conv_utils.conv_kernel_mask(
+    mask = conv_kernel_mask(
         input_shape=input_shape,
         kernel_shape=kernel_shape,
         strides=strides,
@@ -206,7 +398,6 @@ def make_2d(tensor, split_dim):
     return tf.reshape(tensor, (in_size, out_size))
 
 
-@keras_export("keras.layers.LocallyConnected1D")
 class LocallyConnected1D(Layer):
     """Locally-connected layer for 1D inputs.
 
@@ -310,13 +501,13 @@ class LocallyConnected1D(Layer):
     ):
         super().__init__(**kwargs)
         self.filters = filters
-        self.kernel_size = conv_utils.normalize_tuple(
+        self.kernel_size = normalize_tuple(
             kernel_size, 1, "kernel_size"
         )
-        self.strides = conv_utils.normalize_tuple(
+        self.strides = normalize_tuple(
             strides, 1, "strides", allow_zero=True
         )
-        self.padding = conv_utils.normalize_padding(padding)
+        self.padding = normalize_padding(padding)
         if self.padding != "valid" and implementation == 1:
             raise ValueError(
                 "Invalid border mode for LocallyConnected1D "
@@ -339,7 +530,6 @@ class LocallyConnected1D(Layer):
     def _use_input_spec_as_call_signature(self):
         return False
 
-    @tf_utils.shape_type_conversion
     def build(self, input_shape):
         if self.data_format == "channels_first":
             input_dim, input_length = input_shape[1], input_shape[2]
@@ -351,7 +541,7 @@ class LocallyConnected1D(Layer):
                 "Axis 2 of input should be fully-defined. Found shape:",
                 input_shape,
             )
-        self.output_length = conv_utils.conv_output_length(
+        self.output_length = conv_output_length(
             input_length, self.kernel_size[0], self.padding, self.strides[0]
         )
 
@@ -462,14 +652,13 @@ class LocallyConnected1D(Layer):
             self.input_spec = InputSpec(ndim=3, axes={-1: input_dim})
         self.built = True
 
-    @tf_utils.shape_type_conversion
     def compute_output_shape(self, input_shape):
         if self.data_format == "channels_first":
             input_length = input_shape[2]
         else:
             input_length = input_shape[1]
 
-        length = conv_utils.conv_output_length(
+        length = conv_output_length(
             input_length, self.kernel_size[0], self.padding, self.strides[0]
         )
 
