@@ -356,8 +356,8 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
-        #g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
+        #g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -428,8 +428,8 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
-        #g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
+        #g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
 
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
@@ -504,8 +504,8 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        #g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
-        g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
+        #g_output = LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -800,8 +800,8 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = LocallyConnected1D(self._feat_dim, 1, activation=output_activation)(x)
-        #g_output = layers.Conv1D(self._feat_dim, 1, activation=output_activation)(x)
+        #g_output = LocallyConnected1D(self._feat_dim, 1, activation=output_activation)(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation=output_activation)(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 

@@ -15,6 +15,288 @@ import tensorflow.compat.v2 as tf
 from keras import backend
 
 
+def int_shape(x):
+    """Returns shape of tensor/variable as a tuple of int/None entries.
+
+    Args:
+        x: Tensor or variable.
+
+    Returns:
+        A tuple of integers (or None entries).
+
+    Examples:
+
+    >>> input = tf.keras.backend.placeholder(shape=(2, 4, 5))
+    >>> tf.keras.backend.int_shape(input)
+    (2, 4, 5)
+    >>> val = np.array([[1, 2], [3, 4]])
+    >>> kvar = tf.keras.backend.variable(value=val)
+    >>> tf.keras.backend.int_shape(kvar)
+    (2, 2)
+
+    """
+    try:
+        shape = x.shape
+        if not isinstance(shape, tuple):
+            shape = tuple(shape.as_list())
+        return shape
+    except ValueError:
+        return None
+
+
+def normalize_tuple(value, n, name, allow_zero=False):
+    """Transforms non-negative/positive integer/integers into an integer tuple.
+
+    Args:
+      value: The value to validate and convert. Could an int, or any iterable of
+        ints.
+      n: The size of the tuple to be returned.
+      name: The name of the argument being validated, e.g. "strides" or
+        "kernel_size". This is only used to format error messages.
+      allow_zero: A ValueError will be raised if zero is received
+        and this param is False. Defaults to `False`.
+
+    Returns:
+      A tuple of n integers.
+
+    Raises:
+      ValueError: If something else than an int/long or iterable thereof or a
+      negative value is
+        passed.
+    """
+    error_msg = (
+        f"The `{name}` argument must be a tuple of {n} "
+        f"integers. Received: {value}"
+    )
+
+    if isinstance(value, int):
+        value_tuple = (value,) * n
+    else:
+        try:
+            value_tuple = tuple(value)
+        except TypeError:
+            raise ValueError(error_msg)
+        if len(value_tuple) != n:
+            raise ValueError(error_msg)
+        for single_value in value_tuple:
+            try:
+                int(single_value)
+            except (ValueError, TypeError):
+                error_msg += (
+                    f"including element {single_value} of "
+                    f"type {type(single_value)}"
+                )
+                raise ValueError(error_msg)
+
+    if allow_zero:
+        unqualified_values = {v for v in value_tuple if v < 0}
+        req_msg = ">= 0"
+    else:
+        unqualified_values = {v for v in value_tuple if v <= 0}
+        req_msg = "> 0"
+
+    if unqualified_values:
+        error_msg += (
+            f" including {unqualified_values}"
+            f" that does not satisfy the requirement `{req_msg}`."
+        )
+        raise ValueError(error_msg)
+
+    return value_tuple
+
+
+def local_conv(
+    inputs, kernel, kernel_size, strides, output_shape, data_format=None
+):
+    """Apply N-D convolution with un-shared weights.
+
+    Args:
+        inputs: (N+2)-D tensor with shape
+            (batch_size, channels_in, d_in1, ..., d_inN)
+            if data_format='channels_first', or
+            (batch_size, d_in1, ..., d_inN, channels_in)
+            if data_format='channels_last'.
+        kernel: the unshared weight for N-D convolution,
+            with shape (output_items, feature_dim, channels_out), where
+            feature_dim = np.prod(kernel_size) * channels_in,
+            output_items = np.prod(output_shape).
+        kernel_size: a tuple of N integers, specifying the
+            spatial dimensions of the N-D convolution window.
+        strides: a tuple of N integers, specifying the strides
+            of the convolution along the spatial dimensions.
+        output_shape: a tuple of (d_out1, ..., d_outN) specifying the spatial
+            dimensionality of the output.
+        data_format: string, "channels_first" or "channels_last".
+
+    Returns:
+        An (N+2)-D tensor with shape:
+        (batch_size, channels_out) + output_shape
+        if data_format='channels_first', or:
+        (batch_size,) + output_shape + (channels_out,)
+        if data_format='channels_last'.
+
+    Raises:
+        ValueError: if `data_format` is neither
+        `channels_last` nor `channels_first`.
+    """
+    if data_format is None:
+        data_format = backend.image_data_format()
+    if data_format not in {"channels_first", "channels_last"}:
+        raise ValueError("Unknown data_format: " + str(data_format))
+
+    kernel_shape = int_shape(kernel)
+    feature_dim = kernel_shape[1]
+    channels_out = kernel_shape[-1]
+    ndims = len(output_shape)
+    spatial_dimensions = list(range(ndims))
+
+    xs = []
+    output_axes_ticks = [range(axis_max) for axis_max in output_shape]
+    for position in itertools.product(*output_axes_ticks):
+        slices = [slice(None)]
+
+        if data_format == "channels_first":
+            slices.append(slice(None))
+
+        slices.extend(
+            slice(
+                position[d] * strides[d],
+                position[d] * strides[d] + kernel_size[d],
+            )
+            for d in spatial_dimensions
+        )
+
+        if data_format == "channels_last":
+            slices.append(slice(None))
+
+        xs.append(backend.reshape(inputs[slices], (1, -1, feature_dim)))
+
+    x_aggregate = backend.concatenate(xs, axis=0)
+    output = backend.batch_dot(x_aggregate, kernel)
+    output = backend.reshape(output, output_shape + (-1, channels_out))
+
+    if data_format == "channels_first":
+        permutation = [ndims, ndims + 1] + spatial_dimensions
+    else:
+        permutation = [ndims] + spatial_dimensions + [ndims + 1]
+
+    return backend.permute_dimensions(output, permutation)
+
+
+def conv_kernel_idxs(
+    input_shape,
+    kernel_shape,
+    strides,
+    padding,
+    filters_in,
+    filters_out,
+    data_format,
+):
+    """Yields output-input tuples of indices in a CNN layer.
+
+    The generator iterates over all `(output_idx, input_idx)` tuples, where
+    `output_idx` is an integer index in a flattened tensor representing a single
+    output image of a convolutional layer that is connected (via the layer
+    weights) to the respective single input image at `input_idx`
+
+    Example:
+
+      >>> input_shape = (2, 2)
+      >>> kernel_shape = (2, 1)
+      >>> strides = (1, 1)
+      >>> padding = "valid"
+      >>> filters_in = 1
+      >>> filters_out = 1
+      >>> data_format = "channels_last"
+      >>> list(conv_kernel_idxs(input_shape, kernel_shape, strides, padding,
+      ...                       filters_in, filters_out, data_format))
+      [(0, 0), (0, 2), (1, 1), (1, 3)]
+
+    Args:
+      input_shape: tuple of size N: `(d_in1, ..., d_inN)`, spatial shape of the
+        input.
+      kernel_shape: tuple of size N, spatial shape of the convolutional kernel /
+        receptive field.
+      strides: tuple of size N, strides along each spatial dimension.
+      padding: type of padding, string `"same"` or `"valid"`.
+        `"valid"` means no padding. `"same"` results in padding evenly to
+        the left/right or up/down of the input such that output has the same
+        height/width dimension as the input.
+      filters_in: `int`, number if filters in the input to the layer.
+      filters_out: `int', number if filters in the output of the layer.
+      data_format: string, "channels_first" or "channels_last".
+
+    Yields:
+      The next tuple `(output_idx, input_idx)`, where `output_idx` is an integer
+      index in a flattened tensor representing a single output image of a
+      convolutional layer that is connected (via the layer weights) to the
+      respective single input image at `input_idx`.
+
+    Raises:
+        ValueError: if `data_format` is neither `"channels_last"` nor
+          `"channels_first"`, or if number of strides, input, and kernel number
+          of dimensions do not match.
+
+        NotImplementedError: if `padding` is neither `"same"` nor `"valid"`.
+    """
+    if padding not in ("same", "valid"):
+        raise NotImplementedError(
+            f"Padding type {padding} not supported. "
+            'Only "valid" and "same" are implemented.'
+        )
+
+    in_dims = len(input_shape)
+    if isinstance(kernel_shape, int):
+        kernel_shape = (kernel_shape,) * in_dims
+    if isinstance(strides, int):
+        strides = (strides,) * in_dims
+
+    kernel_dims = len(kernel_shape)
+    stride_dims = len(strides)
+    if kernel_dims != in_dims or stride_dims != in_dims:
+        raise ValueError(
+            "Number of strides, input and kernel dimensions must all "
+            f"match. Received: stride_dims={stride_dims}, "
+            f"in_dims={in_dims}, kernel_dims={kernel_dims}"
+        )
+
+    output_shape = conv_output_shape(
+        input_shape, kernel_shape, strides, padding
+    )
+    output_axes_ticks = [range(dim) for dim in output_shape]
+
+    if data_format == "channels_first":
+        concat_idxs = (
+            lambda spatial_idx, filter_idx: (filter_idx,) + spatial_idx
+        )
+    elif data_format == "channels_last":
+        concat_idxs = lambda spatial_idx, filter_idx: spatial_idx + (
+            filter_idx,
+        )
+    else:
+        raise ValueError(
+            f"Data format `{data_format}` not recognized."
+            '`data_format` must be "channels_first" or "channels_last".'
+        )
+
+    for output_position in itertools.product(*output_axes_ticks):
+        input_axes_ticks = conv_connected_inputs(
+            input_shape, kernel_shape, output_position, strides, padding
+        )
+        for input_position in itertools.product(*input_axes_ticks):
+            for f_in in range(filters_in):
+                for f_out in range(filters_out):
+                    out_idx = np.ravel_multi_index(
+                        multi_index=concat_idxs(output_position, f_out),
+                        dims=concat_idxs(output_shape, filters_out),
+                    )
+                    in_idx = np.ravel_multi_index(
+                        multi_index=concat_idxs(input_position, f_in),
+                        dims=concat_idxs(input_shape, filters_in),
+                    )
+                    yield (out_idx, in_idx)
+
+
 def conv_output_length(input_length, filter_size, padding, stride, dilation=1):
     """Determines output length of a convolution given input length.
 
@@ -513,7 +795,7 @@ class LocallyConnected1D(Layer):
                 "Invalid border mode for LocallyConnected1D "
                 '(only "valid" is supported if implementation is 1): ' + padding
             )
-        self.data_format = conv_utils.normalize_data_format(data_format)
+        self.data_format = normalize_data_format(data_format)
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
@@ -611,7 +893,7 @@ class LocallyConnected1D(Layer):
             )
 
             self.kernel_idxs = sorted(
-                conv_utils.conv_kernel_idxs(
+                conv_kernel_idxs(
                     input_shape=(input_length,),
                     kernel_shape=self.kernel_size,
                     strides=self.strides,
@@ -669,7 +951,7 @@ class LocallyConnected1D(Layer):
 
     def call(self, inputs):
         if self.implementation == 1:
-            output = backend.local_conv(
+            output = local_conv(
                 inputs,
                 self.kernel,
                 self.kernel_size,
