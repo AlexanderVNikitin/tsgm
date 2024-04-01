@@ -29,7 +29,7 @@ TSGM implements multiple augmentation approaches including window warping, shuff
 	aug_model = tsgm.models.augmentations.GaussianNoise(variance=0.2)
 	samples = aug_model.generate(X=X, n_samples=10)
 
-More examples are available in `the augmentation tutorial. <https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/augmentations.ipynb>`_
+More examples are available in `the augmentation tutorial <https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/augmentations.ipynb>`_ or in :ref:`augmentations-label`.
 
 Generators
 =============================
@@ -103,12 +103,12 @@ Metrics
 =============================
 In `tsgm.metrics`, we implemented several metrics for evaluation of generated time series. Essentially, these metrics are subdivided into five types:
 
-- data similarity / distance,
-- predictive consistency,
-- fairness,
-- privacy,
-- downstream effectiveness,
-- visual similarity.
+- data similarity / distance: `tsgm.metrics.DistanceMetric`, `tsgm.metrics.MMDMetric`, `tsgm.metrics.DiscriminativeMetric`,
+- predictive consistency: `tsgm.metrics.ConsistencyMetric`,
+- fairness: `tsgm.metrics.DemographicParityMetric`,
+- privacy: `tsgm.metrics.PrivacyMembershipInferenceMetric`,
+- downstream effectiveness: `tsgm.metrics.DownstreamPerformanceMetric`,
+- qualitative analysis: `tsgm.visualization`.
 
 See the following code for an example of using metrics:
 
