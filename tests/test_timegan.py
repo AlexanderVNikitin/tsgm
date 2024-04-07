@@ -22,7 +22,13 @@ def test_timegan():
         n_layers=2,
         batch_size=batch_size,
     )
-    timegan.compile()
+    timegan.compile(
+        d_optimizer = keras.optimizers.Adam(),
+        g_optimizer = keras.optimizers.Adam(),
+        emb_optimizer = keras.optimizers.Adam(),
+        supgan_optimizer = keras.optimizers.Adam(),
+        ae_optimizer = keras.optimizers.Adam(),
+    )
 
     try:
         tf.config.experimental_run_functions_eagerly(True)
@@ -51,7 +57,13 @@ def test_timegan_fit():
         n_layers=2,
         batch_size=batch_size,
     )
-    timegan.compile()
+    timegan.compile(
+        d_optimizer = keras.optimizers.Adam(),
+        g_optimizer = keras.optimizers.Adam(),
+        emb_optimizer = keras.optimizers.Adam(),
+        supgan_optimizer = keras.optimizers.Adam(),
+        ae_optimizer = keras.optimizers.Adam(),
+    )
     try:
         tf.config.experimental_run_functions_eagerly(True)
         timegan.fit(dataset, epochs=3, checkpoints_interval=2, generate_synthetic=(1,))
@@ -80,7 +92,13 @@ def test_timegan_on_dataset():
         n_layers=2,
         batch_size=batch_size,
     )
-    timegan.compile()
+    timegan.compile(
+        d_optimizer = keras.optimizers.Adam(),
+        g_optimizer = keras.optimizers.Adam(),
+        emb_optimizer = keras.optimizers.Adam(),
+        supgan_optimizer = keras.optimizers.Adam(),
+        ae_optimizer = keras.optimizers.Adam(),
+    )
     try:
         tf.config.experimental_run_functions_eagerly(True)
         timegan.fit(dataset, epochs=1)
@@ -188,7 +206,13 @@ def test_train_timegan(mocked_gradienttape):
         n_layers=2,
         batch_size=batch_size,
     )
-    timegan.compile()
+    timegan.compile(
+        d_optimizer = keras.optimizers.Adam(),
+        g_optimizer = keras.optimizers.Adam(),
+        emb_optimizer = keras.optimizers.Adam(),
+        supgan_optimizer = keras.optimizers.Adam(),
+        ae_optimizer = keras.optimizers.Adam(),
+    )
     try:
         tf.config.experimental_run_functions_eagerly(True)
         timegan.fit(dataset, epochs=1)
@@ -234,18 +258,21 @@ def mocked_timegan(mocked_data):
         n_layers=2,
         batch_size=batch_size,
     )
-    timegan.compile()
+    timegan.compile(
+        d_optimizer = keras.optimizers.Adam(),
+        g_optimizer = keras.optimizers.Adam(),
+        emb_optimizer = keras.optimizers.Adam(),
+        supgan_optimizer = keras.optimizers.Adam(),
+        ae_optimizer = keras.optimizers.Adam(),
+    )
     timegan.fit(mocked_data, epochs=1)
     yield timegan
 
 
 def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
-
-    mocked_timegan._define_timegan()
     X_ = next(batches)
     try:
-        tf.config.experimental_run_functions_eagerly(True)
         loss = mocked_timegan._train_autoencoder(X_, mocked_timegan.autoencoder_opt)
     finally:
         tf.config.experimental_run_functions_eagerly(False)
@@ -257,7 +284,7 @@ def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
 def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
-    mocked_timegan._define_timegan()
+#    mocked_timegan._define_timegan()
     X_ = next(batches)
     try:
         tf.config.experimental_run_functions_eagerly(True)

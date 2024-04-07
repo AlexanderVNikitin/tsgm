@@ -152,11 +152,11 @@ class TimeGAN(keras.Model):
 
     def compile(
         self,
-        d_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        g_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        emb_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        supgan_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
+        d_optimizer: keras.optimizers.Optimizer,
+        g_optimizer: keras.optimizers.Optimizer,
+        emb_optimizer: keras.optimizers.Optimizer,
+        supgan_optimizer: keras.optimizers.Optimizer,
+        ae_optimizer: keras.optimizers.Optimizer,
         emb_loss: keras.losses.Loss = keras.losses.MeanSquaredError(),
         clf_loss: keras.losses.Loss = keras.losses.BinaryCrossentropy(),
     ) -> None:
@@ -251,7 +251,7 @@ class TimeGAN(keras.Model):
         )
         self.discriminator_model.summary()
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def _train_autoencoder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -266,12 +266,11 @@ class TimeGAN(keras.Model):
         e_vars = self.embedder.trainable_variables
         r_vars = self.recovery.trainable_variables
         all_trainable = e_vars + r_vars
-
         gradients = tape.gradient(E_loss0, all_trainable)
         optimizer.apply_gradients(zip(gradients, all_trainable))
         return E_loss0
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def _train_supervisor(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -295,7 +294,7 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(apply_grads)
         return G_loss_S
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float, float, float, float]:
@@ -338,7 +337,7 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(apply_grads)
         return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def _train_embedder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float]:
@@ -365,7 +364,7 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(zip(gradients, all_trainable))
         return E_loss, E_loss_T0
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def _train_discriminator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
