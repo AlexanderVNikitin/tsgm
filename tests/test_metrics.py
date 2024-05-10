@@ -191,18 +191,19 @@ def test_mmd_metric():
 
 
 def test_discriminative_metric():
-    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    ts = np.sin(np.arange(10)[:, None, None] + np.arange(6)[None, :, None])  # sin_sequence, [10, 6, 3]
     D1 = tsgm.dataset.Dataset(ts, y=None)
 
-    diff_ts = np.array([[[12, 13], [10, 10], [-1, -2]], [[-1, 32], [2, 1], [10, 8]]]).astype(np.float32)
+    diff_ts = np.sin(np.arange(10)[:, None, None] + np.arange(6)[None, :, None]) + 1000  # sin_sequence, [10, 6, 3]
     D2 = tsgm.dataset.Dataset(diff_ts, y=None)
 
-    model = tsgm.models.zoo["clf_cl_n"](seq_len=ts.shape[1], feat_dim=ts.shape[2], output_dim=1).model
+    model = tsgm.models.zoo["clf_cl_n"](seq_len=ts.shape[1], feat_dim=ts.shape[2], output_dim=2).model
     model.compile(
         tf.keras.optimizers.Adam(),
-        tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+        tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
     )
     discr_metric = tsgm.metrics.DiscriminativeMetric()
+    # should be easy to be classified 
     assert discr_metric(d_hist=D1, d_syn=D2, model=model, test_size=0.2, random_seed=42, n_epochs=5) == 1.0
     assert discr_metric(d_hist=D1, d_syn=D2, model=model, metric=sklearn.metrics.precision_score, test_size=0.2, random_seed=42, n_epochs=5) == 1.0
 
