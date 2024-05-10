@@ -278,9 +278,9 @@ class DiscriminativeMetric(Metric):
         model.fit(X_train, y_train, epochs=n_epochs)
         pred = model.predict(X_test)
         # check the shape, 1D array or N-D arrary
-        if len(pred.shape) == 1: # binary classification with sigmoid activation
+        if len(pred.shape) == 1:  # binary classification with sigmoid activation
             y_pred = (pred > 0.5).astype(int)
-        else: # multiple classification with softmax activation
+        else:  # multiple classification with softmax activation
             y_pred = np.argmax(pred, axis=-1).astype(int)
         if metric is None:
             return sklearn.metrics.accuracy_score(y_test, y_pred)
