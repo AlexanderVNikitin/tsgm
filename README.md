@@ -125,9 +125,10 @@ TSGM provides a number of time series augmentations.
 | ------------- | ------------- | ------------- |
 | Gaussian Noise / Jittering  | `tsgm.augmentations.GaussianNoise` | -  |        
 | Slice-And-Shuffle  | `tsgm.augmentations.SliceAndShuffle` | - |
-| Shuffle features  | `tsgm.augmentations.Shuffle` | - |
-| Magnitude warping  | `tsgm.augmentations.MagnitudeWarping` | [Data Augmentation of Wearable Sensor Data for Parkinson’s Disease Monitoring using Convolutional Neural Networks](https://dl.acm.org/doi/pdf/10.1145/3136755.3136817) |
-| Window warping  | `tsgm.augmentations.WindowWarping` | [Data Augmentation for Time Series Classification using Convolutional Neural Networks](https://shs.hal.science/halshs-01357973/document) |
+| Shuffle Features  | `tsgm.augmentations.Shuffle` | - |
+| Magnitude Warping  | `tsgm.augmentations.MagnitudeWarping` | [Data Augmentation of Wearable Sensor Data for Parkinson’s Disease Monitoring using Convolutional Neural Networks](https://dl.acm.org/doi/pdf/10.1145/3136755.3136817) |
+| Window Warping  | `tsgm.augmentations.WindowWarping` | [Data Augmentation for Time Series Classification using Convolutional Neural Networks](https://shs.hal.science/halshs-01357973/document) |
+| DTW Barycentric Averaging  | `tsgm.augmentations.DTWBarycentricAveraging` | [A global averaging method for dynamic time warping, with applications to clustering.](https://www.sciencedirect.com/science/article/pii/S003132031000453X) |
 
 
 ## Contributing
