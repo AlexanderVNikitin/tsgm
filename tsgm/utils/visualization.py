@@ -227,6 +227,8 @@ def visualize_ts_lineplot(
     ys: tsgm.types.OptTensor = None,
     num: int = 5,
     unite_features: bool = True,
+    legend_fontsize: int = 12,
+    tick_size: int = 10
 ) -> None:
     """
     Visualizes time series data using line plots.
@@ -243,6 +245,10 @@ def visualize_ts_lineplot(
     :type num: int, optional
     :param unite_features: Whether to plot all features together or separately, defaults to True.
     :type unite_features: bool, optional
+    :param legend_fontsize: Font size to use.
+    :type unite_features: int, optional
+    :param tick_size: Font size for y-axis ticks.
+    :type tick_size: int, optional
     """
     assert len(ts.shape) == 3
 
@@ -266,8 +272,9 @@ def visualize_ts_lineplot(
                     x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i]
                 )
         if ys is not None:
+            axs[i].tick_params(labelsize=tick_size)
             if len(ys.shape) == 1:
-                axs[i].set_title(ys[sample_id])
+                axs[i].set_title(ys[sample_id], fontsize=legend_fontsize)
             elif len(ys.shape) == 2:
                 sns.lineplot(
                     x=range(ts.shape[1]),
@@ -276,8 +283,10 @@ def visualize_ts_lineplot(
                     color="g",
                     label="Target variable",
                 )
+                axs[i].twinx().tick_params(labelsize=tick_size)
             else:
                 raise ValueError("ys contains too many dimensions")
+        axs[i].legend(fontsize=legend_fontsize)
 
 
 def visualize_original_and_reconst_ts(
