@@ -90,6 +90,39 @@ We provide:
 * [Tutorials](https://github.com/AlexanderVNikitin/tsgm/tree/main/tutorials) that describe practical use-cases of the framework.
 
 
+
+## 💾 Datasets
+| Dataset  | API | Description     |
+| ------------- | ------------- | ------------- |
+| UCR Dataset  | `tsgm.utils.UCRDataManager` | https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/  |
+| Mauna Loa  | `tsgm.utils.get_mauna_loa()` | https://gml.noaa.gov/ccgg/trends/data.html |
+| EEG & Eye state  | `tsgm.utils.get_eeg()` | https://archive.ics.uci.edu/ml/datasets/EEG+Eye+State  |
+| Power consumption dataset  | `tsgm.utils.get_power_consumption()` | https://archive.ics.uci.edu/ml/datasets/individual+household+electric+power+consumption  |
+| Stock data  | `tsgm.utils.get_stock_data(ticker_name)` | Gets historical stock data from YFinance  |
+| COVID-19 over the US  | `tsgm.utils.get_covid_19()` | Covid-19 distribution over the US  |
+| Energy Data (UCI)  | `tsgm.utils.get_energy_data()` | https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction  |
+| MNIST as time series  | `tsgm.utils.get_mnist_data()` | https://en.wikipedia.org/wiki/MNIST_database  |
+| Samples from GPs  | `tsgm.utils.get_gp_samples_data()` | https://en.wikipedia.org/wiki/Gaussian_process |
+| Physionet 2012  | `tsgm.utils.get_physionet2012()` | https://archive.physionet.org/pn3/challenge/2012/ |
+
+TSGM provides API for convenient use of many time-series datasets (currently more than 20 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
+
+## Augmentations
+TSGM provides a number of time series augmentations.
+
+| Augmentation  | Class in TSGM | Reference     |
+| ------------- | ------------- | ------------- |
+| Gaussian Noise / Jittering  | `tsgm.augmentations.GaussianNoise` | -  |        
+| Slice-And-Shuffle  | `tsgm.augmentations.SliceAndShuffle` | - |
+| Shuffle Features  | `tsgm.augmentations.Shuffle` | - |
+| Magnitude Warping  | `tsgm.augmentations.MagnitudeWarping` | [Data Augmentation of Wearable Sensor Data for Parkinson’s Disease Monitoring using Convolutional Neural Networks](https://dl.acm.org/doi/pdf/10.1145/3136755.3136817) |
+| Window Warping  | `tsgm.augmentations.WindowWarping` | [Data Augmentation for Time Series Classification using Convolutional Neural Networks](https://shs.hal.science/halshs-01357973/document) |
+| DTW Barycentric Averaging  | `tsgm.augmentations.DTWBarycentricAveraging` | [A global averaging method for dynamic time warping, with applications to clustering.](https://www.sciencedirect.com/science/article/pii/S003132031000453X) |
+
+
+## Contributing
+We appreciate all contributions. To learn more, please check [CONTRIBUTING.md](CONTRIBUTING.md).
+
 #### For contributors
 ```bash
 git clone github.com/AlexanderVNikitin/tsgm
@@ -113,26 +146,6 @@ We provide two CLIs for convenient synthetic data generation:
 - `tsgm-eval` evaluates the generated time series.
 
 Use `tsgm-gd --help` or `tsgm-eval --help` for documentation.
-
-
-## Datasets
-TSGM provides API for convenient use of many time-series datasets (currently more than 15 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
-
-## Augmentations
-TSGM provides a number of time series augmentations.
-
-| Augmentation  | Class in TSGM | Reference     |
-| ------------- | ------------- | ------------- |
-| Gaussian Noise / Jittering  | `tsgm.augmentations.GaussianNoise` | -  |        
-| Slice-And-Shuffle  | `tsgm.augmentations.SliceAndShuffle` | - |
-| Shuffle Features  | `tsgm.augmentations.Shuffle` | - |
-| Magnitude Warping  | `tsgm.augmentations.MagnitudeWarping` | [Data Augmentation of Wearable Sensor Data for Parkinson’s Disease Monitoring using Convolutional Neural Networks](https://dl.acm.org/doi/pdf/10.1145/3136755.3136817) |
-| Window Warping  | `tsgm.augmentations.WindowWarping` | [Data Augmentation for Time Series Classification using Convolutional Neural Networks](https://shs.hal.science/halshs-01357973/document) |
-| DTW Barycentric Averaging  | `tsgm.augmentations.DTWBarycentricAveraging` | [A global averaging method for dynamic time warping, with applications to clustering.](https://www.sciencedirect.com/science/article/pii/S003132031000453X) |
-
-
-## Contributing
-We appreciate all contributions. To learn more, please check [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citing
 If you find this repo useful, please consider citing our paper:
