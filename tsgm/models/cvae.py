@@ -127,8 +127,8 @@ class BetaVAE(keras.Model):
         z_mean, z_log_var, z = self.encoder(data)
         reconstruction = self.decoder(z)
         reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
-        kl_loss = -0.5 * (1 + z_log_var - torch.square(z_mean) - torch.exp(z_log_var))
-        kl_loss = torch.mean(torch.sum(kl_loss, axis=1))
+        kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
+        kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
         total_loss = reconstruction_loss + kl_loss
 
         self.total_loss_tracker.update_state(total_loss)
@@ -303,8 +303,8 @@ class cBetaVAE(keras.Model):
         decoder_input = self._get_decoder_input(z_mean, labels)
         reconstruction = self.decoder(decoder_input)
         reconstruction_loss = self._get_reconstruction_loss(X, reconstruction)
-        kl_loss = -0.5 * (1 + z_log_var - torch.square(z_mean) - torch.exp(z_log_var))
-        kl_loss = torch.mean(torch.sum(kl_loss, axis=1))
+        kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
+        kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
         total_loss = reconstruction_loss + self.beta * kl_loss
 
         self.total_loss_tracker.update_state(total_loss)
