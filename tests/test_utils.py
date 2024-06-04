@@ -65,7 +65,7 @@ def test_switch_generator():
 
 
 def test_ucr_manager():
-    DATASET = "gunpoint"
+    DATASET = "GunPoint"
     ucr_data_manager = tsgm.utils.UCRDataManager(ds=DATASET)
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
@@ -189,7 +189,7 @@ def test_mmd_3_test():
     Y = np.random.normal(10, 100, 100)[:, None]
     Z = np.random.normal(0, 1, 100)[:, None]
 
-    #  Use custome kernels with this (TF-sklearn compatibility)
+    #  Use custom kernels with this (TF-sklearn compatibility)
     # sigma_XY = tsgm.utils.kernel_median_heuristic(X, Y);
     # sigma_XZ = tsgm.utils.kernel_median_heuristic(X, Z);
     # sigma = (sigma_XY + sigma_XZ) / 2
@@ -201,16 +201,14 @@ def test_mmd_3_test():
 
 
 @pytest.mark.parametrize("dataset_name", [
-    "beef",
-    "coffee",
-    "ecg200",
-    "electric",
-    "freezer",
-    "gunpoint",
-    "insect",
-    "mixed_shapes",
-    "starlight",
-    "wafer"
+    "Beef",
+    "Coffee",
+    "ECG200",
+    "ElectricDevices",
+    "GunPoint",
+    "MixedShapesRegularTrain",
+    "StarLightCurves",
+    "Wafer"
 ])
 def test_ucr_loadable(dataset_name):
     ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset_name)
@@ -222,11 +220,11 @@ def test_ucr_loadable(dataset_name):
 def test_ucr_raises():
     with pytest.raises(ValueError) as excinfo:
         ucr_data_manager = tsgm.utils.UCRDataManager(ds="does not exist")
-        assert "ds should be in" in str(excinfo.value)
+        assert "ds should be listed at UCR website" in str(excinfo.value)
     
 
 def test_get_wafer():
-    dataset = "wafer"
+    dataset = "Wafer"
     ucr_data_manager = tsgm.utils.UCRDataManager(ds=dataset)
     assert ucr_data_manager.summary() is None
     X_train, y_train, X_test, y_test = ucr_data_manager.get()
