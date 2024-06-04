@@ -215,6 +215,27 @@ def test_entropy_metric():
     assert spec_entropy_metric(D1) == 2.6402430161833763
 
 
+def test_shannon_entropy_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    y = np.array([1] * ts.shape[0])
+    D1 = tsgm.dataset.Dataset(ts, y=y)
+    sdi_metric = tsgm.metrics.ShannonEntropyMetric()
+    assert sdi_metric(D1) == 0
+    y = np.array([1, 2])
+    D2 = tsgm.dataset.Dataset(ts, y=y)
+    assert sdi_metric(D2) > 0
+
+
+def test_pairwise_distance_metric():
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[0, 2], [11, -11], [1, 2]]]).astype(np.float32)
+    D1 = tsgm.dataset.Dataset(ts, y=None)
+    pd_metric = tsgm.metrics.PairwiseDistanceMetric()
+    assert np.mean(pd_metric(D1)) == 0
+    ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
+    D2 = tsgm.dataset.Dataset(ts, y=None)
+    assert np.mean(pd_metric(D2)) > 0
+
+
 def test_demographic_parity():
     ts = np.array([[[0, 2], [11, -11], [1, 2]], [[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
     y = np.array([0, 1, 1])
