@@ -306,10 +306,6 @@ class EntropyMetric(Metric):
     """
     Calculates the spectral entropy of a dataset or tensor.
 
-    This metric measures the randomness or disorder in a dataset or tensor
-    using spectral entropy, which is a measure of the distribution of energy
-    in the frequency domain.
-
     Args:
         d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
 

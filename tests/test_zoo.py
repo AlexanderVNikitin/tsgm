@@ -1,9 +1,6 @@
 import pytest
 
-import functools
 import numpy as np
-import random
-import tensorflow as tf
 from tensorflow.keras import layers
 
 import sklearn.metrics.pairwise
@@ -48,7 +45,8 @@ def test_zoo_cgan(model_type):
 @pytest.mark.parametrize("model_type_name", [
     "clf_cn",
     "clf_cl_n",
-    "clf_block"],
+    "clf_block",
+    "clf_transformer",]
 )
 def test_zoo_clf(model_type_name):
     seq_len = 10

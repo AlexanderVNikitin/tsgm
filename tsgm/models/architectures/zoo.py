@@ -653,7 +653,7 @@ class BlockClfArchitecture(BaseClassificationArchitecture):
 
 class BasicRecurrentArchitecture(Architecture):
     """
-    Base class for basic recurrent neural network architectures.
+    Base class for recurrent neural network architectures.
 
     Inherits from Architecture.
     """
@@ -723,6 +723,76 @@ class BasicRecurrentArchitecture(Architecture):
         """
         model = keras.models.Sequential(name=f"{self._name}")
         model = self._make_network(model, activation=activation, return_sequences=return_sequences)
+        return model
+
+
+class TransformerClfArchitecture(BaseClassificationArchitecture):
+    """
+    Base class for transformer architectures.
+
+    Inherits from BaseClassificationArchitecture.
+    """
+
+    arch_type = "downstream:classification"
+
+    def __init__(self, seq_len: int, feat_dim: int, num_heads: int = 2, ff_dim: int = 64, n_blocks: int = 1, dropout_rate=0.5, output_dim: int = 2) -> None:
+        """
+        Initializes the TransformerClfArchitecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param num_heads: Number of attention heads (default is 2).
+        :type num_heads: int
+        :param ff_dim: Feed forward dimension in the attention block (default is 64).
+        :type ff_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        :param dropout_rate: Dropout probability (default is 0.5).
+        :type dropout_rate: float, optional
+        :param n_blocks: Number of transformer blocks (default is 1).
+        :type n_blocks: int, optional
+        :param output_dim: Number of classes (default is 2).
+        :type output_dim: int, optional
+        """
+
+        self._num_heads = num_heads
+        self._ff_dim = ff_dim
+        self._n_blocks = n_blocks
+        self._dropout_rate = dropout_rate
+
+        super().__init__(seq_len, feat_dim, output_dim)
+
+    def transformer_block(self, inputs):
+        # Multi-Head Attention
+        attention_output = layers.MultiHeadAttention(
+            num_heads=self._num_heads,
+            key_dim=inputs.shape[-1]
+        )(inputs, inputs)
+        attention_output = layers.Dropout(self._dropout_rate)(attention_output)
+        attention_output = layers.LayerNormalization(epsilon=1e-6)(attention_output + inputs)
+
+        # Feed-Forward Network
+        ff_output = layers.Dense(self._ff_dim, activation="relu")(attention_output)
+        ff_output = layers.Dense(inputs.shape[-1])(ff_output)
+        ff_output = layers.Dropout(self._dropout_rate)(ff_output)
+        ff_output = layers.LayerNormalization(epsilon=1e-6)(ff_output + attention_output)
+
+        return ff_output
+
+    def _build_model(self) -> keras.Model:
+        inputs = layers.Input(shape=(self._seq_len, self._feat_dim))
+
+        x = inputs
+        for _ in range(self._n_blocks):
+            x = self.transformer_block(x)
+
+        x = layers.GlobalAveragePooling1D()(x)
+        x = layers.Dropout(self._dropout_rate)(x)
+        outputs = layers.Dense(self._output_dim, activation="softmax")(x)
+
+        model = keras.Model(inputs, outputs)
         return model
 
 
@@ -837,5 +907,6 @@ zoo = Zoo(
         "clf_cl_n": ConvnLSTMnArchitecture,
         "clf_block": BlockClfArchitecture,
         "recurrent": BasicRecurrentArchitecture,
+        "clf_transformer": TransformerClfArchitecture
     }
 )

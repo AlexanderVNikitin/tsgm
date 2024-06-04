@@ -32,3 +32,21 @@ def test_simulator_base():
 
     s.fit()
     MockDriver.fit.assert_called_once_with(s._data.X, s._data.y)
+
+
+def test_pdm_simulator():
+    n_samples = 10
+    data = tsgm.dataset.DatasetProperties(N=100, T=12, D=23)
+    pdm_simulator = tsgm.simulator.PredictiveMaintenanceSimulator(data)
+    syn_dataset, equipment = pdm_simulator.generate(n_samples)
+    assert len(equipment) == 10
+    assert len(syn_dataset) == 10
+    for d in equipment:
+        assert isinstance(d, dict)
+
+    new_sim = pdm_simulator.clone()
+    params1 = pdm_simulator.params()
+    params2 = new_sim.params()
+    assert params1["switches"] == params2["switches"]
+    assert params1["m_norms"] == params2["m_norms"]
+    assert params1["sigma_norms"] == params2["sigma_norms"]
