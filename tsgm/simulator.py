@@ -1,6 +1,7 @@
 import abc
 import copy
 import sklearn
+from scipy import integrate
 from tqdm import tqdm
 import typing as T
 import numpy as np
@@ -485,13 +486,126 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         return dataset, equipment
 
     def generate(self, num_samples: int):
+        """
+        Samples equipment data and generates the dataset.
+
+        Args:
+            num_samples (int): Number of samples to generate.
+
+        Returns:
+            tuple: A tuple containing the dataset and equipment information.
+        """
         return self.sample_equipment(num_samples)
 
     def clone(self) -> "PredictiveMaintenanceSimulator":
+        """
+        Creates a deep copy of the current PredictiveMaintenanceSimulator instance.
+
+        Returns:
+            PredictiveMaintenanceSimulator: A new instance of PredictiveMaintenanceSimulator with copied data and parameters.
+        """
         copy_simulator = PredictiveMaintenanceSimulator(self._data)
         params = self.params()
         copy_simulator.set_params(
             switches=params["switches"],
             m_norms=params["m_norms"],
             sigma_norms=params["sigma_norms"])
+        return copy_simulator
+
+
+def _lv_derivative(X, t, alpha, beta, delta, gamma):
+    x, y = X
+    dotx = x * (alpha - beta * y)
+    doty = y * (-delta + gamma * x)
+    return np.array([dotx, doty])
+
+
+class LotkaVolterraSimulator(ModelBasedSimulator):
+    """
+    Simulates the Lotka-Volterra equations, which model the dynamics of biological systems in which two species interact,
+    one as a predator and the other as prey.
+
+    For the details refer to https://en.wikipedia.org/wiki/Lotka%E2%80%93Volterra_equations
+    """
+    def __init__(
+            self, data: tsgm.dataset.DatasetProperties,
+            alpha: float = 1, beta: float = 1, gamma: float = 1, delta: float = 1,
+            x0: float = 1, y0: float = 1) -> None:
+        """
+        Initializes the Lotka-Volterra simulator with given parameters.
+
+        Args:
+            data (tsgm.dataset.DatasetProperties): The dataset properties.
+            alpha (float): The maximum prey per capita growth rate. Default is 1.
+            beta (float): The effect of the presence of predators on the prey death rate. Default is 1.
+            gamma (float): The predator's per capita death rate. Default is 1.
+            delta (float): The effect of the presence of prey on the predator's growth rate. Default is 1.
+            x0 (float): The initial population density of prey. Default is 1.
+            y0 (float): The initial population density of predator. Default is 1.
+        """
+        self._data = data
+
+        self.set_params(
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+            delta=delta,
+            x0=x0,
+            y0=y0
+        )
+
+    def set_params(self, alpha, beta, gamma, delta, x0, y0, **kwargs):
+        """
+        Sets the parameters for the simulator.
+
+        Args:
+            alpha (float): The maximum prey per capita growth rate.
+            beta (float): The effect of the presence of predators on the prey death rate.
+            gamma (float): The predator's per capita death rate.
+            delta (float): The effect of the presence of prey on the predator's growth rate.
+            x0 (float): The initial population density of prey.
+            y0 (float): The initial population density of predator.
+            **kwargs: Arbitrary keyword arguments for setting simulator parameters.
+        """
+        super().set_params({
+            "alpha": alpha,
+            "beta": beta,
+            "gamma": gamma,
+            "delta": delta,
+            "x0": x0,
+            "y0": y0,
+        })
+
+    def generate(self, num_samples: int, tmax: float = 1):
+        """
+        Generates the simulation data based on the Lotka-Volterra equations.
+
+        Args:
+            num_samples (int): The number of sample points to generate.
+            tmax (float): The maximum time value for the simulation. Default is 1.
+
+        Returns:
+            np.ndarray: An array containing the population densities of prey and predators over time.
+        """
+        t = np.linspace(0., tmax, num_samples)
+        X0 = [self.x0, self.y0]
+        res = integrate.odeint(_lv_derivative, X0, t, args=(self.alpha, self.beta, self.delta, self.gamma))
+        return res
+
+    def clone(self) -> "LotkaVolterraSimulator":
+        """
+        Creates a deep copy of the current LotkaVolterraSimulator instance.
+
+        Returns:
+            LotkaVolterraSimulator: A new instance of LotkaVolterraSimulator with copied data and parameters.
+        """
+        copy_simulator = LotkaVolterraSimulator(self._data)
+        params = self.params()
+        copy_simulator.set_params(
+            alpha=params["alpha"],
+            beta=params["beta"],
+            gamma=params["gamma"],
+            delta=params["delta"],
+            x0=params["x0"],
+            y0=params["y0"])
         return copy_simulator

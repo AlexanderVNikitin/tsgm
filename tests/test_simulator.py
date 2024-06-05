@@ -50,3 +50,17 @@ def test_pdm_simulator():
     assert params1["switches"] == params2["switches"]
     assert params1["m_norms"] == params2["m_norms"]
     assert params1["sigma_norms"] == params2["sigma_norms"]
+
+
+def test_lv_simulator():
+    n_samples = 10
+    data = tsgm.dataset.DatasetProperties(N=100, T=12, D=23)
+    lv_simulator = tsgm.simulator.LotkaVolterraSimulator(data)
+    syn_dataset = lv_simulator.generate(n_samples)
+    assert syn_dataset.shape == (10, 2)
+
+    new_sim = lv_simulator.clone()
+    params1 = lv_simulator.params()
+    params2 = new_sim.params()
+    for k in ["alpha", "beta", "gamma", "delta", "x0", "y0"]:
+        assert params1[k] == params2[k]
