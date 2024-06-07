@@ -3,5 +3,5 @@ from tsgm.metrics.metrics import (
     DistanceMetric, ConsistencyMetric, BaseDownstreamEvaluator,
     DownstreamPerformanceMetric, PrivacyMembershipInferenceMetric,
     MMDMetric, DiscriminativeMetric, EntropyMetric, DemographicParityMetric,
-    ShannonEntropyMetric, PairwiseDistanceMetric
+    ShannonEntropyMetric, PairwiseDistanceMetric, PredictiveParityMetric
 )

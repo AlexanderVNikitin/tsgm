@@ -11,8 +11,22 @@ import random
 import tensorflow as tf
 import sklearn.metrics.pairwise
 from unittest import mock
+from functools import wraps
 
 import tsgm
+
+
+def skip_on(exception, reason="default"):
+    def decorator_func(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except exception:
+                pytest.skip(reason)
+
+        return wrapper
+    return decorator_func
 
 
 def test_TSFeatureWiseScaler():
@@ -102,6 +116,7 @@ def test_split_dataset_into_objects():
     assert y.shape == (2225, 1)
 
 
+@skip_on(urllib.error.HTTPError, reason="HTTPError due to connection")
 def test_get_eeg():
     X, y = tsgm.utils.get_eeg()
 
@@ -109,12 +124,14 @@ def test_get_eeg():
     assert y.shape == (14980,)
 
 
+@skip_on(urllib.error.HTTPError, reason="HTTPError due to connection")
 def test_get_power_consumption():
     X = tsgm.utils.get_power_consumption()
 
     assert X.shape == (2075259, 7)
 
 
+@skip_on(urllib.error.HTTPError, reason="HTTPError due to connection")
 def test_get_power_consumption_second_call(mocker):
     X = tsgm.utils.get_power_consumption()
     file_download_mock = mocker.patch('tsgm.utils.download')

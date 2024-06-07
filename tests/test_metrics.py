@@ -255,3 +255,15 @@ def test_demographic_parity():
         2: 0,
         3: -np.inf
     }
+
+
+def test_predictive_parity():
+    metric = tsgm.metrics.PredictiveParityMetric()
+    y_pred_hist = np.array([0, 1, 1, 0, 0, 1])
+    y_true_hist = np.array([0, 1, 0, 0, 0, 1])
+    groups_hist = np.array([0, 0, 0, 1, 1, 1])
+    y_true_synth = np.array([0, 0, 1, 0, 0, 1])
+    y_pred_synth = np.array([1, 0, 0, 0, 0, 1])
+    groups_synth = np.array([0, 0, 0, 1, 1, 1])
+    result = metric(y_true_hist, y_pred_hist, groups_hist, y_true_synth, y_pred_synth, groups_synth)
+    assert result[0] > result[1] and result[1] == 0    

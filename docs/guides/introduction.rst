@@ -42,7 +42,7 @@ The training of data-driven simulators can be done via likelihood optimization, 
 - `tsgm.models.cgan.ConditionalGAN` - conditional GAN model for labeled and temporally labeled time-series simulation,\\
 - `tsgm.models.cvae.BetaVAE` - beta-VAE model adapted for time-series simulation,\\
 - `tsgm.models.cvae.cBetaVAE` - conditional beta-VAE model for labeled and temporally labeled time-series simulation,\\
-- `tsgm.models.cvae.TimeGAN` - extended GAN-based model for time series generation.
+- `tsgm.models.timegan.TimeGAN` - extended GAN-based model for time series generation.
 
 A minimalistic example of synthetic data generation with VAEs:
 
@@ -105,10 +105,11 @@ In `tsgm.metrics`, we implemented several metrics for evaluation of generated ti
 
 - data similarity / distance: `tsgm.metrics.DistanceMetric`, `tsgm.metrics.MMDMetric`, `tsgm.metrics.DiscriminativeMetric`,
 - predictive consistency: `tsgm.metrics.ConsistencyMetric`,
-- fairness: `tsgm.metrics.DemographicParityMetric`,
+- fairness: `tsgm.metrics.DemographicParityMetric`, `tsgm.metrics.PredictiveParityMetric`
 - privacy: `tsgm.metrics.PrivacyMembershipInferenceMetric`,
+- diversity: `tsgm.metrics.EntropyMetric`, `tsgm.metrics.ShannonEntropyMetric`, `tsgm.metrics.PairwiseDistanceMetric`,
 - downstream effectiveness: `tsgm.metrics.DownstreamPerformanceMetric`,
-- qualitative analysis: `tsgm.visualization`.
+- qualitative analysis: `tsgm.utils.visualization`.
 
 See the following code for an example of using metrics:
 
@@ -151,5 +152,3 @@ If you find the *TSGM* useful, please consider citing our paper:
 	  journal={arXiv preprint arXiv:2305.11567},
 	  year={2023}
 	}
-
-

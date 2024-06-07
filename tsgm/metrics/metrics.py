@@ -6,6 +6,7 @@ import numpy as np
 import itertools
 import sklearn
 import scipy
+from sklearn.metrics import precision_score
 from scipy.stats import entropy
 from tqdm import tqdm
 from scipy.spatial.distance import pdist, squareform
@@ -172,7 +173,7 @@ class DownstreamPerformanceMetric(Metric):
 
 class PrivacyMembershipInferenceMetric(Metric):
     """
-    The metric that measures the possibility of membership inference attacks.
+    The metric measures the possibility of membership inference attacks.
     """
     def __init__(self, attacker: T.Any, metric: T.Optional[T.Callable] = None) -> None:
         """
@@ -408,7 +409,7 @@ class DemographicParityMetric(Metric):
     """
     Measuring demographic parity between two datasets.
 
-    This metric assesses the disparity in the distributions of a target variable among different groups in two datasets.
+    This metric assesses the difference in the distributions of a target variable among different groups in two datasets.
     By default, it uses the Kolmogorov-Smirnov statistic to quantify the maximum vertical deviation between the cumulative distribution functions
     of the target variable for the historical and synthetic data within each group.
 
@@ -467,4 +468,81 @@ class DemographicParityMetric(Metric):
                 result[g] = -np.inf
             else:
                 result[g] = metric(y_g_hist, y_g_synth)
+        return result
+
+
+class PredictiveParityMetric:
+    """
+    Measuring predictive parity between two datasets.
+
+    This metric assesses the discrepancy in the predictive performance of a
+    model among different groups in two datasets.
+    By default, it uses precision to quantify the predictive performance of the model within each group.
+
+    Args:
+        y_true_hist (TensorLike): The true target values for the historical data.
+        y_pred_hist (TensorLike): The predicted target values for the historical data.
+        groups_hist (TensorLike): The group assignments for the historical data.
+        y_true_synth (TensorLike): The true target values for the synthetic data.
+        y_pred_synth (TensorLike): The predicted target values for the synthetic data.
+        groups_synth (TensorLike): The group assignments for the synthetic data.
+        metric (callable, optional): The metric used to compare the predictive performance within each group.
+            Default is precision score.
+
+    Returns:
+        dict: A dictionary mapping each group to the computed predictive parity metric.
+
+    Example:
+        >>> metric = PredictiveParityMetric()
+        >>> y_true_hist = [0, 1, 0, 1, 1, 0]
+        >>> y_pred_hist = [0, 1, 0, 0, 1, 1]
+        >>> groups_hist = [0, 1, 0, 1, 1, 0]
+        >>> y_true_synth = [1, 0, 1, 0, 0, 1]
+        >>> y_pred_synth = [1, 0, 1, 1, 0, 0]
+        >>> groups_synth = [1, 1, 0, 0, 0, 1]
+        >>> result = metric(y_true_hist, y_pred_hist, groups_hist, y_true_synth, y_pred_synth, groups_synth)
+        >>> print(result)
+    """
+
+    # using precision score by default
+    _DEFAULT_METRIC = lambda y_true, y_pred: precision_score(y_true, y_pred, average='binary')  # noqa: E731
+
+    def __call__(self,
+                 y_true_hist: TensorLike, y_pred_hist: TensorLike, groups_hist: TensorLike,
+                 y_true_synth: TensorLike, y_pred_synth: TensorLike, groups_synth: TensorLike,
+                 metric: T.Callable = _DEFAULT_METRIC) -> T.Dict[int, float]:
+        """
+        Calculate the predictive parity metric for the input datasets.
+
+        Args:
+            y_true_hist (TensorLike): The true target values for the historical data.
+            y_pred_hist (TensorLike): The predicted target values for the historical data.
+            groups_hist (TensorLike): The group assignments for the historical data.
+            y_true_synth (TensorLike): The true target values for the synthetic data.
+            y_pred_synth (TensorLike): The predicted target values for the synthetic data.
+            groups_synth (TensorLike): The group assignments for the synthetic data.
+            metric (callable, optional): The metric used to compare the predictive performance within each group.
+                Default is precision score.
+
+        Returns:
+            dict: A dictionary mapping each group to the computed predictive parity metric.
+        """
+        assert len(y_true_hist) == len(y_pred_hist) == len(groups_hist) == len(y_true_synth) == len(y_pred_synth) == len(groups_synth)
+        unique_groups_hist, unique_groups_synth = set(groups_hist), set(groups_synth)
+        all_groups = unique_groups_hist | unique_groups_synth
+        if len(all_groups) - len(unique_groups_hist) - len(unique_groups_synth) != 0:
+            logger.warn("Groups in historical and synthetic data are not entirely identical.")
+        result = {}
+        for g in all_groups:
+            y_true_g_hist, y_pred_g_hist = y_true_hist[groups_hist == g], y_pred_hist[groups_hist == g]
+            y_true_g_synth, y_pred_g_synth = y_true_synth[groups_synth == g], y_pred_synth[groups_synth == g]
+            if not len(y_true_g_synth) or not len(y_pred_g_synth):
+                result[g] = np.inf
+            elif not len(y_true_g_hist) or not len(y_pred_g_hist):
+                result[g] = -np.inf
+            else:
+                metric_hist = metric(y_true_g_hist, y_pred_g_hist)
+                metric_synth = metric(y_true_g_synth, y_pred_g_synth)
+                result[g] = metric_hist - metric_synth  # Difference in metric scores between historical and synthetic data
+
         return result

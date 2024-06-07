@@ -85,6 +85,13 @@ Datasets
     :undoc-members:
 
 
+Simulators
+--------------
+.. automodule:: tsgm.simulator
+    :members:
+    :undoc-members:
+
+
 Data Processing Utils
 --------------
 .. automodule:: tsgm.utils.data_processing
