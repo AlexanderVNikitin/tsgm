@@ -431,7 +431,7 @@ def get_physionet2012() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLik
     This function downloads and retrieves the Physionet 2012 dataset, which consists of physiological data
     and corresponding outcomes. It returns the training, testing, and validation datasets along with their labels.
 
-    :return: A tuple containing the training, testing, and validation datasets along with their labels.
+    :return: A tuple containing the training, testing, and validation datasets along with their labels. (train_X, train_y, test_X, test_y, val_X, val_y)
     :rtype: tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]
     """
     download_physionet2012()

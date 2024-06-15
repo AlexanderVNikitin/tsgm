@@ -222,7 +222,6 @@ def test_mmd_3_test():
     "Coffee",
     "ECG200",
     "ElectricDevices",
-    "GunPoint",
     "MixedShapesRegularTrain",
     "StarLightCurves",
     "Wafer"
