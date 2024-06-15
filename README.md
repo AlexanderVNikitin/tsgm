@@ -93,10 +93,14 @@ result = gan.generate(100)
 
 ## :anchor: Tutorials
 
-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1l2VB6eUwvrxyu8iB30faGiQM5AKthc82?usp=sharing) Introductory Tutorial "[Getting started with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/GANs/cGAN.ipynb)"
-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Vw9t4TlI1Nek_t6bMPyKcPPPqCiXfOK3?usp=sharing) Tutorial on using [Time Series Augmentations](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/augmentations.ipynb)
-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1hubtddSX94KyLzuCTwmU6pAFBgBeiEB-?usp=sharing) Tutorial on [Evaluation of Synthetic Time Series Data](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/evaluation.ipynb)
-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1wpf9WeNVj5TkUcPF6EavVx-hUCOfyvUd?usp=sharing) Tutorial on using [Multiple GPUs or TPU with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Using%20Multiple%20GPUs%20or%20TPU.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1l2VB6eUwvrxyu8iB30faGiQM5AKthc82?usp=sharing) Introductory Tutorial [Getting started with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/GANs/cGAN.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1frSnJQSsuPS3asgIkmcrNtX4Y7TIQI56?usp=sharing) Tutorial [Datasets in TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Datasets.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Vw9t4TlI1Nek_t6bMPyKcPPPqCiXfOK3?usp=sharing) Tutorial [Time Series Augmentations](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/augmentations.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1_jpGrPcwoSpB8eii8XW-spaikczdPqIQ?usp=sharing) Tutorial [Time Series Generation with VAEs](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/VAEs/VAE.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rcN3pr8uglBEEOo4bTa1fvXgSMx1vKq9?usp=sharing) Tutorial [Conditional Time Series Generation with GANs](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/GANs/cGAN.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1hubtddSX94KyLzuCTwmU6pAFBgBeiEB-?usp=sharing) Tutorial [Evaluation of Synthetic Time Series Data](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/evaluation.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1SKD9hRi-ic27Wts9Qzkssjfe1z7o1NU4?usp=sharing) Tutorial [Model Selection](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Model%20Selection.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1wpf9WeNVj5TkUcPF6EavVx-hUCOfyvUd?usp=sharing) Tutorial [Multiple GPUs or TPU with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Using%20Multiple%20GPUs%20or%20TPU.ipynb)
 
 For more examples, see [our tutorials](./tutorials).
 
