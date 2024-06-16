@@ -370,5 +370,6 @@ def test_version():
 
 
 def test_get_synchronized_brainwave_dataset():
-    df = tsgm.utils.get_synchronized_brainwave_dataset()
-    assert df.shape == (30013, 13)
+    X, y = tsgm.utils.get_synchronized_brainwave_dataset()
+    assert X.shape == (30013, 12)
+    assert y.shape == (30013,)

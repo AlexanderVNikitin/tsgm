@@ -297,37 +297,46 @@ def get_eeg() -> T.Tuple[TensorLike, TensorLike]:
     return X, y
 
 
-def get_synchronized_brainwave_dataset() -> pd.DataFrame:
-    # TODO: we need a better url
-    url = ("https://storage.googleapis.com/kaggle-data-sets/267/799894/compressed/eeg-data.csv.zip?X-Goog-Algorithm"
-           "=GOOG4-RSA-SHA256&X-Goog-Credential=gcp-kaggle-com%40kaggle-161607.iam.gserviceaccount.com%2F20240612"
-           "%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20240612T131629Z&X-Goog-Expires=259200&X-Goog-SignedHeaders"
-           "=host&X-Goog-Signature"
-           "=678772c7339d5116478fbc1c2dc377567284c4c0d97aff46533b7d64dee0c4336c9ebf82a0c3c980ead3bbfbfc426135bf1dee685eb544c9a36074199e4a760a311379bd1f8996c5906481a72aa19c19af3cfdecd7bd565c434fc626f2c43ce6ccbdfaa58eee2a3c7668708fc8c93364499b5b083c668288840eace09b6267bb2a5c6208ed9fb1e66cda405e1900dc35a6fbb9f02562a8ab351dd88a0b346a32c1941cf5ad5f4cf2a10ccd36a35bdbc3620d1402d26b407acec6eab9a7dde4b355cf977e588f36eeca0046a36331e2798f3a5074b6423c830cbfeac12f8a1d8b45911963e0ff4f7e0879755d1bf2054434e48d043ff4cca5e96f5e6a4f55e2e1")
+def get_synchronized_brainwave_dataset() -> T.Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Loads the EEG Synchronized Brainwave dataset.
+
+    This function downloads the EEG Synchronized Brainwave dataset from dropbox
+    and returns the input features (X) and target labels (y).
+
+    :return: A tuple containing the input features (X) and target labels (y).
+    :rtype: tuple[pd.DataFrame, pd.DataFrame]
+    """
+    url = ("https://www.dropbox.com/scl/fi/uqah9rthwrt5i2q6evtws/eeg-data.csv.zip?rlkey=z7sautwq74jow2xt9o6q7lcij&st"
+           "=hvpvvfez&dl=1")
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, 'synchronized_brainwave_dataset.zip')
     path_to_renamed_csv = os.path.join(path_to_folder, "synchronized_brainwave_dataset.csv")
+    os.makedirs(path_to_folder, exist_ok=True)
     if not os.path.exists(path_to_renamed_csv):
+        # file_utils.download(url, path_to_folder)
         # TODO: utils.py is not used here, maybe need md5 checking
         response = requests.get(url)
         with open(path_to_resource, 'wb') as f:
             f.write(response.content)
-        print("Download completed.")
+        logger.info("Download completed.")
         file_utils.extract_archive(path_to_resource, path_to_folder)
-        print("Extraction completed.")
+        logger.info("Extraction completed.")
 
         original_csv = os.path.join(path_to_folder, "eeg-data.csv")
 
         if os.path.exists(original_csv):
             os.rename(original_csv, path_to_renamed_csv)
-            print(f"File renamed to {path_to_renamed_csv}")
+            logger.info(f"File renamed to {path_to_renamed_csv}")
         else:
-            print("The expected CSV file was not found.")
+            logger.warning("The expected CSV file was not found.")
     else:
-        print("File exist")
+        logger.info("File exist")
     df = pd.read_csv(path_to_renamed_csv)
-    return df
+    X = df.drop("label", axis=1)
+    y = df["label"]
+    return X, y
 
 
 def get_power_consumption() -> npt.NDArray:
