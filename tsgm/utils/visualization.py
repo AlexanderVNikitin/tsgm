@@ -246,7 +246,7 @@ def visualize_ts_lineplot(
     :param unite_features: Whether to plot all features together or separately, defaults to True.
     :type unite_features: bool, optional
     :param legend_fontsize: Font size to use.
-    :type unite_features: int, optional
+    :type legend_fontsize: int, optional
     :param tick_size: Font size for y-axis ticks.
     :type tick_size: int, optional
     """
@@ -269,24 +269,40 @@ def visualize_ts_lineplot(
         else:
             for feat_id in range(ts.shape[2]):
                 sns.lineplot(
-                    x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i]
+                    x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i],
+                    label="Generated"
                 )
         if ys is not None:
-            axs[i].tick_params(labelsize=tick_size)
+            axs[i].tick_params(labelsize=tick_size, which="both")
             if len(ys.shape) == 1:
                 axs[i].set_title(ys[sample_id], fontsize=legend_fontsize)
             elif len(ys.shape) == 2:
+                ax2 = axs[i].twinx()
                 sns.lineplot(
                     x=range(ts.shape[1]),
                     y=ys[sample_id],
-                    ax=axs[i].twinx(),
+                    ax=ax2,
                     color="g",
-                    label="Target variable",
+                    label="Condition",
                 )
-                axs[i].twinx().tick_params(labelsize=tick_size)
+#                axs[i].twinx().yaxis.set_ticks_position('right')
+                ax2.tick_params(labelsize=tick_size)
+                if i == 0:
+                    leg = ax2.legend(fontsize=legend_fontsize, loc='upper right')
+                    for legobj in leg.legendHandles:
+                        legobj.set_linewidth(2.0)
+                else:
+                    ax2.get_legend().remove()
             else:
                 raise ValueError("ys contains too many dimensions")
-        axs[i].legend(fontsize=legend_fontsize)
+        if i == 0:
+            leg = axs[i].legend(fontsize=legend_fontsize, loc='upper left')
+            for legobj in leg.legendHandles:
+                legobj.set_linewidth(2.0)
+        else:
+            axs[i].get_legend().remove()
+        if i != len(ids) - 1:
+            axs[i].set_xticks([])
 
 
 def visualize_original_and_reconst_ts(
