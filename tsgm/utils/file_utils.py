@@ -60,11 +60,15 @@ def extract_archive(from_path: str, to_path: T.Optional[str] = None, pwd: T.Opti
 def download(url: str, path: str, md5: T.Optional[str] = None, max_attempt: int = 3) -> None:
     logger.info(f"### Downloading from {url} ###")
     os.makedirs(path, exist_ok=True)
-    resource_name = url.split("/")[-1]
+    if "?" in url:
+        base_url, _ = url.split("?")
+    else:
+        base_url = url
+    resource_name = base_url.split("/")[-1]
     path = os.path.join(path, resource_name)
     for attempt in range(max_attempt):
         logger.info(f"Attempt {attempt + 1} / {max_attempt}")
-        urllib.request.urlretrieve(urllib.parse.quote(url, safe=":/"), path)
+        urllib.request.urlretrieve(urllib.parse.quote(url, safe=":/?&="), path)
         if md5 is not None:
             downloaded_md5 = hashlib.md5(open(path, "rb").read()).hexdigest()
             if md5 == downloaded_md5:
