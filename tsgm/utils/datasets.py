@@ -19,7 +19,6 @@ from tensorflow.python.types.core import TensorLike
 
 from tsgm.utils import covid19_data_utils
 from tsgm.utils import file_utils
-import requests
 
 
 logger = logging.getLogger('utils')
