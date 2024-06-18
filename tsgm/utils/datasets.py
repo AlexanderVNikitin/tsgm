@@ -296,6 +296,42 @@ def get_eeg() -> T.Tuple[TensorLike, TensorLike]:
     return X, y
 
 
+def get_synchronized_brainwave_dataset() -> T.Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Loads the EEG Synchronized Brainwave dataset.
+
+    This function downloads the EEG Synchronized Brainwave dataset from dropbox
+    and returns the input features (X) and target labels (y).
+
+    :return: A tuple containing the input features (X) and target labels (y).
+    :rtype: tuple[pd.DataFrame, pd.DataFrame]
+    """
+    url = ("https://www.dropbox.com/scl/fi/uqah9rthwrt5i2q6evtws/eeg-data.csv.zip?rlkey=z7sautwq74jow2xt9o6q7lcij&st"
+           "=hvpvvfez&dl=1")
+    cur_path = os.path.dirname(__file__)
+    path_to_folder = os.path.join(cur_path, "../../data/")
+    path_to_resource = os.path.join(path_to_folder, 'eeg-data.csv.zip')
+    path_to_renamed_csv = os.path.join(path_to_folder, "synchronized_brainwave_dataset.csv")
+    os.makedirs(path_to_folder, exist_ok=True)
+    if not os.path.exists(path_to_renamed_csv):
+        file_utils.download(url, path_to_folder)
+        logger.info("Download completed.")
+        file_utils.extract_archive(path_to_resource, path_to_folder)
+        logger.info("Extraction completed.")
+        original_csv = os.path.join(path_to_folder, "eeg-data.csv")
+        if os.path.exists(original_csv):
+            os.rename(original_csv, path_to_renamed_csv)
+            logger.info(f"File renamed to {path_to_renamed_csv}")
+        else:
+            logger.warning("The expected CSV file was not found.")
+    else:
+        logger.info("File exist")
+    df = pd.read_csv(path_to_renamed_csv)
+    X = df.drop("label", axis=1)
+    y = df["label"]
+    return X, y
+
+
 def get_power_consumption() -> npt.NDArray:
     """
     Retrieves the household power consumption dataset.
