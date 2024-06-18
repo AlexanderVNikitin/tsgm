@@ -311,21 +311,15 @@ def get_synchronized_brainwave_dataset() -> T.Tuple[pd.DataFrame, pd.DataFrame]:
            "=hvpvvfez&dl=1")
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
-    path_to_resource = os.path.join(path_to_folder, 'synchronized_brainwave_dataset.zip')
+    path_to_resource = os.path.join(path_to_folder, 'eeg-data.csv.zip')
     path_to_renamed_csv = os.path.join(path_to_folder, "synchronized_brainwave_dataset.csv")
     os.makedirs(path_to_folder, exist_ok=True)
     if not os.path.exists(path_to_renamed_csv):
-        # file_utils.download(url, path_to_folder)
-        # TODO: utils.py is not used here, maybe need md5 checking
-        response = requests.get(url)
-        with open(path_to_resource, 'wb') as f:
-            f.write(response.content)
+        file_utils.download(url, path_to_folder)
         logger.info("Download completed.")
         file_utils.extract_archive(path_to_resource, path_to_folder)
         logger.info("Extraction completed.")
-
         original_csv = os.path.join(path_to_folder, "eeg-data.csv")
-
         if os.path.exists(original_csv):
             os.rename(original_csv, path_to_renamed_csv)
             logger.info(f"File renamed to {path_to_renamed_csv}")
