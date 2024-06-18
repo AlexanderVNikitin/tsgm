@@ -61,12 +61,14 @@ def download(url: str, path: str, md5: T.Optional[str] = None, max_attempt: int 
     logger.info(f"### Downloading from {url} ###")
     os.makedirs(path, exist_ok=True)
     if "?" in url:
-        url, _ = url.split("?")
-    resource_name = url.split("/")[-1]
+        base_url, _ = url.split("?")
+    else:
+        base_url = url
+    resource_name = base_url.split("/")[-1]
     path = os.path.join(path, resource_name)
     for attempt in range(max_attempt):
         logger.info(f"Attempt {attempt + 1} / {max_attempt}")
-        urllib.request.urlretrieve(urllib.parse.quote(url, safe=":/"), path)
+        urllib.request.urlretrieve(urllib.parse.quote(url, safe=":/?&="), path)
         if md5 is not None:
             downloaded_md5 = hashlib.md5(open(path, "rb").read()).hexdigest()
             if md5 == downloaded_md5:
