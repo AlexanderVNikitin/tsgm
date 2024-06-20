@@ -37,6 +37,10 @@ Create and evaluate synthetic time series datasets effortlessly
 
 TSGM is an open-source framework for synthetic time series dataset generation and evaluation. 
 
+<div align="center">
+<img src="./docs/_static/generation_process.gif">
+</div>
+
 The framework can be used for creating synthetic datasets (see <a href="#hammer-generators">:hammer: Generators </a>), augmenting time series data (see <a href="#art-augmentations">:art: Augmentations </a>), evaluating synthetic data with respect to consistency, privacy, downstream performance, and more (see <a href="#chart_with_upwards_trend-metrics">:chart_with_upwards_trend: Metrics </a>), using common time series datasets (TSGM provides easy access to more than 140 datasets, see <a href="#floppy_disk-datasets">:floppy_disk: Datasets </a>).
 
 We provide:
