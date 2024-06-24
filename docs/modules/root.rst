@@ -11,7 +11,7 @@ Datasets
     :members:
     :undoc-members:
 
-.. automodule:: tsgm.utils.dataset
+.. automodule:: tsgm.utils.datasets
     :members:
     :undoc-members:
 
@@ -74,13 +74,6 @@ Monitors
 Zoo
 --------------
 .. automodule:: tsgm.models.architectures.zoo
-    :members:
-    :undoc-members:
-
-
-Datasets
---------------
-.. automodule:: tsgm.utils.datasets
     :members:
     :undoc-members:
 

@@ -7,5 +7,5 @@ nbsphinx
 jupytext
 pydata-sphinx-theme
 sphinxcontrib-bibtex
-sphinx-autoapi
+sphinx-autoapi==3.0.0
 sphinx_rtd_theme
