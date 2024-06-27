@@ -37,6 +37,10 @@ Create and evaluate synthetic time series datasets effortlessly
 
 TSGM is an open-source framework for synthetic time series dataset generation and evaluation. 
 
+<div align="center">
+<img src="./docs/_static/generation_process.gif">
+</div>
+
 The framework can be used for creating synthetic datasets (see <a href="#hammer-generators">:hammer: Generators </a>), augmenting time series data (see <a href="#art-augmentations">:art: Augmentations </a>), evaluating synthetic data with respect to consistency, privacy, downstream performance, and more (see <a href="#chart_with_upwards_trend-metrics">:chart_with_upwards_trend: Metrics </a>), using common time series datasets (TSGM provides easy access to more than 140 datasets, see <a href="#floppy_disk-datasets">:floppy_disk: Datasets </a>).
 
 We provide:
@@ -150,18 +154,19 @@ TSGM implements many metrics for synthetic time series evaluation. Check Section
 
 
 ## :floppy_disk: Datasets
-| Dataset  | API | Description     |
-| ------------- | ------------- | ------------- |
-| UCR Dataset  | `tsgm.utils.UCRDataManager` | https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/  |
-| Mauna Loa  | `tsgm.utils.get_mauna_loa()` | https://gml.noaa.gov/ccgg/trends/data.html |
-| EEG & Eye state  | `tsgm.utils.get_eeg()` | https://archive.ics.uci.edu/ml/datasets/EEG+Eye+State  |
-| Power consumption dataset  | `tsgm.utils.get_power_consumption()` | https://archive.ics.uci.edu/ml/datasets/individual+household+electric+power+consumption  |
-| Stock data  | `tsgm.utils.get_stock_data(ticker_name)` | Gets historical stock data from YFinance  |
-| COVID-19 over the US  | `tsgm.utils.get_covid_19()` | Covid-19 distribution over the US  |
-| Energy Data (UCI)  | `tsgm.utils.get_energy_data()` | https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction  |
-| MNIST as time series  | `tsgm.utils.get_mnist_data()` | https://en.wikipedia.org/wiki/MNIST_database  |
-| Samples from GPs  | `tsgm.utils.get_gp_samples_data()` | https://en.wikipedia.org/wiki/Gaussian_process |
-| Physionet 2012  | `tsgm.utils.get_physionet2012()` | https://archive.physionet.org/pn3/challenge/2012/ |
+| Dataset | API                                               | Description     |
+| - |---------------------------------------------------| ------------- |
+| UCR Dataset | `tsgm.utils.UCRDataManager`                       | https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/  |
+| Mauna Loa | `tsgm.utils.get_mauna_loa()`                      | https://gml.noaa.gov/ccgg/trends/data.html |
+| EEG & Eye state | `tsgm.utils.get_eeg()`                            | https://archive.ics.uci.edu/ml/datasets/EEG+Eye+State  |
+| Power consumption dataset | `tsgm.utils.get_power_consumption()`              | https://archive.ics.uci.edu/ml/datasets/individual+household+electric+power+consumption  |
+| Stock data | `tsgm.utils.get_stock_data(ticker_name)`          | Gets historical stock data from YFinance  |
+| COVID-19 over the US | `tsgm.utils.get_covid_19()`                       | Covid-19 distribution over the US  |
+| Energy Data (UCI) | `tsgm.utils.get_energy_data()`                    | https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction  |
+| MNIST as time series | `tsgm.utils.get_mnist_data()`                     | https://en.wikipedia.org/wiki/MNIST_database  |
+| Samples from GPs | `tsgm.utils.get_gp_samples_data()`                | https://en.wikipedia.org/wiki/Gaussian_process |
+| Physionet 2012 | `tsgm.utils.get_physionet2012()`                  | https://archive.physionet.org/pn3/challenge/2012/ |
+| Synchronized Brainwave Dataset  | `tsgm.utils.get_synchronized_brainwave_dataset()` | https://www.kaggle.com/datasets/berkeley-biosense/synchronized-brainwave-dataset |
 
 TSGM provides API for convenient use of many time-series datasets (currently more than 140 datasets). The comprehensive list of the datasets in the [documentation](https://tsgm.readthedocs.io/en/latest/guides/datasets.html)
 

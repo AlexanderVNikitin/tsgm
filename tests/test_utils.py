@@ -366,3 +366,9 @@ def test_extract_targz():
 
 def test_version():
     assert isinstance(tsgm.__version__, str)
+
+
+def test_get_synchronized_brainwave_dataset():
+    X, y = tsgm.utils.get_synchronized_brainwave_dataset()
+    assert X.shape == (30013, 12)
+    assert y.shape == (30013,)
