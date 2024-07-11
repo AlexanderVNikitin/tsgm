@@ -27,25 +27,55 @@ class GAN(keras.Model):
     """
     GAN implementation for unlabeled time series.
     """
-    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int) -> None:
+    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int, use_wgan: bool = False) -> None:
         """
         :param discriminator: A discriminator model which takes a time series as input and check
-            whether the image is real or fake.
+            whether the sample is real or fake.
         :type discriminator: keras.Model
         :param generator: Takes as input a random noise vector of `latent_dim` length and returns
             a simulated time-series.
         :type generator: keras.Model
         :param latent_dim: The size of the noise vector.
         :type latent_dim: int
+        :param use_wgan: Use Wasserstein GAN with gradien penalty
+        :type use_wgan: bool
         """
         super(GAN, self).__init__()
         self.discriminator = discriminator
         self.generator = generator
         self.latent_dim = latent_dim
         self._seq_len = self.generator.output_shape[1]
+        self.use_wgan = use_wgan
+        self.gp_weight = 10.0
 
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
+
+    def wgan_discriminator_loss(self, real_sample, fake_sample):
+        real_loss = tf.reduce_mean(real_sample)
+        fake_loss = tf.reduce_mean(fake_sample)
+        return fake_loss - real_loss
+
+    # Define the loss functions to be used for generator
+    def wgan_generator_loss(self, fake_sample):
+        return -tf.reduce_mean(fake_sample)
+
+    def gradient_penalty(self, batch_size, real_samples, fake_samples):
+        # get the interpolated samples
+        alpha = tf.random.normal([batch_size, 1, 1], 0.0, 1.0)
+        diff = fake_samples - real_samples
+        interpolated = real_samples + alpha * diff
+        with tf.GradientTape() as gp_tape:
+            gp_tape.watch(interpolated)
+            # 1. Get the discriminator output for this interpolated sample.
+            pred = self.discriminator(interpolated, training=True)
+
+        # 2. Calculate the gradients w.r.t to this interpolated sample.
+        grads = gp_tape.gradient(pred, [interpolated])[0]
+        # 3. Calcuate the norm of the gradients
+        norm = tf.sqrt(tf.reduce_sum(tf.square(grads), axis=[1, 2]))
+        gp = tf.reduce_mean((norm - 1.0) ** 2)
+        return gp
 
     @property
     def metrics(self) -> T.List:
@@ -94,7 +124,6 @@ class GAN(keras.Model):
         """
         real_data = data
         batch_size = tf.shape(real_data)[0]
-
         # Generate ts
         random_vector = self._get_random_vector_labels(batch_size)
         fake_data = self.generator(random_vector)
@@ -111,7 +140,19 @@ class GAN(keras.Model):
         )
         with tf.GradientTape() as tape:
             predictions = self.discriminator(combined_data)
-            d_loss = self.loss_fn(desc_labels, predictions)
+            if self.use_wgan:
+                fake_logits = self.discriminator(fake_data, training=True)
+                # Get the logits for the real samples
+                real_logits = self.discriminator(real_data, training=True)
+
+                # Calculate the discriminator loss using the fake and real sample logits
+                d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
+                # Calculate the gradient penalty
+                gp = self.gradient_penalty(batch_size, real_data, fake_data)
+                # Add the gradient penalty to the original discriminator loss
+                d_loss = d_cost + gp * self.gp_weight
+            else:
+                d_loss = self.loss_fn(desc_labels, predictions)
         grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
         self.d_optimizer.apply_gradients(
             zip(grads, self.discriminator.trainable_weights)
@@ -126,7 +167,11 @@ class GAN(keras.Model):
         with tf.GradientTape() as tape:
             fake_data = self.generator(random_vector)
             predictions = self.discriminator(fake_data)
-            g_loss = self.loss_fn(misleading_labels, predictions)
+            if self.use_wgan:
+                # uses logits
+                g_loss = self.wgan_generator_loss(predictions)
+            else:
+                g_loss = self.loss_fn(misleading_labels, predictions)
 
         grads = tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
@@ -167,10 +212,10 @@ class ConditionalGAN(keras.Model):
     """
     Conditional GAN implementation for labeled and temporally labeled time series.
     """
-    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int, temporal=False) -> None:
+    def __init__(self, discriminator: keras.Model, generator: keras.Model, latent_dim: int, temporal=False, use_wgan=False) -> None:
         """
         :param discriminator: A discriminator model which takes a time series as input and check
-            whether the image is real or fake.
+            whether the sample is real or fake.
         :type discriminator: keras.Model
         :param generator: Takes as input a random noise vector of `latent_dim` length and return
             a simulated time-series.
@@ -312,6 +357,7 @@ class ConditionalGAN(keras.Model):
             fake_data = tf.concat([fake_samples, rep_labels], -1)
             predictions = self.discriminator(fake_data)
             g_loss = self.loss_fn(misleading_labels, predictions)
+
         if self.dp:
             # For DP optimizers from `tensorflow.privacy`
             self.g_optimizer.minimize(g_loss, self.generator.trainable_weights, tape=tape)

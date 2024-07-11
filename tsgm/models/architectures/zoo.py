@@ -871,6 +871,99 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         return generator
 
 
+class WaveGANArchitecture(BaseGANArchitecture):
+    """
+    WaveGAN architecture, from https://arxiv.org/abs/1802.04208
+
+    Inherits from BaseGANArchitecture.
+    """
+    arch_type = "gan:raw"
+
+    def __init__(self, seq_len: int, feat_dim: int = 64, latent_dim: int = 32, output_dim: int = 1, kernel_size: int = 32, phase_rad: int = 2, use_batchnorm: bool = False):
+        """
+        Initializes the WaveGANArchitecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param latent_dim: Dimensionality of the latent space.
+        :type latent_dim: int
+        :param output_dim: Dimensionality of the output.
+        :type output_dim: int
+        :param kernel_size: Sizes of convolutions
+        :type kernel_size: int, optional
+        :param phase_rad: Phase shuffle radius for wavegan (default is 2)
+        :type phase_rad: int, optional
+        :param use_batchnorm: Whether to use batchnorm (default is False)
+        :type use_batchnorm: bool, optional
+        """
+        self.seq_len = seq_len
+        self.feat_dim = feat_dim
+        self.latent_dim = latent_dim
+        self.kernel_size = kernel_size
+        self.phase_rad = phase_rad
+        self.output_dim = output_dim
+        self.use_batchnorm = use_batchnorm
+
+        self._discriminator = self._build_discriminator()
+        self._generator = self._build_generator()
+
+    def _apply_phaseshuffle(self, x, rad):
+        '''
+        Based on
+        https://github.com/chrisdonahue/wavegan/
+        '''
+        if rad <= 0 or x.shape[1] <= 1:
+            return x
+
+        b, x_len, nch = x.get_shape().as_list()
+
+        phase = tf.random.uniform([], minval=-rad, maxval=rad + 1, dtype=tf.int32)
+        pad_l, pad_r = tf.maximum(phase, 0), tf.maximum(-phase, 0)
+        phase_start = pad_r
+        x = tf.pad(x, [[0, 0], [pad_l, pad_r], [0, 0]], mode="reflect")
+
+        x = x[:, phase_start:phase_start + x_len]
+        x.set_shape([b, x_len, nch])
+
+        return x
+
+    def _conv_transpose_block(self, inputs, channels, strides=4):
+        x = layers.Conv1DTranspose(channels, self.kernel_size, strides=strides, padding='same', use_bias=False)(inputs)
+        x = layers.BatchNormalization()(x) if self.use_batchnorm else x
+        x = layers.LeakyReLU()(x)
+        return x
+
+    def _build_generator(self):
+        inputs = layers.Input((self.latent_dim,))
+        x = layers.Dense(16 * 1024, use_bias=False)(inputs)
+        x = layers.BatchNormalization()(x) if self.use_batchnorm else x
+        x = layers.LeakyReLU()(x)
+        x = layers.Reshape((16, 1024))(x)
+
+        for conv_size in [512, 256, 128, 64]:
+            x = self._conv_transpose_block(x, conv_size)
+
+        x = layers.Conv1DTranspose(1, self.kernel_size, strides=4, padding='same', use_bias=False, activation='tanh')(x)
+        pool_and_stride = math.ceil((x.shape[1] + 1) / (self.seq_len + 1))
+        x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
+        return keras.Model(inputs, x)
+
+    def _build_discriminator(self):
+        inputs = layers.Input((self.seq_len, self.feat_dim))
+        for conv_size in [64, 128, 256, 512]:
+            x = layers.Conv1D(conv_size, self.kernel_size, strides=4, padding='same')(inputs)
+            x = layers.BatchNormalization()(x) if self.use_batchnorm else x
+            x = layers.LeakyReLU()(x)
+            x = self._apply_phaseshuffle(x, self.phase_rad)
+
+        x = layers.Flatten()(x)
+        x = layers.Dense(1)(x)
+
+        return keras.Model(inputs, x)
+
+
 class Zoo(dict):
     """
     A collection of architectures represented. It behaves like supports Python `dict` API.
@@ -901,6 +994,7 @@ zoo = Zoo(
         "t-cgan_c4": tcGAN_Conv4Architecture,
         "cgan_lstm_n": cGAN_LSTMnArchitecture,
         "cgan_lstm_3": cGAN_LSTMConv3Architecture,
+        "wavegan": WaveGANArchitecture,
 
         # Downstream models
         "clf_cn": ConvnArchitecture,

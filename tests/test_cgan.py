@@ -236,7 +236,6 @@ def test_dp_compiler():
         learning_rate=learning_rate
     )
 
-
     g_optimizer = tf_privacy.DPKerasAdamOptimizer(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=noise_multiplier,
@@ -259,6 +258,31 @@ def test_dp_compiler():
     assert generated_samples.shape == (10, 64, 1)    
 
 
-def test_temporal_cgan_multiple_features():
-    # TODO
-    pass
+def test_wavegan():
+    latent_dim = 2
+    output_dim = 1
+    feature_dim = 1
+    seq_len = 64
+    batch_size = 48
+
+    dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+    architecture = tsgm.models.architectures.zoo["wavegan"](
+        seq_len=seq_len, feat_dim=feature_dim,
+        latent_dim=latent_dim, output_dim=output_dim)
+    discriminator, generator = architecture.discriminator, architecture.generator
+    gan = tsgm.models.cgan.GAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim, use_wgan=True
+    )
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(),
+    )
+    
+    gan.fit(dataset, epochs=1)
+
+    assert gan.generator is not None
+    assert gan.discriminator is not None
+    # Check generation
+    generated_samples = gan.generate(10)
+    assert generated_samples.shape == (10, seq_len, 1)
