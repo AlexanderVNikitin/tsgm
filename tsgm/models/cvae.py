@@ -96,7 +96,7 @@ class BetaVAE(keras.Model):
         kl_loss = -0.5 * (1 + z_log_var - torch.square(z_mean) - torch.exp(z_log_var))
         kl_loss = torch.mean(torch.sum(kl_loss, axis=1))
         total_loss = reconstruction_loss + kl_loss
-        self.optimizer.zero_grad()
+        self.zero_grad()
         total_loss.backward()
         
         trainable_weights = [v for v in self.trainable_weights]

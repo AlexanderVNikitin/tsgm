@@ -2,7 +2,7 @@ import abc
 import math
 import tsgm
 import typing as T
-#  import keras3.0 here, the LocallyConnected1D is not supported in keras3.0, a solution is needed
+#  import keras3.0 here, the LocallyConnected1D is not supported in keras3.0, I replace it with Conv1D
 import keras
 from keras import layers
 #  replace tf with ops in keras3.0
@@ -283,7 +283,7 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        d_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="sigmoid")(x)
+        d_output = layers.Conv1D(self._feat_dim, 1, activation="sigmoid")(x)
 
         decoder = keras.Model(inputs, d_output, name="decoder")
         return decoder
@@ -359,7 +359,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -430,7 +430,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
 
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
@@ -505,7 +505,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -870,7 +870,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation=output_activation)(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation=output_activation)(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
