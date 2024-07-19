@@ -5,8 +5,12 @@ from scipy import integrate
 from tqdm import tqdm
 import typing as T
 import numpy as np
-import tensorflow_probability as tfp
-from tensorflow.python.types.core import TensorLike
+
+from tsgm.backend import get_distributions
+distributions = get_distributions()
+
+#  make TensorLike more flexible
+from tsgm.types import Tensor as TensorLike
 
 import tsgm
 
@@ -265,9 +269,10 @@ class SineConstSimulator(ModelBasedSimulator):
             max_scale (float): Maximum value for the scale parameter.
             max_const (float): Maximum value for the constant parameter.
         """
-        self._scale = tfp.distributions.Uniform(0, max_scale)
-        self._const = tfp.distributions.Uniform(0, max_const)
-        self._shift = tfp.distributions.Uniform(0, 2)
+        #  change to pdists usage
+        self._scale = distributions.Uniform(0, max_scale)
+        self._const = distributions.Uniform(0, max_const)
+        self._shift = distributions.Uniform(0, 2)
 
         super().set_params({"max_scale": max_scale, "max_const": max_const})
 
@@ -283,9 +288,12 @@ class SineConstSimulator(ModelBasedSimulator):
         """
         result_X, result_y = [], []
         for i in range(num_samples):
-            scales = self._scale.sample(self._data.D)
-            consts = self._const.sample(self._data.D)
-            shifts = self._shift.sample(self._data.D)
+            D = self._data.D
+            if isinstance(D, int):
+                D = (D,) # for PyTorch compatibility
+            scales = self._scale.sample(D)
+            consts = self._const.sample(D)
+            shifts = self._shift.sample(D)
             if np.random.random() < 0.5:
                 times = np.repeat(np.arange(0, self._data.T, 1)[:, None], self._data.D, axis=1) / 10
                 result_X.append(np.sin(times + shifts) * scales)

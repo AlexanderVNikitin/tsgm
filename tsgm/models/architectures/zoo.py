@@ -2,14 +2,16 @@ import abc
 import math
 import tsgm
 import typing as T
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+#  import keras3.0 here, the LocallyConnected1D is not supported in keras3.0, a solution is needed
+import keras
+from keras import layers
+#  replace tf with ops in keras3.0
+from keras import ops
 
 from prettytable import PrettyTable
 
 
-class Sampling(tf.keras.layers.Layer):
+class Sampling(keras.layers.Layer):
     """
     Custom Keras layer for sampling from a latent space.
 
@@ -28,8 +30,10 @@ class Sampling(tf.keras.layers.Layer):
         :rtype: tsgm.types.Tensor
         """
         z_mean, z_log_var = inputs
-        epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        #  random noise for keras3.0
+        epsilon = keras.random.normal(shape=ops.shape(z_mean))
+        #  ops for keras3.0
+        return z_mean + ops.exp(0.5 * z_log_var) * epsilon
 
 
 class Architecture(abc.ABC):
@@ -700,7 +704,7 @@ class BasicRecurrentArchitecture(Architecture):
         return cell
 
     def _make_network(self, model: keras.models.Model, activation: str, return_sequences: bool) -> keras.models.Model:
-        _cells = tf.keras.layers.StackedRNNCells(
+        _cells = keras.layers.StackedRNNCells(
             [self._rnn_cell() for _ in range(self.n_layers)],
             name=f"{self.network_type}_x{self.n_layers}",
         )
@@ -917,15 +921,15 @@ class WaveGANArchitecture(BaseGANArchitecture):
         if rad <= 0 or x.shape[1] <= 1:
             return x
 
-        b, x_len, nch = x.get_shape().as_list()
-
-        phase = tf.random.uniform([], minval=-rad, maxval=rad + 1, dtype=tf.int32)
-        pad_l, pad_r = tf.maximum(phase, 0), tf.maximum(-phase, 0)
+        b, x_len, nch = x.shape
+        #  for keras 3.0
+        phase = keras.random.randint([], minval=-rad, maxval=rad + 1, dtype="int32")
+        pad_l, pad_r = ops.maximum(phase, 0), ops.maximum(-phase, 0)
         phase_start = pad_r
-        x = tf.pad(x, [[0, 0], [pad_l, pad_r], [0, 0]], mode="reflect")
+        x = ops.pad(x, [[0, 0], [pad_l, pad_r], [0, 0]], mode="reflect")
 
         x = x[:, phase_start:phase_start + x_len]
-        x.set_shape([b, x_len, nch])
+        x = ops.reshape(x, [b, x_len, nch])
 
         return x
 

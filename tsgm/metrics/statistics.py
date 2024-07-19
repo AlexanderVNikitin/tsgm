@@ -2,7 +2,6 @@ import typing
 import numpy as np
 import scipy
 import functools
-import tensorflow as tf
 from statsmodels.tsa.stattools import acf
 
 import tsgm
@@ -63,13 +62,13 @@ def axis_percentile_s(ts: tsgm.types.Tensor, axis: typing.Optional[int], percent
 
 def axis_percautocorr_s(ts: tsgm.types.Tensor, axis: typing.Optional[int]) -> tsgm.types.Tensor:
     _validate_axis(axis)
-
-    return np.array([_apply_percacf(tf.reshape(ts, [-1]))]) if axis is None else \
+    #  According to _apply_percacf function, I think np.reshape would work fine
+    return np.array([_apply_percacf(np.reshape(ts, [-1]))]) if axis is None else \
         np.apply_along_axis(_apply_percacf, 0, np.apply_along_axis(_apply_percacf, axis, ts))
 
 
 def axis_power_s(ts: tsgm.types.Tensor, axis: typing.Optional[int]) -> tsgm.types.Tensor:
     _validate_axis(axis)
-
-    return np.array([_apply_power(tf.reshape(ts, [-1]))]) if axis is None else \
+    #  According to __apply_power__ function, I think np.reshape would work fine
+    return np.array([_apply_power(np.reshape(ts, [-1]))]) if axis is None else \
         np.apply_along_axis(_apply_power, 0, np.apply_along_axis(_apply_power, axis, ts))
