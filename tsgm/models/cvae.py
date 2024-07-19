@@ -1,7 +1,10 @@
+import os
 import keras
 from keras import ops
 import typing as T
 
+from tsgm.backend import get_backend
+        
 import tsgm.utils
 
 
@@ -121,8 +124,6 @@ class BetaVAE(keras.Model):
         :returns: A dict with losses
         :rtype: T.Dict
         """
-        from tsgm.backend import get_backend
-        import os
         backend = get_backend()
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
             return self.tf_train_step(backend, data)
@@ -294,8 +295,6 @@ class cBetaVAE(keras.Model):
         :returns: A dict with losses
         :rtype: T.Dict[str, float]
         """
-        from tsgm.backend import get_backend
-        import os
         backend = get_backend()
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
             return self.tf_train_step(backend, data)
