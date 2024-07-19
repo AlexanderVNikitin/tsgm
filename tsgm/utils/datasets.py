@@ -14,8 +14,8 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.io.arff
 
-from tensorflow import keras
-from tensorflow.python.types.core import TensorLike
+import keras
+from tsgm.types import Tensor as TensorLike
 
 from tsgm.utils import covid19_data_utils
 from tsgm.utils import file_utils

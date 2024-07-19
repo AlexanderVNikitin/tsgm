@@ -3,12 +3,13 @@ import typing as T
 import tqdm
 
 import numpy as np
-import tensorflow_probability as tfp
+
+from tsgm.backend import get_distributions
+distributions = get_distributions()
 
 import tsgm
 
-
-DEFAULT_PRIOR = tfp.distributions.Normal(0, 1)
+DEFAULT_PRIOR = distributions.Normal(0, 1)
 
 
 class ABCAlgorithm:
