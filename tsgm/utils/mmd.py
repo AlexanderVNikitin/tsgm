@@ -5,7 +5,6 @@ import scipy
 import numpy as np
 import math
 from keras import ops
-import tensorflow_probability as tfp
 from tsgm.types import Tensor as TensorLike
 
 import tsgm
@@ -14,12 +13,13 @@ import tsgm
 logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
-
-EXP_QUAD_KERNEL = tfp.math.psd_kernels.ExponentiatedQuadratic(feature_ndims=2)
-
-
+#  make guassian kernel fit with both pytorch and tensorflow
 def exp_quad_kernel(x: TensorLike, y: TensorLike):
-    return EXP_QUAD_KERNEL.matrix(x, y)
+    length_scale, feature_ndims = 1.0, 2
+    x_expanded = ops.expand_dims(x, axis=-feature_ndims-1)
+    y_expanded = ops.expand_dims(y, axis=-feature_ndims-2)
+    sq_dist = ops.sum((x_expanded - y_expanded) ** 2, axis=(-2, -1))
+    return ops.exp(-0.5 * sq_dist / length_scale**2)
 
 
 def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: T.Callable = exp_quad_kernel) -> TensorLike:

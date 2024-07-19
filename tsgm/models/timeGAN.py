@@ -1,6 +1,6 @@
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.python.types.core import TensorLike
+import keras
+from tsgm.types import Tensor as TensorLike
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm, trange
