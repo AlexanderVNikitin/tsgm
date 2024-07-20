@@ -1,7 +1,7 @@
 import pytest
 import copy
 import itertools
-from tensorflow import keras
+import keras
 
 import tsgm
 

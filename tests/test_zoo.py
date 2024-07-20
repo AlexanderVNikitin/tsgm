@@ -1,7 +1,7 @@
 import pytest
 
 import numpy as np
-from tensorflow.keras import layers
+from keras import layers
 
 import sklearn.metrics.pairwise
 
