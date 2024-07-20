@@ -194,7 +194,6 @@ class GAN(keras.Model):
         }
         
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
-        data = ops.convert_to_tensor(data)
         real_data = data
         batch_size = ops.shape(real_data)[0]
         # Generate ts
@@ -467,8 +466,6 @@ class ConditionalGAN(keras.Model):
         
     def train_step_torch(self, torch, data: T.Tuple) -> T.Dict[str, float]:
         real_ts, labels = data
-        real_ts = ops.convert_to_tensor(real_ts)
-        labels = ops.convert_to_tensor(labels)
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:

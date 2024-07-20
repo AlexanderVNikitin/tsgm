@@ -90,7 +90,6 @@ class BetaVAE(keras.Model):
         }
     
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict:
-        data = ops.convert_to_tensor(data)
         z_mean, z_log_var, z = self.encoder(data)
         reconstruction = self.decoder(z)
         reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
@@ -257,8 +256,6 @@ class cBetaVAE(keras.Model):
         
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         X, labels = data
-        X = ops.convert_to_tensor(X)
-        labels = ops.convert_to_tensor(labels)
         encoder_input = self._get_encoder_input(X, labels)
         z_mean, z_log_var, z = self.encoder(encoder_input)
 
