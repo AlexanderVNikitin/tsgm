@@ -1,4 +1,3 @@
-import tensorflow as tf
 import keras
 import tensorflow_probability as tfp
 import numpy as np

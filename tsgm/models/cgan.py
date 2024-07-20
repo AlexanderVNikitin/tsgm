@@ -465,7 +465,7 @@ class ConditionalGAN(keras.Model):
             "d_loss": self.disc_loss_tracker.result(),
         }
         
-    def torch_train_step(self, torch, data: T.Tuple) -> T.Dict[str, float]:
+    def train_step_torch(self, torch, data: T.Tuple) -> T.Dict[str, float]:
         real_ts, labels = data
         real_ts = ops.convert_to_tensor(real_ts)
         labels = ops.convert_to_tensor(labels)
@@ -557,7 +557,7 @@ class ConditionalGAN(keras.Model):
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
-            return self.torch_train_step(backend, data)
+            return self.train_step_torch(backend, data)
 
     def generate(self, labels: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """
