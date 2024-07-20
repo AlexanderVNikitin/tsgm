@@ -1,5 +1,6 @@
 import tensorflow as tf
 import keras
+from keras import ops
 from tsgm.types import Tensor as TensorLike
 import numpy as np
 import numpy.typing as npt
@@ -261,7 +262,7 @@ class TimeGAN(keras.Model):
         with tf.GradientTape() as tape:
             X_tilde = self.autoencoder(X)
             E_loss_T0 = self._mse(X, X_tilde)
-            E_loss0 = 10.0 * tf.sqrt(E_loss_T0)
+            E_loss0 = 10.0 * ops.sqrt(E_loss_T0)
 
         e_vars = self.embedder.trainable_variables
         r_vars = self.recovery.trainable_variables
@@ -305,10 +306,10 @@ class TimeGAN(keras.Model):
         with tf.GradientTape() as tape:
             # 1. Adversarial loss
             Y_fake = self.adversarial_supervised(Z)
-            G_loss_U = self._bce(y_true=tf.ones_like(Y_fake), y_pred=Y_fake)
+            G_loss_U = self._bce(y_true=ops.ones_like(Y_fake), y_pred=Y_fake)
 
             Y_fake_e = self.adversarial_embedded(Z)
-            G_loss_U_e = self._bce(y_true=tf.ones_like(Y_fake_e), y_pred=Y_fake_e)
+            G_loss_U_e = self._bce(y_true=ops.ones_like(Y_fake_e), y_pred=Y_fake_e)
             # 2. Supervised loss
             H = self.embedder(X)
             H_hat_supervised = self.supervisor(H)
@@ -322,7 +323,7 @@ class TimeGAN(keras.Model):
             G_loss = (
                 G_loss_U
                 + self.gamma * G_loss_U_e
-                + 100 * tf.sqrt(G_loss_S)
+                + 100 * ops.sqrt(G_loss_S)
                 + 100 * G_loss_V
             )
 
@@ -354,7 +355,7 @@ class TimeGAN(keras.Model):
             # Reconstruction Loss
             X_tilde = self.autoencoder(X)
             E_loss_T0 = self._mse(X, X_tilde)
-            E_loss0 = 10 * tf.sqrt(E_loss_T0)
+            E_loss0 = 10 * ops.sqrt(E_loss_T0)
 
             E_loss = E_loss0 + 0.1 * G_loss_S
 
@@ -390,13 +391,13 @@ class TimeGAN(keras.Model):
         :return G_loss_V: float
         """
         _eps = 1e-6
-        y_true_mean, y_true_var = tf.nn.moments(x=y_true, axes=[0])
-        y_pred_mean, y_pred_var = tf.nn.moments(x=y_pred, axes=[0])
+        y_true_mean, y_true_var = ops.nn.moments(x=y_true, axes=[0])
+        y_pred_mean, y_pred_var = ops.nn.moments(x=y_pred, axes=[0])
         # G_loss_V2
-        g_loss_mean = tf.reduce_mean(abs(y_true_mean - y_pred_mean))
+        g_loss_mean = ops.mean(abs(y_true_mean - y_pred_mean))
         # G_loss_V1
-        g_loss_var = tf.reduce_mean(
-            abs(tf.sqrt(y_true_var + _eps) - tf.sqrt(y_pred_var + _eps))
+        g_loss_var = ops.mean(
+            abs(ops.sqrt(y_true_var + _eps) - ops.sqrt(y_pred_var + _eps))
         )
         # G_loss_V = G_loss_V1 + G_loss_V2
         return g_loss_mean + g_loss_var
@@ -409,14 +410,14 @@ class TimeGAN(keras.Model):
         """
         # Loss on false negatives
         Y_real = self.discriminator_model(X)
-        D_loss_real = self._bce(y_true=tf.ones_like(Y_real), y_pred=Y_real)
+        D_loss_real = self._bce(y_true=ops.ones_like(Y_real), y_pred=Y_real)
 
         # Loss on false positives
         Y_fake = self.adversarial_supervised(Z)
-        D_loss_fake = self._bce(y_true=tf.zeros_like(Y_fake), y_pred=Y_fake)
+        D_loss_fake = self._bce(y_true=ops.zeros_like(Y_fake), y_pred=Y_fake)
 
         Y_fake_e = self.adversarial_embedded(Z)
-        D_loss_fake_e = self._bce(y_true=tf.zeros_like(Y_fake_e), y_pred=Y_fake_e)
+        D_loss_fake_e = self._bce(y_true=ops.zeros_like(Y_fake_e), y_pred=Y_fake_e)
 
         D_loss = D_loss_real + D_loss_fake + self.gamma * D_loss_fake_e
         return D_loss
@@ -445,7 +446,7 @@ class TimeGAN(keras.Model):
         """
         Return an iterator of shuffled input data
         """
-        data = tf.convert_to_tensor(data, dtype=tf.float32)
+        data = ops.convert_to_tensor(data, dtype="float32")
         return iter(
             tf.data.Dataset.from_tensor_slices(data)
             .shuffle(buffer_size=n_windows)

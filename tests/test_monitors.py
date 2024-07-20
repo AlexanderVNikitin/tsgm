@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import random
 
-import tensorflow as tf
-from tensorflow import keras
+import keras
+from keras import ops
 import matplotlib.pyplot as plt 
 
 import tsgm
@@ -17,7 +17,7 @@ def _get_labels(num_samples, output_dim):
         if labels is None:
             labels = keras.utils.to_categorical([sample], output_dim)
         else:
-            labels = tf.concat((labels, keras.utils.to_categorical([sample], output_dim)), 0)
+            labels = ops.concatenate((labels, keras.utils.to_categorical([sample], output_dim)), 0)
     return labels
 
 
