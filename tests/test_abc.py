@@ -1,10 +1,11 @@
 import pytest
 import tsgm
-import tensorflow_probability as tfp
+from tsgm.backend import get_distributions
 
-import tensorflow as tf
+distributions = get_distributions()
+
 import numpy as np
-from tensorflow import keras
+import keras
 
 
 def test_abc_rejection_sampler_nn_simulator():
@@ -43,8 +44,8 @@ def test_abc_rejection_sampler_model_based_simulator():
     data = tsgm.dataset.DatasetProperties(N=100, D=2, T=100)
     simulator = tsgm.simulator.SineConstSimulator(data=data, max_scale=max_scale, max_const=20)
     priors = {
-        "max_scale": tfp.distributions.Uniform(9, 11),
-        "max_const": tfp.distributions.Uniform(19, 21)
+        "max_scale": distributions.Uniform(9, 11),
+        "max_const": distributions.Uniform(19, 21)
     }
     samples_ref = simulator.generate(10)
 

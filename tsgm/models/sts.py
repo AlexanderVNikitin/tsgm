@@ -1,4 +1,5 @@
 import tensorflow as tf
+import keras
 import tensorflow_probability as tfp
 import numpy as np
 
@@ -48,7 +49,7 @@ class STS:
         self._elbo_loss = tfp.vi.fit_surrogate_posterior(
             target_log_prob_fn=self._model.joint_distribution(observed_time_series=X).log_prob,
             surrogate_posterior=variational_posteriors,
-            optimizer=tf.optimizers.Adam(learning_rate=0.1),
+            optimizer=keras.optimizers.Adam(learning_rate=0.1),
             num_steps=num_variational_steps,
             jit_compile=True)
 

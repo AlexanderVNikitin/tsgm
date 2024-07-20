@@ -77,7 +77,7 @@ class GAN(keras.Model):
         interpolated.requires_grad = True
         pred = self.discriminator(interpolated, training=True)
         grads = torch.autograd.grad(outputs=pred, inputs=interpolated,
-                                    grad_outputs=torch.ones_like(pred),
+                                    grad_outputs=ops.ones_like(pred),
                                     create_graph=True, retain_graph=True, only_inputs=True)[0]
         return grads
 
@@ -194,6 +194,7 @@ class GAN(keras.Model):
         }
         
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
+        data = ops.convert_to_tensor(data)
         real_data = data
         batch_size = ops.shape(real_data)[0]
         # Generate ts
@@ -464,8 +465,10 @@ class ConditionalGAN(keras.Model):
             "d_loss": self.disc_loss_tracker.result(),
         }
         
-    def train_step_torch(self, torch, data: T.Tuple) -> T.Dict[str, float]:
+    def torch_train_step(self, torch, data: T.Tuple) -> T.Dict[str, float]:
         real_ts, labels = data
+        real_ts = ops.convert_to_tensor(real_ts)
+        labels = ops.convert_to_tensor(labels)
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:
@@ -554,7 +557,7 @@ class ConditionalGAN(keras.Model):
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
-            return self.train_step_torch(backend, data)
+            return self.torch_train_step(backend, data)
 
     def generate(self, labels: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """

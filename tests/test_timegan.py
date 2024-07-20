@@ -2,10 +2,23 @@ import pytest
 from unittest.mock import Mock
 import tsgm
 
-import tensorflow as tf
 import numpy as np
-from tensorflow import keras
+import keras
+from keras import ops
 
+import os
+from tsgm.backend import get_backend
+    
+
+def set_experimental_run_functions_eagerly(value):
+    if os.environ.get("KERAS_BACKEND") == "tensorflow":
+        tf = get_backend()
+        tf.config.experimental_run_functions_eagerly(value)
+    # no-op for PyTorch, which is always eager
+    
+
+FLOAT_32 = ops.convert_to_tensor(32, dtype="float32").dtype
+FLOAT_64 = ops.convert_to_tensor(64, dtype="float64").dtype
 
 def test_timegan():
     latent_dim = 4
@@ -131,7 +144,7 @@ def _gen_dataset(no, seq_len, dim):
 
 def _gen_tf_dataset(no, seq_len, dim):
     dataset = _gen_dataset(no, seq_len, dim)
-    dataset = tf.convert_to_tensor(dataset, dtype=tf.float32)
+    dataset = ops.convert_to_tensor(dataset, dtype="float32")
     dataset = tf.data.Dataset.from_tensors(dataset).unbatch().batch(no)
 
     return dataset
@@ -208,7 +221,7 @@ def test_train_timegan(mocked_gradienttape):
 
 @pytest.fixture
 def mock_optimizer():
-    yield tf.keras.optimizers.Adam(learning_rate=0.001)
+    yield keras.optimizers.Adam(learning_rate=0.001)
 
 
 @pytest.fixture
@@ -251,7 +264,7 @@ def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
         tf.config.experimental_run_functions_eagerly(False)
 
     # Assert that the loss is a float
-    assert loss.dtype in [tf.float32, tf.float64]
+    assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_timegan_train_supervisor(mocked_data, mocked_timegan):
@@ -265,7 +278,7 @@ def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     finally:
         tf.config.experimental_run_functions_eagerly(False)
     # Assert that the loss is a float
-    assert loss.dtype in [tf.float32, tf.float64]
+    assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_timegan_train_embedder(mocked_data, mocked_timegan):
@@ -279,7 +292,7 @@ def test_timegan_train_embedder(mocked_data, mocked_timegan):
     finally:
         tf.config.experimental_run_functions_eagerly(False)
     # Assert that the loss is a float
-    assert loss.dtype in [tf.float32, tf.float64]
+    assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_timegan_train_generator(mocked_data, mocked_timegan):
@@ -308,7 +321,7 @@ def test_timegan_train_generator(mocked_data, mocked_timegan):
         step_g_loss_v,
         step_g_loss,
     ):
-        assert loss.dtype in [tf.float32, tf.float64]
+        assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
@@ -324,7 +337,7 @@ def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
         tf.config.experimental_run_functions_eagerly(False)
 
     # Assert that the loss is a float
-    assert loss.dtype in [tf.float32, tf.float64]
+    assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_timegan_train_discriminator(mocked_data, mocked_timegan):
@@ -338,7 +351,7 @@ def test_timegan_train_discriminator(mocked_data, mocked_timegan):
     finally:
         tf.config.experimental_run_functions_eagerly(False)
     # Assert that the loss is a float
-    assert loss.dtype in [tf.float32, tf.float64]
+    assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
 def test_generate_noise(mocked_timegan):
@@ -365,12 +378,12 @@ def test_compute_generator_moments_loss(mocked_timegan):
 
     # Calculate the expected loss manually
     _eps = 1e-6
-    y_true_mean, y_true_var = tf.nn.moments(x=y_true_data, axes=[0])
-    y_pred_mean, y_pred_var = tf.nn.moments(x=y_pred_data, axes=[0])
+    y_true_mean, y_true_var = ops.nn.moments(x=y_true_data, axes=[0])
+    y_pred_mean, y_pred_var = ops.nn.moments(x=y_pred_data, axes=[0])
 
-    g_loss_mean = tf.reduce_mean(tf.abs(y_true_mean - y_pred_mean))
-    g_loss_var = tf.reduce_mean(
-        tf.abs(tf.sqrt(y_true_var + _eps) - tf.sqrt(y_pred_var + _eps))
+    g_loss_mean = ops.mean(ops.abs(y_true_mean - y_pred_mean))
+    g_loss_var = ops.mean(
+        ops.abs(ops.sqrt(y_true_var + _eps) - ops.sqrt(y_pred_var + _eps))
     )
     expected_loss = g_loss_mean + g_loss_var
 
