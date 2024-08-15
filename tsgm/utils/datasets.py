@@ -15,8 +15,6 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.io.arff
 
-from pathlib import Path
-
 from tensorflow import keras
 from tensorflow.python.types.core import TensorLike
 
