@@ -692,6 +692,5 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
             # y.append((annotation.sample, annotation.symbol))
         except Exception as e:
             logger.error(f"Failed to parse {record_path}: {e}")
-            pass
 
     return np.array(X), np.array(y)
