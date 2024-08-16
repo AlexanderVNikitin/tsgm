@@ -668,18 +668,24 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "arrhythmia.data")
+
     dataset = "mit-bih-arrhythmia-database-1.0.0"
     url = f"https://physionet.org/static/published-projects/mitdb/{dataset}.zip"
-    if not os.path.exists(path_to_resource):
+
+    path_to_extracted_data = os.path.join(path_to_folder, dataset)
+    if not os.path.exists(path_to_extracted_data):
         file_utils.download(url, path_to_folder)
         file_utils.extract_archive(
             os.path.join(path_to_folder, f"{dataset}.zip"), path_to_folder
         )
 
+    # find files
+    file_list = [file.split(".")[0] for file in os.listdir(path_to_extracted_data) if file.endswith('.hea')]
+
     # load the dataset
     X = []
     y = []
-    for i in range(100, 235):
+    for i in file_list:
         record_path = os.path.join(path_to_folder, f"{dataset}/{i}")
         record = wfdb.rdrecord(record_path)
         # equivalent to:
