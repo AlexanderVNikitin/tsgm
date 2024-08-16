@@ -587,7 +587,7 @@ def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
     return np.transpose(np.array(processed_dataset), (1, 0, 2)), graph, covid19_data_utils.LIST_OF_STATES
 
 
-def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
+def get_arrhythmia() -> T.Tuple[TensorLike, TensorLike]:
     """
     Downloads and loads the Arrhythmia dataset from
     https://physionet.org/static/published-projects/mitdb/mit-bih-arrhythmia-database-1.0.0.zip
@@ -607,7 +607,7 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
         the second element is the symbols used to display the annotation labels.
     :rtype: tuple[TensorLike, TensorLike]
     """
-    destination_folder = "arrythmia"
+    destination_folder = "arrhythmia"
 
     dataset = "mit-bih-arrhythmia-database-1.0.0"
     url = f"https://physionet.org/static/published-projects/mitdb/{dataset}.zip"
