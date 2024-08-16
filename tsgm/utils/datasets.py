@@ -657,7 +657,12 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
         X has shape (N, M, D) where
         N is the number of samples,
         M is the signal length (650000),
-        D is the number of dimensions (2).
+        D is the number of dimensions (2),
+        y has shape (N, ) where
+        each element is a tuple where
+        the first element is a numpy array containing the annotation locations in samples
+        relative to the beginning of the record and
+        the second element is the symbols used to display the annotation labels.
     :rtype: tuple[TensorLike, TensorLike]
     """
     cur_path = os.path.dirname(__file__)
@@ -675,22 +680,20 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
     X = []
     y = []
     for i in range(100, 235):
-        try:
-            record_path = os.path.join(path_to_folder, f"{dataset}/{i}")
-            record = wfdb.rdrecord(record_path)
-            # equivalent to:
-            # wfdb.rdsamp(record_path, sampto=3000))
+        record_path = os.path.join(path_to_folder, f"{dataset}/{i}")
+        record = wfdb.rdrecord(record_path)
+        # equivalent to:
+        # wfdb.rdsamp(record_path, sampto=3000))
 
-            # next line does not work
-            # annotation = wfdb.rdann(record_path, 'atr',)
+        # next line does not work with numpy >=2.0.0
+        annotation = wfdb.rdann(record_path, 'atr',)
 
-            # The signal is an (MxN) 2d numpy array, where M is the signal length.
-            X.append(record.p_signal)
-            # comments are in record.comments
+        # The signal is an (MxN) 2d numpy array, where M is the signal length.
+        X.append(record.p_signal)
+        # comments are in record.comments
 
-            # annotation data (e.g., sample numbers and symbols)
-            # y.append((annotation.sample, annotation.symbol))
-        except Exception as e:
-            logger.error(f"Failed to parse {record_path}: {e}")
+        # annotation data (e.g., sample numbers and symbols)
+        # these 2 arrays are of the same length, but the length varies across records
+        y.append((annotation.sample, annotation.symbol))
 
-    return np.array(X), np.array(y)
+    return np.array(X), y
