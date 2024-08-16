@@ -674,7 +674,7 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
     if not os.path.exists(path_to_extracted_data):
         file_utils.download(url, destination_folder)
         file_utils.extract_archive(
-            os.path.join(destination_folder, f"{dataset}.zip"), path_to_folder
+            os.path.join(destination_folder, f"{dataset}.zip"), destination_folder
         )
 
     # find files
