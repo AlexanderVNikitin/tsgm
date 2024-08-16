@@ -667,7 +667,6 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
     """
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
-    path_to_resource = os.path.join(path_to_folder, "arrhythmia.data")
 
     dataset = "mit-bih-arrhythmia-database-1.0.0"
     url = f"https://physionet.org/static/published-projects/mitdb/{dataset}.zip"
