@@ -22,7 +22,7 @@ from tsgm.utils import covid19_data_utils
 from tsgm.utils import file_utils
 
 
-logger = logging.getLogger("utils")
+logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
@@ -49,19 +49,12 @@ def gen_sine_dataset(N: int, T: int, D: int, max_value: int = 10) -> npt.NDArray
         shift = np.random.random() * max_value + 1
         ts = np.arange(0, T, 1)
         for d in range(1, D + 1):
-            result[-1].append((a * np.sin((d + 3) * ts / 25.0 + shift)).T)
+            result[-1].append((a * np.sin((d + 3) * ts / 25. + shift)).T)
 
     return np.transpose(np.array(result), [0, 2, 1])
 
 
-def gen_sine_const_switch_dataset(
-    N: int,
-    T: int,
-    D: int,
-    max_value: int = 10,
-    const: int = 0,
-    frequency_switch: float = 0.1,
-) -> T.Tuple[TensorLike, TensorLike]:
+def gen_sine_const_switch_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0, frequency_switch: float = 0.1) -> T.Tuple[TensorLike, TensorLike]:
     """
     Generates a dataset with alternating constant and sinusoidal sequences.
 
@@ -101,9 +94,7 @@ def gen_sine_const_switch_dataset(
     return np.array(result_X), np.array(result_y)
 
 
-def gen_sine_vs_const_dataset(
-    N: int, T: int, D: int, max_value: int = 10, const: int = 0
-) -> T.Tuple[TensorLike, TensorLike]:
+def gen_sine_vs_const_dataset(N: int, T: int, D: int, max_value: int = 10, const: int = 0) -> T.Tuple[TensorLike, TensorLike]:
     """
     Generates a dataset with alternating sinusoidal and constant sequences.
 
@@ -151,13 +142,10 @@ class UCRDataManager:
         note = {\\url{https://www.cs.ucr.edu/~eamonn/time_series_data_2018/}}
     }
     """
-
     mirrors = ["https://www.cs.ucr.edu/~eamonn/time_series_data_2018/"]
     resources = [("UCRArchive_2018.zip", 0)]
     key = "someone"
-    default_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../data"
-    )
+    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data")
 
     def __init__(self, path: str = default_path, ds: str = "gunpoint") -> None:
         """
@@ -168,9 +156,7 @@ class UCRDataManager:
 
         :raises ValueError: When there is no stored UCR archive, or the name of the dataset is incorrect.
         """
-        file_utils.download_all_resources(
-            self.mirrors[0], path, self.resources, pwd=bytes(self.key, "utf-8")
-        )
+        file_utils.download_all_resources(self.mirrors[0], path, self.resources, pwd=bytes(self.key, 'utf-8'))
         path = os.path.join(path, "UCRArchive_2018")
 
         self.ds = ds.strip().lower()
@@ -181,20 +167,14 @@ class UCRDataManager:
         if len(train_files) == 0:
             raise ValueError("ds should be listed at UCR website")
         self.train_df = pd.read_csv(
-            glob.glob(os.path.join(path, "*TRAIN.tsv"))[0], sep="\t", header=None
-        )
+            glob.glob(os.path.join(path, "*TRAIN.tsv"))[0],
+            sep='\t', header=None)
         self.test_df = pd.read_csv(
-            glob.glob(os.path.join(path, "*TEST.tsv"))[0], sep="\t", header=None
-        )
+            glob.glob(os.path.join(path, "*TEST.tsv"))[0],
+            sep='\t', header=None)
 
-        self.X_train, self.y_train = (
-            self.train_df[self.train_df.columns[1:]].to_numpy(),
-            self.train_df[self.train_df.columns[0]].to_numpy(),
-        )
-        self.X_test, self.y_test = (
-            self.test_df[self.test_df.columns[1:]].to_numpy(),
-            self.test_df[self.test_df.columns[0]].to_numpy(),
-        )
+        self.X_train, self.y_train = self.train_df[self.train_df.columns[1:]].to_numpy(), self.train_df[self.train_df.columns[0]].to_numpy()
+        self.X_test, self.y_test = self.test_df[self.test_df.columns[1:]].to_numpy(), self.test_df[self.test_df.columns[0]].to_numpy()
         self.y_all = np.concatenate((self.y_train, self.y_test), axis=0)
 
     def get(self) -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
@@ -214,10 +194,7 @@ class UCRDataManager:
         :rtype: dict[Any, float]
         """
         if self.y_all is not None:
-            return {
-                k: v / len(self.y_all)
-                for k, v in collections.Counter(self.y_all).items()
-            }
+            return {k: v / len(self.y_all) for k, v in collections.Counter(self.y_all).items()}
         else:
             logger.warning("y_all is None, cannot get classes distribution")
             return {}
@@ -253,9 +230,7 @@ def get_mauna_loa() -> T.Tuple[TensorLike, TensorLike]:
     return X, y
 
 
-def split_dataset_into_objects(
-    X: TensorLike, y: TensorLike, step: int = 10
-) -> T.Tuple[TensorLike, TensorLike]:
+def split_dataset_into_objects(X: TensorLike, y: TensorLike, step: int = 10) -> T.Tuple[TensorLike, TensorLike]:
     """
     Splits the dataset into objects of fixed length.
 
@@ -276,7 +251,7 @@ def split_dataset_into_objects(
 
     Xs, ys = [], []
     for start in range(0, X.shape[0], step):
-        cur_x, cur_y = X[start : start + step], y[start : start + step]
+        cur_x, cur_y = X[start:start + step], y[start:start + step]
         Xs.append(np.pad(cur_x, [(0, step - cur_x.shape[0]), (0, 0)]))
         ys.append(np.pad(cur_y, [(0, step - cur_y.shape[0])]))
 
@@ -332,16 +307,12 @@ def get_synchronized_brainwave_dataset() -> T.Tuple[pd.DataFrame, pd.DataFrame]:
     :return: A tuple containing the input features (X) and target labels (y).
     :rtype: tuple[pd.DataFrame, pd.DataFrame]
     """
-    url = (
-        "https://www.dropbox.com/scl/fi/uqah9rthwrt5i2q6evtws/eeg-data.csv.zip?rlkey=z7sautwq74jow2xt9o6q7lcij&st"
-        "=hvpvvfez&dl=1"
-    )
+    url = ("https://www.dropbox.com/scl/fi/uqah9rthwrt5i2q6evtws/eeg-data.csv.zip?rlkey=z7sautwq74jow2xt9o6q7lcij&st"
+           "=hvpvvfez&dl=1")
     cur_path = os.path.dirname(__file__)
     path_to_folder = os.path.join(cur_path, "../../data/")
-    path_to_resource = os.path.join(path_to_folder, "eeg-data.csv.zip")
-    path_to_renamed_csv = os.path.join(
-        path_to_folder, "synchronized_brainwave_dataset.csv"
-    )
+    path_to_resource = os.path.join(path_to_folder, 'eeg-data.csv.zip')
+    path_to_renamed_csv = os.path.join(path_to_folder, "synchronized_brainwave_dataset.csv")
     os.makedirs(path_to_folder, exist_ok=True)
     if not os.path.exists(path_to_renamed_csv):
         file_utils.download(url, path_to_folder)
@@ -373,22 +344,14 @@ def get_power_consumption() -> npt.NDArray:
     :rtype: numpy.ndarray
     """
     cur_path = os.path.dirname(__file__)
-    path = os.path.join(cur_path, "../../data/")
+    path = os.path.join(cur_path, '../../data/')
 
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00235/"
-    file_utils.download_all_resources(
-        url, path, resources=[("household_power_consumption.zip", None)]
-    )
+    file_utils.download_all_resources(url, path, resources=[("household_power_consumption.zip", None)])
 
     df = pd.read_csv(
-        os.path.join(path, "household_power_consumption.txt"),
-        sep=";",
-        parse_dates={"dt": ["Date", "Time"]},
-        infer_datetime_format=True,
-        low_memory=False,
-        na_values=["nan", "?"],
-        index_col="dt",
-    )
+        os.path.join(path, "household_power_consumption.txt"), sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
+        low_memory=False, na_values=['nan', '?'], index_col='dt')
     return df.to_numpy()
 
 
@@ -447,9 +410,7 @@ def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
     path_to_folder = os.path.join(cur_path, "../../data/")
     path_to_resource = os.path.join(path_to_folder, "mnist.npz")
 
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data(
-        path_to_resource
-    )
+    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data(path_to_resource)
     x_train = x_train.reshape(-1, 28 * 28, 1)
     x_test = x_test.reshape(-1, 28 * 28, 1)
 
@@ -473,8 +434,8 @@ def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> float:
 
 
 def get_gp_samples_data(
-    num_samples: int, max_time: int, covar_func: T.Callable = _exponential_quadratic
-) -> npt.NDArray:
+        num_samples: int, max_time: int,
+        covar_func: T.Callable = _exponential_quadratic) -> npt.NDArray:
     """
     Generates samples from a Gaussian process.
 
@@ -497,13 +458,10 @@ def get_gp_samples_data(
     sigma = covar_func(times, times)
 
     return np.random.multivariate_normal(
-        mean=np.zeros(max_time), cov=sigma, size=num_samples
-    )[:, None, :]
+        mean=np.zeros(max_time), cov=sigma, size=num_samples)[:, None, :]
 
 
-def get_physionet2012() -> (
-    T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]
-):
+def get_physionet2012() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike, TensorLike, TensorLike]:
     """
     Retrieves the Physionet 2012 dataset.
 
@@ -530,11 +488,7 @@ def download_physionet2012() -> None:
     """
     base_url = "https://physionet.org/files/challenge-2012/1.0.0/"
     destination_folder = "physionet2012"
-    if (
-        os.path.exists(destination_folder)
-        and not os.path.isfile(destination_folder)
-        and len(os.listdir(destination_folder))
-    ):
+    if os.path.exists(destination_folder) and not os.path.isfile(destination_folder) and len(os.listdir(destination_folder)):
         logger.info(f"Using downloaded dataset from {destination_folder}")
         return
     X_a = "set-a.tar.gz"
@@ -552,9 +506,7 @@ def download_physionet2012() -> None:
         file_utils.download(base_url + y, destination_folder)
 
     for X, y in all_files:
-        file_utils.extract_archive(
-            os.path.join(destination_folder, X), destination_folder
-        )
+        file_utils.extract_archive(os.path.join(destination_folder, X), destination_folder)
 
 
 def _get_physionet_X_dataframe(dataset_path: str) -> pd.DataFrame:
@@ -570,14 +522,14 @@ def _get_physionet_X_dataframe(dataset_path: str) -> pd.DataFrame:
     """
     txt_all = list()
     for f in os.listdir(dataset_path):
-        with open(os.path.join(dataset_path, f), "r") as fp:
+        with open(os.path.join(dataset_path, f), 'r') as fp:
             txt = fp.readlines()
 
         # add recordid as a column
-        recordid = txt[1].rstrip("\n").split(",")[-1]
-        txt = [t.rstrip("\n").split(",") + [int(recordid)] for t in txt]
+        recordid = txt[1].rstrip('\n').split(',')[-1]
+        txt = [t.rstrip('\n').split(',') + [int(recordid)] for t in txt]
         txt_all.extend(txt[1:])
-    df = pd.DataFrame(txt_all, columns=["time", "parameter", "value", "recordid"])
+    df = pd.DataFrame(txt_all, columns=['time', 'parameter', 'value', 'recordid'])
     return df
 
 
@@ -593,8 +545,8 @@ def _get_physionet_y_dataframe(file_path: str) -> pd.DataFrame:
         pd.DataFrame: The target (y) dataframe.
     """
     y = pd.read_csv(file_path)
-    y.set_index("RecordID", inplace=True)
-    y.index.name = "recordid"
+    y.set_index('RecordID', inplace=True)
+    y.index.name = 'recordid'
     y.reset_index(inplace=True)
     return y
 
@@ -616,9 +568,7 @@ def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
         The second element is the graph tuple (nodes, edges).
         The third element is the order of states.
     """
-    base_url = (
-        "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
-    )
+    base_url = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
     destination_folder = "covid19"
     file_utils.download(base_url, destination_folder)
     result, graph = covid19_data_utils.covid_dataset(
@@ -631,18 +581,10 @@ def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
         for state in covid19_data_utils.LIST_OF_STATES:
             cur_data = result[timestamp][state]
             processed_dataset[-1].append(
-                [
-                    cur_data["deaths"],
-                    cur_data["cases"],
-                    cur_data["deaths_normalized"],
-                    cur_data["cases_normalized"],
-                ]
+                [cur_data["deaths"], cur_data["cases"],
+                 cur_data["deaths_normalized"], cur_data["cases_normalized"]]
             )
-    return (
-        np.transpose(np.array(processed_dataset), (1, 0, 2)),
-        graph,
-        covid19_data_utils.LIST_OF_STATES,
-    )
+    return np.transpose(np.array(processed_dataset), (1, 0, 2)), graph, covid19_data_utils.LIST_OF_STATES
 
 
 def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
