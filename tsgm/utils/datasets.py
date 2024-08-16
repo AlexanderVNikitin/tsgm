@@ -684,7 +684,7 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
     X = []
     y = []
     for i in file_list:
-        record_path = os.path.join(path_to_folder, f"{dataset}/{i}")
+        record_path = os.path.join(destination_folder, f"{dataset}/{i}")
         record = wfdb.rdrecord(record_path)
         # equivalent to:
         # wfdb.rdsamp(record_path, sampto=3000))
