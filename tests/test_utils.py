@@ -375,8 +375,8 @@ def test_get_synchronized_brainwave_dataset():
 
 
 @skip_on(urllib.error.HTTPError, reason="HTTPError due to connection")
-def test_get_arrythmia():
-    X, y = tsgm.utils.get_arrythmia()
+def test_get_arrhythmia():
+    X, y = tsgm.utils.get_arrhythmia()
 
     assert X.shape == (48, 650000, 2)
     assert len(y) == X.shape[0]
