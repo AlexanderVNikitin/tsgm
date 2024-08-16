@@ -372,3 +372,12 @@ def test_get_synchronized_brainwave_dataset():
     X, y = tsgm.utils.get_synchronized_brainwave_dataset()
     assert X.shape == (30013, 12)
     assert y.shape == (30013,)
+
+
+@skip_on(urllib.error.HTTPError, reason="HTTPError due to connection")
+def test_get_arrythmia():
+    X, y = tsgm.utils.get_arrythmia()
+
+    assert X.shape == (48, 650000, 2)
+    assert len(y) == X.shape[0]
+    assert len(y[0]) == 2
