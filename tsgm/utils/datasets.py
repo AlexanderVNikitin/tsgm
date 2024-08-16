@@ -665,17 +665,16 @@ def get_arrythmia() -> T.Tuple[TensorLike, TensorLike]:
         the second element is the symbols used to display the annotation labels.
     :rtype: tuple[TensorLike, TensorLike]
     """
-    cur_path = os.path.dirname(__file__)
-    path_to_folder = os.path.join(cur_path, "../../data/")
+    destination_folder = "arrythmia"
 
     dataset = "mit-bih-arrhythmia-database-1.0.0"
     url = f"https://physionet.org/static/published-projects/mitdb/{dataset}.zip"
 
-    path_to_extracted_data = os.path.join(path_to_folder, dataset)
+    path_to_extracted_data = os.path.join(destination_folder, dataset)
     if not os.path.exists(path_to_extracted_data):
-        file_utils.download(url, path_to_folder)
+        file_utils.download(url, destination_folder)
         file_utils.extract_archive(
-            os.path.join(path_to_folder, f"{dataset}.zip"), path_to_folder
+            os.path.join(destination_folder, f"{dataset}.zip"), path_to_folder
         )
 
     # find files
