@@ -1,18 +1,21 @@
+import tsgm
 import keras
-import tensorflow_probability as tfp
 import numpy as np
 
-from tensorflow_probability import sts
+try:
+    import tensorflow_probability as tfp
+    from tensorflow_probability import sts
+    import tensorflow as tf
+    DEFAULT_TREND = sts.LocalLinearTrend()
+    DEFAULT_SEASONAL = tfp.sts.Seasonal(num_seasons=12)
+    DEFAULT_MODEL = sts.Sum([DEFAULT_TREND, DEFAULT_SEASONAL])
+    has_tensorflow = True
+except ImportError:
+    has_tensorflow = False
+    print("TensorFlow not installed. STS model is not available.")
 
-import tsgm
 
-
-DEFAULT_TREND = sts.LocalLinearTrend()
-DEFAULT_SEASONAL = tfp.sts.Seasonal(num_seasons=12)
-DEFAULT_MODEL = sts.Sum([DEFAULT_TREND, DEFAULT_SEASONAL])
-
-
-class STS:
+class STSTensorFlow():
     """
     Class for training and generating from a structural time series model.
     """
@@ -80,3 +83,14 @@ class STS:
         assert self._dist is not None
 
         return self._dist.sample(num_samples).numpy()[..., 0]
+
+
+class STSTorch():
+     def __init__(self, *args, **kwargs):
+        raise EnvironmentError("This is the PyTorch environment. STS is only available in TensorFlow backend.")
+    
+# Dynamically select the appropriate STS class
+if has_tensorflow:
+    STS = STSTensorFlow
+else:
+    STS = STSTorch
