@@ -136,3 +136,6 @@ dmypy.json
 
 # local history
 .lh/
+
+# data
+data/

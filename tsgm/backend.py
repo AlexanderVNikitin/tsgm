@@ -13,7 +13,7 @@ except ImportError:
         os.environ["KERAS_BACKEND"] = "torch"
         Keras_Dataset = torch.utils.data.DataLoader
     except ImportError:
-        raise ImportError("No backend found. Please install tensorflow or torch .")
+        raise ImportError("No backend found. Please install tensorflow or torch.")
 
 def get_backend():
     if os.environ["KERAS_BACKEND"] == "tensorflow":
