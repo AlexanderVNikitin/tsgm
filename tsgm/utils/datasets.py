@@ -6,6 +6,7 @@ import collections
 import logging
 
 import yfinance as yf
+import wfdb
 
 import sklearn
 import sklearn.datasets
@@ -584,3 +585,61 @@ def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
                  cur_data["deaths_normalized"], cur_data["cases_normalized"]]
             )
     return np.transpose(np.array(processed_dataset), (1, 0, 2)), graph, covid19_data_utils.LIST_OF_STATES
+
+
+def get_arrhythmia() -> T.Tuple[TensorLike, TensorLike]:
+    """
+    Downloads and loads the Arrhythmia dataset from
+    https://physionet.org/static/published-projects/mitdb/mit-bih-arrhythmia-database-1.0.0.zip
+    and returns the input features (X) and target labels (y).
+
+    The Arrhythmia dataset contains ECG recordings of patients with arrhythmia.
+
+    :return: A tuple containing the input features (X) and target labels (y).
+        X has shape (N, M, D) where
+        N is the number of samples,
+        M is the signal length (650000),
+        D is the number of dimensions (2),
+        y has shape (N, ) where
+        each element is a tuple where
+        the first element is a numpy array containing the annotation locations in samples
+        relative to the beginning of the record and
+        the second element is the symbols used to display the annotation labels.
+    :rtype: tuple[TensorLike, TensorLike]
+    """
+    destination_folder = "arrhythmia"
+
+    dataset = "mit-bih-arrhythmia-database-1.0.0"
+    url = f"https://physionet.org/static/published-projects/mitdb/{dataset}.zip"
+
+    path_to_extracted_data = os.path.join(destination_folder, dataset)
+    if not os.path.exists(path_to_extracted_data):
+        file_utils.download(url, destination_folder)
+        file_utils.extract_archive(
+            os.path.join(destination_folder, f"{dataset}.zip"), destination_folder
+        )
+
+    # find files
+    file_list = [file.split(".")[0] for file in os.listdir(path_to_extracted_data) if file.endswith('.hea')]
+
+    # load the dataset
+    X = []
+    y = []
+    for i in file_list:
+        record_path = os.path.join(destination_folder, f"{dataset}/{i}")
+        record = wfdb.rdrecord(record_path)
+        # equivalent to:
+        # wfdb.rdsamp(record_path, sampto=3000))
+
+        # next line does not work with numpy >=2.0.0
+        annotation = wfdb.rdann(record_path, 'atr',)
+
+        # The signal is an (MxN) 2d numpy array, where M is the signal length.
+        X.append(record.p_signal)
+        # comments are in record.comments
+
+        # annotation data (e.g., sample numbers and symbols)
+        # these 2 arrays are of the same length, but the length varies across records
+        y.append((annotation.sample, annotation.symbol))
+
+    return np.array(X), y
