@@ -289,7 +289,7 @@ def visualize_ts_lineplot(
                 ax2.tick_params(labelsize=tick_size)
                 if i == 0:
                     leg = ax2.legend(fontsize=legend_fontsize, loc='upper right')
-                    for legobj in leg.legendHandles:
+                    for legobj in leg.legend_handles:
                         legobj.set_linewidth(2.0)
                 else:
                     ax2.get_legend().remove()
@@ -297,7 +297,7 @@ def visualize_ts_lineplot(
                 raise ValueError("ys contains too many dimensions")
         if i == 0:
             leg = axs[i].legend(fontsize=legend_fontsize, loc='upper left')
-            for legobj in leg.legendHandles:
+            for legobj in leg.legend_handles:
                 legobj.set_linewidth(2.0)
         else:
             axs[i].get_legend().remove()

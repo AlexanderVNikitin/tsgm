@@ -11,5 +11,5 @@ optuna
 prettytable
 seaborn
 scikit-learn
-yfinance==0.2.28
+yfinance==0.2.61
 tqdm

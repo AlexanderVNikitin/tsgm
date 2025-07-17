@@ -212,7 +212,7 @@ def test_entropy_metric():
     ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
     D1 = tsgm.dataset.Dataset(ts, y=None)
     spec_entropy_metric = tsgm.metrics.EntropyMetric()
-    assert spec_entropy_metric(D1) == 2.6402430161833763
+    assert abs(spec_entropy_metric(D1) - 2.6402430161833763) < 1e-6
 
 
 def test_shannon_entropy_metric():
