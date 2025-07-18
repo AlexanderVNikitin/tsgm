@@ -18,7 +18,8 @@ def set_experimental_run_functions_eagerly(value):
     
 
 FLOAT_32 = ops.convert_to_tensor(32, dtype="float32").dtype
-FLOAT_64 = ops.convert_to_tensor(64, dtype="float64").dtype
+# Use float32 instead of float64 for MPS compatibility
+FLOAT_64 = ops.convert_to_tensor(64, dtype="float32").dtype
 
 def test_timegan():
     latent_dim = 4

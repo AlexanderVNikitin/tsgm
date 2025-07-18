@@ -689,7 +689,8 @@ class TimeGAN(keras.Model):
         elif os.environ["KERAS_BACKEND"] == "torch" and isinstance(data, Keras_Dataset):
             batches = iter(data)
         else:
-            batches = self._get_data_batch(data, n_windows=len(data))
+            data_loader = self._get_data_batch(data, n_windows=len(data))
+            batches = iter(data_loader)
 
         # Define the model
         self._define_timegan()

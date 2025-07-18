@@ -2,10 +2,10 @@
 The implementation is based on Keras DDPM implementation: https://keras.io/examples/generative/ddpm/
 """
 import numpy as np
-
-from tensorflow import keras
-import tensorflow as tf
-from tensorflow.python.types.core import TensorLike
+import keras
+from keras import ops
+from tsgm.types import Tensor as TensorLike
+from tsgm.backend import get_backend
 
 import typing as T
 
@@ -47,53 +47,53 @@ class GaussianDiffusion:
         alphas_cumprod = np.cumprod(alphas, axis=0)
         alphas_cumprod_prev = np.append(1.0, alphas_cumprod[:-1])
 
-        self.betas = tf.constant(betas, dtype=tf.float32)
-        self.alphas_cumprod = tf.constant(alphas_cumprod, dtype=tf.float32)
-        self.alphas_cumprod_prev = tf.constant(alphas_cumprod_prev, dtype=tf.float32)
+        self.betas = ops.convert_to_tensor(betas, dtype="float32")
+        self.alphas_cumprod = ops.convert_to_tensor(alphas_cumprod, dtype="float32")
+        self.alphas_cumprod_prev = ops.convert_to_tensor(alphas_cumprod_prev, dtype="float32")
 
         # Calculations for diffusion q(x_t | x_{t-1}) and others
-        self.sqrt_alphas_cumprod = tf.constant(
-            np.sqrt(alphas_cumprod), dtype=tf.float32
+        self.sqrt_alphas_cumprod = ops.convert_to_tensor(
+            np.sqrt(alphas_cumprod), dtype="float32"
         )
 
-        self.sqrt_one_minus_alphas_cumprod = tf.constant(
-            np.sqrt(1.0 - alphas_cumprod), dtype=tf.float32
+        self.sqrt_one_minus_alphas_cumprod = ops.convert_to_tensor(
+            np.sqrt(1.0 - alphas_cumprod), dtype="float32"
         )
 
-        self.log_one_minus_alphas_cumprod = tf.constant(
-            np.log(1.0 - alphas_cumprod), dtype=tf.float32
+        self.log_one_minus_alphas_cumprod = ops.convert_to_tensor(
+            np.log(1.0 - alphas_cumprod), dtype="float32"
         )
 
-        self.sqrt_recip_alphas_cumprod = tf.constant(
-            np.sqrt(1.0 / alphas_cumprod), dtype=tf.float32
+        self.sqrt_recip_alphas_cumprod = ops.convert_to_tensor(
+            np.sqrt(1.0 / alphas_cumprod), dtype="float32"
         )
-        self.sqrt_recipm1_alphas_cumprod = tf.constant(
-            np.sqrt(1.0 / alphas_cumprod - 1), dtype=tf.float32
+        self.sqrt_recipm1_alphas_cumprod = ops.convert_to_tensor(
+            np.sqrt(1.0 / alphas_cumprod - 1), dtype="float32"
         )
 
         # Calculations for posterior q(x_{t-1} | x_t, x_0)
         posterior_variance = (
             betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         )
-        self.posterior_variance = tf.constant(posterior_variance, dtype=tf.float32)
+        self.posterior_variance = ops.convert_to_tensor(posterior_variance, dtype="float32")
 
         # Log calculation clipped because the posterior variance is 0 at the beginning
         # of the diffusion chain
-        self.posterior_log_variance_clipped = tf.constant(
-            np.log(np.maximum(posterior_variance, 1e-20)), dtype=tf.float32
+        self.posterior_log_variance_clipped = ops.convert_to_tensor(
+            np.log(np.maximum(posterior_variance, 1e-20)), dtype="float32"
         )
 
-        self.posterior_mean_coef1 = tf.constant(
+        self.posterior_mean_coef1 = ops.convert_to_tensor(
             betas * np.sqrt(alphas_cumprod_prev) / (1.0 - alphas_cumprod),
-            dtype=tf.float32,
+            dtype="float32",
         )
 
-        self.posterior_mean_coef2 = tf.constant(
+        self.posterior_mean_coef2 = ops.convert_to_tensor(
             (1.0 - alphas_cumprod_prev) * np.sqrt(alphas) / (1.0 - alphas_cumprod),
-            dtype=tf.float32,
+            dtype="float32",
         )
 
-    def _extract(self, a: TensorLike, t: int, x_shape: tf.TensorShape) -> TensorLike:
+    def _extract(self, a: TensorLike, t: int, x_shape) -> TensorLike:
         """
         Extracts coefficients for a specific timestep and reshapes them for broadcasting.
 
@@ -106,8 +106,8 @@ class GaussianDiffusion:
             Tensor reshaped to [batch_size, 1, 1] for broadcasting.
         """
         batch_size = x_shape[0]
-        out = tf.gather(a, t)
-        return tf.reshape(out, [batch_size, 1, 1])
+        out = ops.take(a, t, axis=0)
+        return ops.reshape(out, [batch_size, 1, 1])
 
     def q_mean_variance(self, x_start: TensorLike, t: float) -> T.Tuple:
         """Extracts the mean and variance at a specific timestep in the forward diffusion process.
@@ -120,7 +120,7 @@ class GaussianDiffusion:
             mean, variance, log_variance: Tensors representing the mean, variance,
             and log variance of the distribution at `t`.
         """
-        x_start_shape = tf.shape(x_start)
+        x_start_shape = ops.shape(x_start)
         mean = self._extract(self.sqrt_alphas_cumprod, t, x_start_shape) * x_start
         variance = self._extract(1.0 - self.alphas_cumprod, t, x_start_shape)
         log_variance = self._extract(
@@ -139,9 +139,9 @@ class GaussianDiffusion:
         Returns:
             Diffused samples at timestep `t`
         """
-        x_start_shape = tf.shape(x_start)
+        x_start_shape = ops.shape(x_start)
         return (
-            self._extract(self.sqrt_alphas_cumprod, t, tf.shape(x_start)) * x_start
+            self._extract(self.sqrt_alphas_cumprod, t, ops.shape(x_start)) * x_start
             + self._extract(self.sqrt_one_minus_alphas_cumprod, t, x_start_shape)
             * noise
         )
@@ -158,7 +158,7 @@ class GaussianDiffusion:
             Predicted initial sample.
         """
 
-        x_t_shape = tf.shape(x_t)
+        x_t_shape = ops.shape(x_t)
         return (
             self._extract(self.sqrt_recip_alphas_cumprod, t, x_t_shape) * x_t
             - self._extract(self.sqrt_recipm1_alphas_cumprod, t, x_t_shape) * noise
@@ -176,7 +176,7 @@ class GaussianDiffusion:
             Posterior mean, variance, and clipped log variance at the current timestep.
         """
 
-        x_t_shape = tf.shape(x_t)
+        x_t_shape = ops.shape(x_t)
         posterior_mean = (
             self._extract(self.posterior_mean_coef1, t, x_t_shape) * x_start
             + self._extract(self.posterior_mean_coef2, t, x_t_shape) * x_t
@@ -220,12 +220,12 @@ class GaussianDiffusion:
         model_mean, _, model_log_variance = self.p_mean_variance(
             pred_noise, x=x, t=t
         )
-        noise = tf.random.normal(shape=x.shape, dtype=x.dtype)
+        noise = ops.random.normal(shape=ops.shape(x), dtype=x.dtype)
         # No noise when t == 0
-        nonzero_mask = tf.reshape(
-            1 - tf.cast(tf.equal(t, 0), tf.float32), [tf.shape(x)[0], 1, 1]
+        nonzero_mask = ops.reshape(
+            1 - ops.cast(ops.equal(t, 0), "float32"), [ops.shape(x)[0], 1, 1]
         )
-        return model_mean + nonzero_mask * tf.exp(0.5 * model_log_variance) * noise
+        return model_mean + nonzero_mask * ops.exp(0.5 * model_log_variance) * noise
 
 
 class DDPM(keras.Model):
@@ -265,16 +265,16 @@ class DDPM(keras.Model):
         self.seq_len, self.feat_dim = images.shape[1], images.shape[2]
 
         # 1. Get the batch size
-        batch_size = tf.shape(images)[0]
+        batch_size = ops.shape(images)[0]
 
         # 2. Sample timesteps uniformly
-        t = tf.random.uniform(
-            minval=0, maxval=self.timesteps, shape=(batch_size,), dtype=tf.int64
+        t = ops.random.uniform(
+            minval=0, maxval=self.timesteps, shape=(batch_size,), dtype="int64"
         )
 
-        with tf.GradientTape() as tape:
+        with ops.GradientTape() as tape:
             # 3. Sample random noise to be added to the images in the batch
-            noise = tf.random.normal(shape=tf.shape(images), dtype=images.dtype)
+            noise = ops.random.normal(shape=ops.shape(images), dtype=images.dtype)
 
             # 4. Diffuse the images with noise
             images_t = self.gdf_util.q_sample(images, t, noise)
@@ -313,12 +313,12 @@ class DDPM(keras.Model):
             raise ValueError("DDPM is not trained")
 
         # 1. Randomly sample noise (starting point for reverse process)
-        samples = tf.random.normal(
-            shape=(n_samples, self.seq_len, self.feat_dim), dtype=tf.float32
+        samples = ops.random.normal(
+            shape=(n_samples, self.seq_len, self.feat_dim), dtype="float32"
         )
         # 2. Sample from the model iteratively
         for t in reversed(range(0, self.timesteps)):
-            tt = tf.cast(tf.fill(n_samples, t), dtype=tf.int64)
+            tt = ops.cast(ops.full([n_samples], t), dtype="int64")
             pred_noise = self.ema_network.predict(
                 [samples, tt], verbose=0, batch_size=n_samples
             )

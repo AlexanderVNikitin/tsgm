@@ -1,6 +1,6 @@
-tensorflow_privacy==0.8.5
-tensorflow==2.9.1
-tensorflow_probability==0.17.0
+keras >= 3.0.0
+tensorflow >= 2.16.0
+tensorflow-probability >= 0.24.0
 scipy>=1.7.3
 antropy==0.1.6
 numpy>=1.21.6
@@ -12,4 +12,5 @@ prettytable
 seaborn
 scikit-learn
 yfinance==0.2.61
+torch
 tqdm

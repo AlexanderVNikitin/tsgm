@@ -5,11 +5,20 @@ import tqdm
 import numpy as np
 
 from tsgm.backend import get_distributions
-distributions = get_distributions()
+
+# Lazy loading of distributions
+distributions = None
+
+def _get_distributions():
+    global distributions
+    if distributions is None:
+        distributions = get_distributions()
+    return distributions
 
 import tsgm
 
-DEFAULT_PRIOR = distributions.Normal(0, 1)
+def _get_default_prior():
+    return _get_distributions().Normal(0, 1)
 
 
 class ABCAlgorithm:
@@ -106,6 +115,6 @@ def prior_samples(priors: T.Dict, params: T.List) -> T.Dict:
     """
     samples = {}
     for var in params:
-        distr = priors.get(var, DEFAULT_PRIOR)
+        distr = priors.get(var, _get_default_prior())
         samples[var] = distr.sample()
     return samples

@@ -7,7 +7,15 @@ import typing as T
 import numpy as np
 
 from tsgm.backend import get_distributions
-distributions = get_distributions()
+
+# Lazy loading of distributions
+distributions = None
+
+def _get_distributions():
+    global distributions
+    if distributions is None:
+        distributions = get_distributions()
+    return distributions
 
 #  make TensorLike more flexible
 from tsgm.types import Tensor as TensorLike
@@ -270,6 +278,7 @@ class SineConstSimulator(ModelBasedSimulator):
             max_const (float): Maximum value for the constant parameter.
         """
         #  change to pdists usage
+        distributions = _get_distributions()
         self._scale = distributions.Uniform(0, max_scale)
         self._const = distributions.Uniform(0, max_const)
         self._shift = distributions.Uniform(0, 2)

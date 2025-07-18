@@ -4,7 +4,7 @@ from keras import ops
 try:
     import tensorflow_privacy as tf_privacy
     __tf_privacy_available = True
-except ModuleNotFoundError:
+except (ModuleNotFoundError, ImportError):
     __tf_privacy_available = False
 
 import logging
