@@ -5,7 +5,8 @@ import random
 import scipy.interpolate
 from dtaidistance import dtw_barycenter
 from typing import List, Dict, Any, Optional, Tuple, Union
-from tensorflow.python.types.core import TensorLike
+#  make TensorLike more flexible
+from tsgm.types import Tensor as TensorLike
 
 import logging
 

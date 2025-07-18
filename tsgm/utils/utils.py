@@ -1,9 +1,12 @@
 import random
 import numpy as np
-import tensorflow as tf
+#  more flexible Tensor, supports both TensorFlow and PyTorch
+from tsgm.types import Tensor
+import keras
+from keras import ops
 
 
-def reconstruction_loss_by_axis(original: tf.Tensor, reconstructed: tf.Tensor, axis: int = 0) -> tf.Tensor:
+def reconstruction_loss_by_axis(original: Tensor, reconstructed: Tensor, axis: int = 0) -> Tensor:
     """
     Calculate the reconstruction loss based on a specified axis.
 
@@ -54,9 +57,9 @@ def reconstruction_loss_by_axis(original: tf.Tensor, reconstructed: tf.Tensor, a
     # axis=1 features (MSE)
     # axis=2 times (MSE)
     if axis == 0:
-        return tf.reduce_sum(tf.math.squared_difference(original, reconstructed))
+        return ops.sum(ops.square(original - reconstructed))
     else:
-        return tf.losses.mean_squared_error(tf.reduce_mean(original, axis=axis), tf.reduce_mean(reconstructed, axis=axis))
+        return keras.losses.mean_squared_error(ops.mean(original, axis=axis), ops.mean(reconstructed, axis=axis))
 
 
 def fix_seeds(seed_value: int = 42) -> None:
@@ -75,6 +78,8 @@ def fix_seeds(seed_value: int = 42) -> None:
         This function does not return a value; it modifies the random number generators
         in-place to fix their seeds.
     """
-    random.seed(seed_value)
-    np.random.seed(seed_value)
-    tf.random.set_seed(seed_value)
+    # Set the seed using keras.utils.set_random_seed. This will set:
+    # 1) `numpy` seed
+    # 2) backend random seed
+    # 3) `python` random seed
+    keras.utils.set_random_seed(seed_value)

@@ -10,7 +10,8 @@ from sklearn.metrics import precision_score
 from scipy.stats import entropy
 from tqdm import tqdm
 from scipy.spatial.distance import pdist, squareform
-from tensorflow.python.types.core import TensorLike
+#  make TensorLike more flexible
+from tsgm.types import Tensor as TensorLike
 
 import tsgm
 

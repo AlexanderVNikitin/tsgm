@@ -1,10 +1,12 @@
 import typing
-
-import tensorflow as tf
 import numpy.typing as npt
+from tsgm.backend import get_backend
 
+backend = get_backend()
 
-Tensor = typing.Union[tf.Tensor, npt.NDArray]
+#  more flexible Tensor type
+Tensor = typing.Union[backend.Tensor, npt.NDArray]
+
 OptTensor = typing.Optional[Tensor]
 
 Model = typing.Any  # TODO -- restrict

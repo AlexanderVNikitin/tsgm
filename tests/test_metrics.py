@@ -1,7 +1,8 @@
 import pytest
 
 import numpy as np
-import tensorflow as tf
+import keras
+from keras import ops
 import functools
 import sklearn
 
@@ -38,7 +39,7 @@ def test_statistics():
     assert (tsgm.metrics.statistics.axis_power_s(ts, axis=2) - np.asarray([36587.13, 7321., 1253.13]) < eps).all()
 
     # Now, checking with tf.Tensor
-    ts_tf = tf.convert_to_tensor(ts)
+    ts_tf = ops.convert_to_tensor(ts)
 
     assert tsgm.metrics.statistics.axis_max_s(ts_tf, axis=None) == [21]
     assert tsgm.metrics.statistics.axis_min_s(ts_tf, axis=None) == [-11]
@@ -199,8 +200,8 @@ def test_discriminative_metric():
 
     model = tsgm.models.zoo["clf_cl_n"](seq_len=ts.shape[1], feat_dim=ts.shape[2], output_dim=2).model
     model.compile(
-        tf.keras.optimizers.Adam(),
-        tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+        keras.optimizers.Adam(),
+        keras.losses.SparseCategoricalCrossentropy(from_logits=False)
     )
     discr_metric = tsgm.metrics.DiscriminativeMetric()
     # should be easy to be classified 
