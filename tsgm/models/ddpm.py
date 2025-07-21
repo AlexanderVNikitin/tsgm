@@ -220,7 +220,7 @@ class GaussianDiffusion:
         model_mean, _, model_log_variance = self.p_mean_variance(
             pred_noise, x=x, t=t
         )
-        noise = ops.random.normal(shape=ops.shape(x), dtype=x.dtype)
+        noise = keras.random.normal(shape=ops.shape(x), dtype=x.dtype)
         # No noise when t == 0
         nonzero_mask = ops.reshape(
             1 - ops.cast(ops.equal(t, 0), "float32"), [ops.shape(x)[0], 1, 1]
@@ -268,13 +268,14 @@ class DDPM(keras.Model):
         batch_size = ops.shape(images)[0]
 
         # 2. Sample timesteps uniformly
-        t = ops.random.uniform(
+        t = keras.random.randint(
             minval=0, maxval=self.timesteps, shape=(batch_size,), dtype="int64"
         )
 
-        with ops.GradientTape() as tape:
+        backend = get_backend()
+        with backend.GradientTape() as tape:
             # 3. Sample random noise to be added to the images in the batch
-            noise = ops.random.normal(shape=ops.shape(images), dtype=images.dtype)
+            noise = keras.random.normal(shape=ops.shape(images), dtype=images.dtype)
 
             # 4. Diffuse the images with noise
             images_t = self.gdf_util.q_sample(images, t, noise)
@@ -313,7 +314,7 @@ class DDPM(keras.Model):
             raise ValueError("DDPM is not trained")
 
         # 1. Randomly sample noise (starting point for reverse process)
-        samples = ops.random.normal(
+        samples = keras.random.normal(
             shape=(n_samples, self.seq_len, self.feat_dim), dtype="float32"
         )
         # 2. Sample from the model iteratively

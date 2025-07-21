@@ -192,7 +192,9 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
 
-        dense_shape = self._encoder.layers[-6].output_shape[1] * self._seq_len
+        # In Keras 3.0, compute dense_shape based on encoder architecture
+        # The last Conv1D layer has 64 filters, and sequence length is preserved
+        dense_shape = 64 * self._seq_len
 
         x = layers.Dense(dense_shape, activation="relu")(x)
 
@@ -921,15 +923,22 @@ class WaveGANArchitecture(BaseGANArchitecture):
         if rad <= 0 or x.shape[1] <= 1:
             return x
 
-        b, x_len, nch = x.shape
-        #  for keras 3.0
+        b, x_len, nch = ops.shape(x)[0], ops.shape(x)[1], ops.shape(x)[2]
+        #  for keras 3.0 - manual reflect padding to avoid ops.pad issues
         phase = keras.random.randint([], minval=-rad, maxval=rad + 1, dtype="int32")
         pad_l, pad_r = ops.maximum(phase, 0), ops.maximum(-phase, 0)
         phase_start = pad_r
-        x = ops.pad(x, [[0, 0], [pad_l, pad_r], [0, 0]], mode="reflect")
+        
+        # Manual reflect padding 
+        if pad_l > 0:
+            left_pad = ops.flip(x[:, 1:pad_l+1], axis=1)
+            x = ops.concatenate([left_pad, x], axis=1)
+        if pad_r > 0:
+            right_pad = ops.flip(x[:, -(pad_r+1):-1], axis=1)
+            x = ops.concatenate([x, right_pad], axis=1)
 
         x = x[:, phase_start:phase_start + x_len]
-        x = ops.reshape(x, [b, x_len, nch])
+        x = ops.reshape(x, (-1, x_len, nch))
 
         return x
 
@@ -974,12 +983,12 @@ class TimeEmbedding(layers.Layer):
         self.dim = dim
         self.half_dim = dim // 2
         self.emb = math.log(10000) / (self.half_dim - 1)
-        self.emb = tf.exp(tf.range(self.half_dim, dtype=tf.float32) * -self.emb)
+        self.emb = ops.exp(ops.arange(self.half_dim, dtype="float32") * -self.emb)
 
     def call(self, inputs: tsgm.types.Tensor) -> tsgm.types.Tensor:
-        inputs = tf.cast(inputs, dtype=tf.float32)
+        inputs = ops.cast(inputs, dtype="float32")
         emb = inputs[:, None] * self.emb[None, :]
-        emb = tf.concat([tf.sin(emb), tf.cos(emb)], axis=-1)
+        emb = ops.concatenate([ops.sin(emb), ops.cos(emb)], axis=-1)
 
         return emb
 

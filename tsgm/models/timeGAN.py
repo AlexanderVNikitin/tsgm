@@ -155,13 +155,13 @@ class TimeGAN(keras.Model):
 
     def compile(
         self,
-        d_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        g_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        emb_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        supgan_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        ae_optimizer: keras.optimizers.Optimizer = keras.optimizers.Adam(),
-        emb_loss: keras.losses.Loss = keras.losses.MeanSquaredError(),
-        clf_loss: keras.losses.Loss = keras.losses.BinaryCrossentropy(),
+        d_optimizer: keras.optimizers.Optimizer = None,
+        g_optimizer: keras.optimizers.Optimizer = None,
+        emb_optimizer: keras.optimizers.Optimizer = None,
+        supgan_optimizer: keras.optimizers.Optimizer = None,
+        ae_optimizer: keras.optimizers.Optimizer = None,
+        emb_loss: keras.losses.Loss = None,
+        clf_loss: keras.losses.Loss = None,
     ) -> None:
         """
         Assign optimizers and loss functions.
@@ -176,18 +176,18 @@ class TimeGAN(keras.Model):
         :return: None
         """
         # ----------------------------
-        # Optimizers
+        # Optimizers - create fresh instances for Keras 3.0 compatibility
         # ----------------------------
-        self.autoencoder_opt = ae_optimizer
-        self.adversarialsup_opt = supgan_optimizer
-        self.generator_opt = g_optimizer
-        self.embedder_opt = emb_optimizer
-        self.discriminator_opt = d_optimizer
+        self.autoencoder_opt = ae_optimizer if ae_optimizer is not None else keras.optimizers.Adam()
+        self.adversarialsup_opt = supgan_optimizer if supgan_optimizer is not None else keras.optimizers.Adam()
+        self.generator_opt = g_optimizer if g_optimizer is not None else keras.optimizers.Adam()
+        self.embedder_opt = emb_optimizer if emb_optimizer is not None else keras.optimizers.Adam()
+        self.discriminator_opt = d_optimizer if d_optimizer is not None else keras.optimizers.Adam()
         # ----------------------------
-        # Loss functions
+        # Loss functions - create fresh instances for Keras 3.0 compatibility
         # ----------------------------
-        self._mse = emb_loss
-        self._bce = clf_loss
+        self._mse = emb_loss if emb_loss is not None else keras.losses.MeanSquaredError()
+        self._bce = clf_loss if clf_loss is not None else keras.losses.BinaryCrossentropy()
 
     def _define_timegan(self) -> None:
         # --------------------------------

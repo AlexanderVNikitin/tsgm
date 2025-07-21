@@ -392,7 +392,8 @@ class ConditionalGAN(keras.Model):
         
         
     def train_step_tf(self, tf, data: T.Tuple) -> T.Dict[str, float]:
-        real_ts, labels = data
+        real_ts = data[0]
+        labels = data[1]
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:

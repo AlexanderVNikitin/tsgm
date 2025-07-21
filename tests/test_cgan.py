@@ -16,7 +16,6 @@ import keras
 from tsgm.backend import get_backend
 
 
-
 def _gen_dataset(seq_len: int, feature_dim: int, batch_size: int):
     data = tsgm.utils.gen_sine_dataset(50, seq_len, feature_dim)
 
@@ -42,10 +41,10 @@ def _gen_cond_dataset(seq_len: int, batch_size: int):
 
     backend = get_backend()
     if os.environ.get("KERAS_BACKEND") == "tensorflow":
-        dataset = backend.data.Dataset.from_tensor_slices(X_train)
+        dataset = backend.data.Dataset.from_tensor_slices((X_train, y))
         dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     elif os.environ.get("KERAS_BACKEND") == "torch":
-        dataset = backend.utils.data.TensorDataset(X_train)
+        dataset = backend.utils.data.TensorDataset(X_train, y)
         dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataset, y
 
@@ -59,10 +58,10 @@ def _gen_t_cond_dataset(seq_len: int, batch_size: int):
 
     backend = get_backend()
     if os.environ.get("KERAS_BACKEND") == "tensorflow":
-        dataset = backend.data.Dataset.from_tensor_slices(X_train)
+        dataset = backend.data.Dataset.from_tensor_slices((X_train, y))
         dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     elif os.environ.get("KERAS_BACKEND") == "torch":
-        dataset = backend.utils.data.TensorDataset(X_train)
+        dataset = backend.utils.data.TensorDataset(X_train, y)
         dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataset, y
 
