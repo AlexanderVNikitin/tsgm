@@ -1,5 +1,3 @@
-import random
-import numpy as np
 #  more flexible Tensor, supports both TensorFlow and PyTorch
 from tsgm.types import Tensor
 import keras

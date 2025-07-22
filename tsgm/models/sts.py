@@ -2,15 +2,16 @@ import tsgm
 import keras
 import numpy as np
 
+
 try:
     import tensorflow_probability as tfp
     from tensorflow_probability import sts
-    import tensorflow as tf
+
     DEFAULT_TREND = sts.LocalLinearTrend()
     DEFAULT_SEASONAL = tfp.sts.Seasonal(num_seasons=12)
     DEFAULT_MODEL = sts.Sum([DEFAULT_TREND, DEFAULT_SEASONAL])
     has_tensorflow = True
-    
+
     class STSTensorFlow():
         """
         Class for training and generating from a structural time series model.
@@ -28,7 +29,7 @@ try:
             self._elbo_loss = None
 
         def train(self, ds: tsgm.dataset.Dataset, num_variational_steps: int = 200,
-                steps_forw: int = 10) -> None:
+                  steps_forw: int = 10) -> None:
             """
             Trains the structural time series model.
 
@@ -86,7 +87,7 @@ except ImportError:
     class STSTorch():
         def __init__(self, *args, **kwargs):
             raise EnvironmentError("This is the PyTorch environment. STS is only available in TensorFlow backend.")
-    
+
 # Dynamically select the appropriate STS class
 if has_tensorflow:
     STS = STSTensorFlow

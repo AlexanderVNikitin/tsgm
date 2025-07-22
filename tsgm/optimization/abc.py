@@ -4,10 +4,12 @@ import tqdm
 
 import numpy as np
 
+import tsgm
 from tsgm.backend import get_distributions
 
 # Lazy loading of distributions
 distributions = None
+
 
 def _get_distributions():
     global distributions
@@ -15,7 +17,6 @@ def _get_distributions():
         distributions = get_distributions()
     return distributions
 
-import tsgm
 
 def _get_default_prior():
     return _get_distributions().Normal(0, 1)

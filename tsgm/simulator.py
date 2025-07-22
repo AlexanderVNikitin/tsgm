@@ -7,20 +7,19 @@ import typing as T
 import numpy as np
 
 from tsgm.backend import get_distributions
+from tsgm.types import Tensor as TensorLike
+import tsgm
+
 
 # Lazy loading of distributions
 distributions = None
+
 
 def _get_distributions():
     global distributions
     if distributions is None:
         distributions = get_distributions()
     return distributions
-
-#  make TensorLike more flexible
-from tsgm.types import Tensor as TensorLike
-
-import tsgm
 
 
 class BaseSimulator(abc.ABC):
@@ -299,7 +298,7 @@ class SineConstSimulator(ModelBasedSimulator):
         for i in range(num_samples):
             D = self._data.D
             if isinstance(D, int):
-                D = (D,) # for PyTorch compatibility
+                D = (D,)  # for PyTorch compatibility
             scales = self._scale.sample(D)
             consts = self._const.sample(D)
             shifts = self._shift.sample(D)

@@ -85,7 +85,8 @@ setup(name='tsgm',
       extras_require={
           "tensorflow": ["tensorflow >= 2.16.0", "tensorflow-probability >= 0.24.0", "tf-keras"],
           "torch": ["torch", "torchvision"],
-          "all": ["tensorflow >= 2.16.0", "tensorflow-probability >= 0.24.0", "tf-keras", "torch", "torchvision"]
+          "jax": ["jax", "jaxlib"],
+          "all": ["tensorflow >= 2.16.0", "tensorflow-probability >= 0.24.0", "tf-keras", "torch", "torchvision", "jax", "jaxlib"]
       },
       package_data={'tsgm': ['README.md']},
       packages=find_packages())

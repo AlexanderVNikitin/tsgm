@@ -5,11 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 from tsgm.backend import get_backend
-backend = get_backend()
-
 import tsgm
 
 
+backend = get_backend()
 DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
 
 

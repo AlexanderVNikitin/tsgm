@@ -923,18 +923,18 @@ class WaveGANArchitecture(BaseGANArchitecture):
         if rad <= 0 or x.shape[1] <= 1:
             return x
 
-        b, x_len, nch = ops.shape(x)[0], ops.shape(x)[1], ops.shape(x)[2]
+        x_len, nch = ops.shape(x)[1], ops.shape(x)[2]
         #  for keras 3.0 - manual reflect padding to avoid ops.pad issues
         phase = keras.random.randint([], minval=-rad, maxval=rad + 1, dtype="int32")
         pad_l, pad_r = ops.maximum(phase, 0), ops.maximum(-phase, 0)
         phase_start = pad_r
-        
-        # Manual reflect padding 
+
+        # Manual reflect padding
         if pad_l > 0:
-            left_pad = ops.flip(x[:, 1:pad_l+1], axis=1)
+            left_pad = ops.flip(x[:, 1:pad_l + 1], axis=1)
             x = ops.concatenate([left_pad, x], axis=1)
         if pad_r > 0:
-            right_pad = ops.flip(x[:, -(pad_r+1):-1], axis=1)
+            right_pad = ops.flip(x[:, -(pad_r + 1):-1], axis=1)
             x = ops.concatenate([x, right_pad], axis=1)
 
         x = x[:, phase_start:phase_start + x_len]

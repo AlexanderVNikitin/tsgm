@@ -2,7 +2,7 @@ import os
 import keras
 from keras import ops
 from tsgm.types import Tensor as TensorLike
-#  a keras_dataset can be tf.data.Dataset or Torch DataLoader
+# a keras_dataset can be tf.data.Dataset or Torch DataLoader
 from tsgm.backend import tf_function_decorator, Keras_Dataset, get_backend
 import numpy as np
 import numpy.typing as npt
@@ -253,8 +253,8 @@ class TimeGAN(keras.Model):
             inputs=X, outputs=Y_real, name="FinalDiscriminator"
         )
         self.discriminator_model.summary()
-    
-    @tf_function_decorator  
+
+    @tf_function_decorator
     def _train_autoencoder_tf(
         self, tf, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -287,13 +287,12 @@ class TimeGAN(keras.Model):
         e_vars = self.embedder.trainable_variables
         r_vars = self.recovery.trainable_variables
         all_trainable = e_vars + r_vars
-        gradients = [v.value.grad for v in all_trainable] 
+        gradients = [v.value.grad for v in all_trainable]
 
         with torch.no_grad():
             optimizer.apply(zip(gradients, all_trainable))
         return E_loss0
 
-    
     def _train_autoencoder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -326,7 +325,7 @@ class TimeGAN(keras.Model):
         ]
         optimizer.apply_gradients(apply_grads)
         return G_loss_S
-    
+
     def _train_supervisor_torch(
         self, torch, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -405,7 +404,7 @@ class TimeGAN(keras.Model):
         ]
         optimizer.apply_gradients(apply_grads)
         return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
-    
+
     def _train_generator_torch(
         self, torch, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float, float, float, float]:
@@ -438,12 +437,11 @@ class TimeGAN(keras.Model):
             for (grad, var) in zip(gradients, all_trainable)
             if grad is not None
         ]
-        
+
         with torch.no_grad():
             optimizer.apply(apply_grads)
-        return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss 
-    
-    
+        return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
+
     def _train_generator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float, float, float, float]:
@@ -482,7 +480,7 @@ class TimeGAN(keras.Model):
         gradients = tape.gradient(E_loss, all_trainable)
         optimizer.apply_gradients(zip(gradients, all_trainable))
         return E_loss, E_loss_T0
-    
+
     def _train_embedder_torch(
         self, torch, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float]:
@@ -504,7 +502,7 @@ class TimeGAN(keras.Model):
         with torch.no_grad():
             optimizer.apply(zip(gradients, all_trainable))
         return E_loss, E_loss_T0
-        
+
     def _train_embedder(
         self, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float]:
@@ -531,21 +529,21 @@ class TimeGAN(keras.Model):
         gradients = tape.gradient(D_loss, d_vars)
         optimizer.apply_gradients(zip(gradients, d_vars))
         return D_loss
-    
+
     def _train_discriminator_torch(
         self, torch, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
         D_loss = self._check_discriminator_loss(X, Z)
         self.discriminator.zero_grad()
         D_loss.backward()
-        
+
         d_vars = [v for v in self.discriminator.trainable_variables]
         gradients = [v.value.grad for v in d_vars]
 
         with torch.no_grad():
             optimizer.apply(zip(gradients, d_vars))
         return D_loss
-    
+
     def _train_discriminator(
         self, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
@@ -623,6 +621,7 @@ class TimeGAN(keras.Model):
             )
         elif os.environ["KERAS_BACKEND"] == "torch":
             torch = backend
+
             def noise_generator():
                 while True:
                     yield torch.tensor(
@@ -683,7 +682,7 @@ class TimeGAN(keras.Model):
             self._mse is None or self._bce is None
         ), "One of the loss functions is not defined. Please call .compile() to set them"
 
-        # take tf.data.Dataset | torch.utils.data.Dataloader | TensorLike  
+        # take tf.data.Dataset | torch.utils.data.Dataloader | TensorLike
         if os.environ["KERAS_BACKEND"] == "tensorflow" and isinstance(data, Keras_Dataset):
             batches = iter(data.repeat())
         elif os.environ["KERAS_BACKEND"] == "torch" and isinstance(data, Keras_Dataset):

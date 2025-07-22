@@ -62,7 +62,7 @@ class GAN(keras.Model):
     # Define the loss functions to be used for generator
     def wgan_generator_loss(self, fake_sample):
         return -ops.mean(fake_sample)
-    
+
     def gradient_penalty_tf(self, tf, interpolated):
         with tf.GradientTape() as gp_tape:
             gp_tape.watch(interpolated)
@@ -72,7 +72,7 @@ class GAN(keras.Model):
         # 2. Calculate the gradients w.r.t to this interpolated sample.
         grads = gp_tape.gradient(pred, [interpolated])[0]
         return grads
-    
+
     def gradient_penalty_torch(self, torch, interpolated):
         interpolated.requires_grad = True
         pred = self.discriminator(interpolated, training=True)
@@ -130,7 +130,7 @@ class GAN(keras.Model):
 
     def _get_random_vector_labels(self, batch_size: int, labels=None) -> tsgm.types.Tensor:
         return keras.random.normal(shape=(batch_size, self.latent_dim))
-    
+
     def train_step_tf(self, tf, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         real_data = data
         batch_size = ops.shape(real_data)[0]
@@ -192,7 +192,7 @@ class GAN(keras.Model):
             "g_loss": self.gen_loss_tracker.result(),
             "d_loss": self.disc_loss_tracker.result(),
         }
-        
+
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         real_data = data
         batch_size = ops.shape(real_data)[0]
@@ -210,7 +210,6 @@ class GAN(keras.Model):
         desc_labels = ops.concatenate(
             [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
         )
-        
         predictions = self.discriminator(combined_data)
         if self.use_wgan:
             fake_logits = self.discriminator(fake_data, training=True)
@@ -225,20 +224,16 @@ class GAN(keras.Model):
             d_loss = d_cost + gp * self.gp_weight
         else:
             d_loss = self.loss_fn(desc_labels, predictions)
-        
         self.discriminator.zero_grad()
         d_loss.backward()
-        
+
         d_trainable_weights = [v for v in self.discriminator.trainable_weights]
         d_gradients = [v.value.grad for v in d_trainable_weights]
 
         with torch.no_grad():
             self.d_optimizer.apply_gradients(d_gradients, d_trainable_weights)
-            
-        
         random_vector = self._get_random_vector_labels(batch_size=batch_size)
         misleading_labels = ops.zeros((batch_size, 1))
-        
         fake_data = self.generator(random_vector)
         predictions = self.discriminator(fake_data)
         if self.use_wgan:
@@ -246,25 +241,22 @@ class GAN(keras.Model):
             g_loss = self.wgan_generator_loss(predictions)
         else:
             g_loss = self.loss_fn(misleading_labels, predictions)
-            
+
         self.generator.zero_grad()
         g_loss.backward()
-        
+
         g_trainable_weights = [v for v in self.generator.trainable_weights]
         g_gradients = [v.value.grad for v in g_trainable_weights]
-        
+
         with torch.no_grad():
             self.g_optimizer.apply_gradients(g_gradients, g_trainable_weights)
-            
 
         self.gen_loss_tracker.update_state(g_loss)
         self.disc_loss_tracker.update_state(d_loss)
         return {
             "g_loss": self.gen_loss_tracker.result(),
             "d_loss": self.disc_loss_tracker.result(),
-        }    
-        
-        
+        }
 
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         """
@@ -281,8 +273,7 @@ class GAN(keras.Model):
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
             return self.train_step_torch(backend, data)
-                                                 
-                                                
+
     def generate(self, num: int) -> tsgm.types.Tensor:
         """
         Generates new data from the model.
@@ -389,8 +380,7 @@ class ConditionalGAN(keras.Model):
                 return labels.shape[2]
         else:
             return labels.shape[1]
-        
-        
+
     def train_step_tf(self, tf, data: T.Tuple) -> T.Dict[str, float]:
         real_ts = data[0]
         labels = data[1]
@@ -464,7 +454,7 @@ class ConditionalGAN(keras.Model):
             "g_loss": self.gen_loss_tracker.result(),
             "d_loss": self.disc_loss_tracker.result(),
         }
-        
+
     def train_step_torch(self, torch, data: T.Tuple) -> T.Dict[str, float]:
         real_ts, labels = data
         output_dim = self._get_output_shape(labels)
@@ -497,27 +487,22 @@ class ConditionalGAN(keras.Model):
         desc_labels = ops.concatenate(
             [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
         )
-        
         predictions = self.discriminator(combined_data)
         d_loss = self.loss_fn(desc_labels, predictions)
-        
         self.discriminator.zero_grad()
         d_loss.backward()
-        
+
         d_trainable_weights = [v for v in self.discriminator.trainable_weights]
         d_gradients = [v.value.grad for v in d_trainable_weights]
-        
+
         with torch.no_grad():
             self.d_optimizer.apply_gradients(d_gradients, d_trainable_weights)
-            
-        
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        
+
         # Pretend that all samples are real
         misleading_labels = ops.zeros((batch_size, 1))
 
         # Train generator (with updating the discriminator)
-        
         fake_samples = self.generator(random_vector_labels)
         fake_data = ops.concatenate([fake_samples, rep_labels], -1)
         predictions = self.discriminator(fake_data)
@@ -525,10 +510,10 @@ class ConditionalGAN(keras.Model):
 
         self.generator.zero_grad()
         g_loss.backward()
-        
+
         g_trainable_weights = [v for v in self.generator.trainable_weights]
         g_gradients = [v.value.grad for v in g_trainable_weights]
-        
+
         with torch.no_grad():
             self.g_optimizer.apply_gradients(g_gradients, g_trainable_weights)
 
@@ -538,8 +523,6 @@ class ConditionalGAN(keras.Model):
             "g_loss": self.gen_loss_tracker.result(),
             "d_loss": self.disc_loss_tracker.result(),
         }
-        
-
 
     def train_step(self, data: T.Tuple) -> T.Dict[str, float]:
         """

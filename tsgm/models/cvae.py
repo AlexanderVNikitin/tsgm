@@ -4,7 +4,7 @@ from keras import ops
 import typing as T
 
 from tsgm.backend import get_backend
-        
+
 import tsgm.utils
 
 
@@ -67,7 +67,7 @@ class BetaVAE(keras.Model):
             tsgm.utils.reconstruction_loss_by_axis(X, Xr, axis=1) +\
             tsgm.utils.reconstruction_loss_by_axis(X, Xr, axis=2)
         return reconst_loss
-    
+
     def train_step_tf(self, tf, data: tsgm.types.Tensor) -> T.Dict:
         with tf.GradientTape() as tape:
             z_mean, z_log_var, z = self.encoder(data)
@@ -88,7 +88,7 @@ class BetaVAE(keras.Model):
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
         }
-    
+
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict:
         z_mean, z_log_var, z = self.encoder(data)
         reconstruction = self.decoder(z)
@@ -98,13 +98,13 @@ class BetaVAE(keras.Model):
         total_loss = reconstruction_loss + kl_loss
         self.zero_grad()
         total_loss.backward()
-        
+
         trainable_weights = [v for v in self.trainable_weights]
         gradients = [v.value.grad for v in trainable_weights]
 
         with torch.no_grad():
             self.optimizer.apply(gradients, trainable_weights)
-        
+
         self.total_loss_tracker.update_state(total_loss)
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.kl_loss_tracker.update_state(kl_loss)
@@ -113,7 +113,25 @@ class BetaVAE(keras.Model):
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
         }
-    
+
+    def train_step_jax(self, jax, data: tsgm.types.Tensor) -> T.Dict:
+        # JAX backend uses Keras 3.0 automatic differentiation
+        z_mean, z_log_var, z = self.encoder(data)
+        reconstruction = self.decoder(z)
+        reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
+        kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
+        kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
+        total_loss = reconstruction_loss + kl_loss
+
+        self.total_loss_tracker.update_state(total_loss)
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        self.kl_loss_tracker.update_state(kl_loss)
+        return {
+            "loss": self.total_loss_tracker.result(),
+            "reconstruction_loss": self.reconstruction_loss_tracker.result(),
+            "kl_loss": self.kl_loss_tracker.result(),
+        }
+
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict:
         """
         Performs a training step using a batch of data, stored in data.
@@ -129,6 +147,8 @@ class BetaVAE(keras.Model):
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
             return self.train_step_torch(backend, data)
+        elif os.environ.get("KERAS_BACKEND") == "jax":
+            return self.train_step_jax(backend, data)
 
     def generate(self, n: int) -> tsgm.types.Tensor:
         """
@@ -253,7 +273,7 @@ class cBetaVAE(keras.Model):
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
         }
-        
+
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         X, labels = data
         encoder_input = self._get_encoder_input(X, labels)
@@ -267,13 +287,13 @@ class cBetaVAE(keras.Model):
         total_loss = reconstruction_loss + self.beta * kl_loss
         self.optimizer.zero_grad()
         total_loss.backward()
-        
+
         trainable_weights = [v for v in self.trainable_weights]
         gradients = [v.value.grad for v in trainable_weights]
 
         with torch.no_grad():
             self.optimizer.apply(gradients, trainable_weights)
-        
+
         self.total_loss_tracker.update_state(total_loss)
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.kl_loss_tracker.update_state(kl_loss)
@@ -281,9 +301,28 @@ class cBetaVAE(keras.Model):
             "loss": self.total_loss_tracker.result(),
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
-        }    
+        }
 
+    def train_step_jax(self, jax, data: tsgm.types.Tensor) -> T.Dict[str, float]:
+        X, labels = data
+        encoder_input = self._get_encoder_input(X, labels)
+        z_mean, z_log_var, z = self.encoder(encoder_input)
+        decoder_input = self._get_decoder_input(z, labels)
+        reconstruction = self.decoder(decoder_input)
 
+        reconstruction_loss = self._get_reconstruction_loss(X, reconstruction)
+        kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
+        kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
+        total_loss = reconstruction_loss + self.beta * kl_loss
+
+        self.total_loss_tracker.update_state(total_loss)
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        self.kl_loss_tracker.update_state(kl_loss)
+        return {
+            "loss": self.total_loss_tracker.result(),
+            "reconstruction_loss": self.reconstruction_loss_tracker.result(),
+            "kl_loss": self.kl_loss_tracker.result(),
+        }
 
     def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         """
@@ -300,3 +339,5 @@ class cBetaVAE(keras.Model):
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
             return self.train_step_torch(backend, data)
+        elif os.environ.get("KERAS_BACKEND") == "jax":
+            return self.train_step_jax(backend, data)

@@ -13,13 +13,14 @@ import tsgm
 logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
+
 #  make guassian kernel fit with both pytorch and tensorflow
 def exp_quad_kernel(x: TensorLike, y: TensorLike):
     length_scale, feature_ndims = 1.0, 2
-    x_expanded = ops.expand_dims(x, axis=-feature_ndims-1)
-    y_expanded = ops.expand_dims(y, axis=-feature_ndims-2)
+    x_expanded = ops.expand_dims(x, axis=-feature_ndims - 1)
+    y_expanded = ops.expand_dims(y, axis=-feature_ndims - 2)
     sq_dist = ops.sum((x_expanded - y_expanded) ** 2, axis=(-2, -1))
-    return ops.exp(-0.5 * sq_dist / length_scale**2)
+    return ops.exp(-0.5 * sq_dist / length_scale ** 2)
 
 
 def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: T.Callable = exp_quad_kernel) -> TensorLike:

@@ -62,17 +62,23 @@ pip install tsgm[tensorflow]
 pip install tsgm[torch]
 ```
 
-#### Option 3: With both backends
+#### Option 3: With JAX backend
+```bash
+pip install tsgm[jax]
+```
+
+#### Option 4: With all backends
 ```bash
 pip install tsgm[all]
 ```
 
-#### Option 4: Basic installation (you'll need to install a backend separately)
+#### Option 5: Basic installation (you'll need to install a backend separately)
 ```bash
 pip install tsgm
 # Then install your preferred backend:
 # For TensorFlow: pip install tensorflow tensorflow-probability
 # For PyTorch: pip install torch torchvision
+# For JAX: pip install jax jaxlib
 ```
 
 #### Backend Configuration
@@ -84,7 +90,7 @@ export KERAS_BACKEND=tensorflow
 # For PyTorch backend  
 export KERAS_BACKEND=torch
 
-# For JAX backend (if available)
+# For JAX backend
 export KERAS_BACKEND=jax
 ```
 
@@ -96,11 +102,19 @@ pip install tsgm[tensorflow]
 
 # Or install with PyTorch backend
 pip install tsgm[torch]
+
+# Or install with JAX backend (excellent performance on M1/M2)
+pip install tsgm[jax]
 ```
 
 **Note for PyTorch users on M1/M2 chips:** Some operations may need CPU fallback on MPS devices. If you encounter MPS-related errors, set the environment variable:
 ```bash
 export PYTORCH_ENABLE_MPS_FALLBACK=1
+```
+
+**Note for JAX users:** JAX provides excellent performance on M1/M2 chips and supports GPU acceleration. For optimal performance, consider installing JAX with Metal support:
+```bash
+pip install -U "jax[metal]"
 ```
 
 
