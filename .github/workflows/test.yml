@@ -29,7 +29,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements/requirements.txt ]; then pip install -r requirements/requirements.txt; fi
           if [ -f requirements/tests_requirements.txt ]; then pip install -r requirements/tests_requirements.txt; fi
-          python setup.py install
+          pip install -e .[tensorflow]
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
