@@ -19,6 +19,9 @@ jobs:
         python-version: ["3.9", "3.10"]
         backend: ["tensorflow", "torch", "jax"]
 
+    env:
+      KERAS_BACKEND: ${{ matrix.backend }}
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
