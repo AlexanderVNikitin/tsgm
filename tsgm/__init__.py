@@ -1,3 +1,5 @@
+# Import backend first to set Keras backend before any other imports
+import tsgm.backend
 import tsgm.types
 import tsgm.dataset
 import tsgm.simulator

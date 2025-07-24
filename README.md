@@ -49,21 +49,72 @@ We provide:
 
 
 ### Install TSGM
+
+TSGM now supports Keras 3 with multiple backend options. Choose one of the following installation methods:
+
+#### Option 1: With TensorFlow backend (default)
+```bash
+pip install tsgm[tensorflow]
+```
+
+#### Option 2: With PyTorch backend
+```bash
+pip install tsgm[torch]
+```
+
+#### Option 3: With JAX backend
+```bash
+pip install tsgm[jax]
+```
+
+#### Option 4: With all backends
+```bash
+pip install tsgm[all]
+```
+
+#### Option 5: Basic installation (you'll need to install a backend separately)
 ```bash
 pip install tsgm
+# Then install your preferred backend:
+# For TensorFlow: pip install tensorflow tensorflow-probability
+# For PyTorch: pip install torch torchvision
+# For JAX: pip install jax jaxlib
+```
+
+#### Backend Configuration
+Set your preferred Keras backend using the environment variable:
+```bash
+# For TensorFlow backend
+export KERAS_BACKEND=tensorflow
+
+# For PyTorch backend  
+export KERAS_BACKEND=torch
+
+# For JAX backend
+export KERAS_BACKEND=jax
 ```
 
 #### M1 and M2 chips:
 To install `tsgm` on Apple M1 and M2 chips:
 ```bash
-# Install tensorflow
-conda install -c conda-forge tensorflow=2.9.1
+# Install with TensorFlow backend
+pip install tsgm[tensorflow]
 
-# Install tsgm without dependencies
-pip install tsgm --no-deps
+# Or install with PyTorch backend
+pip install tsgm[torch]
 
-# Install rest of the dependencies (separately here for clarity)
-conda install tensorflow-probability scipy antropy statsmodels dtaidistance networkx optuna prettytable seaborn scikit-learn yfinance tqdm
+# Or install with JAX backend (excellent performance on M1/M2)
+pip install tsgm[jax]
+```
+
+**Note for PyTorch users on M1/M2 chips:** Some operations may need CPU fallback on MPS devices. If you encounter MPS-related errors, set the environment variable:
+```bash
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+```
+
+**Note for JAX users:** JAX provides excellent performance on M1/M2 chips and supports GPU acceleration. For optimal performance, consider installing JAX with Metal support:
+```bash
+pip install -U "jax[metal]"
 ```
 
 

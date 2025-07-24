@@ -1,9 +1,8 @@
 import pytest
 import tsgm
 
-import tensorflow as tf
 import numpy as np
-from tensorflow import keras
+import keras
 
 
 def test_ddpm():
@@ -33,5 +32,5 @@ def test_ddpm():
     x_samples = ddpm_model.generate(7)
     assert x_samples.shape == (7, seq_len, feat_dim)
 
-    x_decoded = ddpm_model(3)
+    x_decoded = ddpm_model.generate(3)
     assert x_decoded.shape == (3, seq_len, feat_dim)

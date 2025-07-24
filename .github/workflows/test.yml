@@ -17,6 +17,10 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
+        backend: ["tensorflow", "torch", "jax"]
+
+    env:
+      KERAS_BACKEND: ${{ matrix.backend }}
 
     steps:
       - uses: actions/checkout@v3
@@ -29,7 +33,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements/requirements.txt ]; then pip install -r requirements/requirements.txt; fi
           if [ -f requirements/tests_requirements.txt ]; then pip install -r requirements/tests_requirements.txt; fi
-          python setup.py install
+          pip install -e .[${{ matrix.backend }}]
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names

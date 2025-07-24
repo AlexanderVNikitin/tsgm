@@ -1,9 +1,8 @@
 import pytest
 import tsgm
 
-import tensorflow as tf
 import numpy as np
-from tensorflow import keras
+import keras
 
 
 def test_vae():
@@ -86,14 +85,11 @@ def test_temp_cvae():
     X_train = X_train.astype(np.float32)
     y = y.astype(np.float32)
 
-    dataset = tf.data.Dataset.from_tensor_slices((X_train, y))
-    dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-
     encoder, decoder = architecture.encoder, architecture.decoder
 
     vae = tsgm.models.cvae.cBetaVAE(encoder, decoder,  latent_dim=latent_dim, temporal=True)
     vae.compile(optimizer=keras.optimizers.Adam(0.0003))
 
-    vae.fit(X_train, y, epochs=1, batch_size=128)
+    vae.fit(X_train, y, epochs=1, batch_size=batch_size)
     x_decoded = vae.predict([X_train, y])
     assert x_decoded.shape == X.shape
