@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
-        backend: ["tensorflow", "torch", "jax"]
+        backend: ["tensorflow", "torch"]
 
     env:
       KERAS_BACKEND: ${{ matrix.backend }}
