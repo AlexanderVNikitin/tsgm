@@ -199,27 +199,18 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dense(dense_shape, activation="relu")(x)
 
         x = layers.Reshape((self._seq_len, dense_shape // self._seq_len))(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        # Use Conv1D layers instead of Conv1DTranspose to avoid PyTorch compatibility issues
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(
-            64, 10, activation="relu", strides=1, padding="same"
-        )(x)
+        x = layers.Conv1D(64, 10, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        decoder_outputs = layers.Conv1DTranspose(
+        decoder_outputs = layers.Conv1D(
             self._feat_dim, 3, activation="sigmoid", padding="same"
         )(x)
         decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
@@ -982,12 +973,14 @@ class TimeEmbedding(layers.Layer):
         super().__init__(**kwargs)
         self.dim = dim
         self.half_dim = dim // 2
-        self.emb = math.log(10000) / (self.half_dim - 1)
-        self.emb = ops.exp(ops.arange(self.half_dim, dtype="float32") * -self.emb)
+        self.emb_coeff = math.log(10000) / (self.half_dim - 1)
 
     def call(self, inputs: tsgm.types.Tensor) -> tsgm.types.Tensor:
         inputs = ops.cast(inputs, dtype="float32")
-        emb = inputs[:, None] * self.emb[None, :]
+        # Create embedding coefficients in call() for proper device handling
+        emb_range = ops.arange(self.half_dim, dtype="float32")
+        emb = ops.exp(emb_range * -self.emb_coeff)
+        emb = inputs[:, None] * emb[None, :]
         emb = ops.concatenate([ops.sin(emb), ops.cos(emb)], axis=-1)
 
         return emb

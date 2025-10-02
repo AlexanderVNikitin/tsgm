@@ -1,6 +1,7 @@
 import typing as T
 import logging
 import scipy
+import os
 
 import numpy as np
 import math
@@ -14,6 +15,38 @@ logger = logging.getLogger('utils')
 logger.setLevel(logging.DEBUG)
 
 
+def _ensure_float32_compatibility(kernel_result):
+    """Ensure kernel results are compatible with current backend, especially MPS."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if torch.backends.mps.is_available():
+                # Convert to float32 for MPS compatibility
+                if isinstance(kernel_result, torch.Tensor):
+                    # Already a tensor, just ensure float32 and MPS compatibility
+                    result = kernel_result.cpu().numpy().astype(np.float32)
+                else:
+                    result = np.asarray(kernel_result, dtype=np.float32)
+                return ops.convert_to_tensor(result)
+        except ImportError:
+            pass
+    return ops.convert_to_tensor(kernel_result)
+
+
+def _tensor_to_numpy(tensor):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(tensor, torch.Tensor):
+                return tensor.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(tensor, 'numpy'):
+        return tensor.numpy()
+    return np.asarray(tensor)
+
+
 #  make guassian kernel fit with both pytorch and tensorflow
 def exp_quad_kernel(x: TensorLike, y: TensorLike):
     length_scale, feature_ndims = 1.0, 2
@@ -24,35 +57,42 @@ def exp_quad_kernel(x: TensorLike, y: TensorLike):
 
 
 def MMD(X: tsgm.types.Tensor, Y: tsgm.types.Tensor, kernel: T.Callable = exp_quad_kernel) -> TensorLike:
-    XX = kernel(X, X)
-    YY = kernel(Y, Y)
-    XY = kernel(X, Y)
-    return np.mean(XX) + np.mean(YY) - 2 * np.mean(XY)
+    XX = _ensure_float32_compatibility(kernel(X, X))
+    YY = _ensure_float32_compatibility(kernel(Y, Y))
+    XY = _ensure_float32_compatibility(kernel(X, Y))
+    return _tensor_to_numpy(ops.mean(XX) + ops.mean(YY) - 2 * ops.mean(XY))
 
 
 def kernel_median_heuristic(X1: tsgm.types.Tensor, X2: tsgm.types.Tensor) -> float:
     '''
     Median heuristic (Gretton, 2012) for RBF kernel width.
     '''
+    # Ensure compatibility with MPS backend
+    X1 = _ensure_float32_compatibility(X1)
+    X2 = _ensure_float32_compatibility(X2)
+
     n = X1.shape[0]
     m = X2.shape[0]
 
     if n * m >= 10 ** 8:
         logger.warning("n * m >= 10^8, consider subsampling for kernel median heuristic")
 
-    X1_squared = ops.transpose(ops.tile((X1 * X1).ravel()[None, :], (m, 1)))
-    X2_squared = ops.tile((X2 * X2).ravel()[None, :], (n, 1))
+    X1_squared = X1_squared = ops.transpose(
+        ops.tile(ops.reshape(X1 * X1, [1, -1]), (m, 1))
+    )
+    X2_squared = ops.tile(ops.reshape(X2 * X2, [1, -1]), (n, 1))
 
     distances = X1_squared + X2_squared - 2 * ops.tensordot(X1, ops.transpose(X2), axes=1)
-    assert np.min(distances) >= 0
+    distances_np = _tensor_to_numpy(distances)
+    assert np.min(distances_np) >= 0
 
-    non_zero_distances = list(filter(lambda x: x != 0, ops.reshape(distances, [-1])))
+    non_zero_distances = list(filter(lambda x: x != 0, distances_np.reshape([-1])))
     if non_zero_distances:
         median_distance = np.median(non_zero_distances)
     else:
         median_distance = 0
 
-    return ops.sqrt(median_distance / 2)  # 2 * sigma**2
+    return _tensor_to_numpy(ops.sqrt(median_distance / 2))  # 2 * sigma**2
 
 
 def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types.Tensor, Kxz: tsgm.types.Tensor) -> float:
@@ -60,6 +100,12 @@ def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types
     Computes the variance of the difference statistic MMD_{XY} - MMD_{XZ}
     See http://arxiv.org/pdf/1511.04581.pdf Appendix A for more details.
     '''
+    # Ensure compatibility with MPS backend
+    Kyy = _ensure_float32_compatibility(Kyy)
+    Kzz = _ensure_float32_compatibility(Kzz)
+    Kxy = _ensure_float32_compatibility(Kxy)
+    Kxz = _ensure_float32_compatibility(Kxz)
+
     m = Kxy.shape[0]
     n = Kyy.shape[0]
     r = Kzz.shape[0]
@@ -97,7 +143,7 @@ def mmd_diff_var(Kyy: tsgm.types.Tensor, Kzz: tsgm.types.Tensor, Kxy: tsgm.types
     var_z1 = (4 * (m - 2) / (m * (m - 1))) * zeta1  # Eq (13)
     var_z2 = (2 / (m * (m - 1))) * zeta2  # Eq (13)
 
-    return var_z1 + var_z2
+    return _tensor_to_numpy(var_z1 + var_z2)
 
 
 def mmd_3_test(
@@ -108,11 +154,11 @@ def mmd_3_test(
     See http://arxiv.org/pdf/1511.04581.pdf
     '''
 
-    Kxx = kernel(X, X)
-    Kyy = kernel(Y, Y)
-    Kzz = kernel(Z, Z)
-    Kxy = kernel(X, Y)
-    Kxz = kernel(X, Z)
+    Kxx = _ensure_float32_compatibility(kernel(X, X))
+    Kyy = _ensure_float32_compatibility(kernel(Y, Y))
+    Kzz = _ensure_float32_compatibility(kernel(Z, Z))
+    Kxy = _ensure_float32_compatibility(kernel(X, Y))
+    Kxz = _ensure_float32_compatibility(kernel(X, Z))
 
     Kxx_nd = Kxx - ops.diag(ops.diagonal(Kxx))
     Kyy_nd = Kyy - ops.diag(ops.diagonal(Kyy))
@@ -130,11 +176,12 @@ def mmd_3_test(
 
     t = u_yy - 2 * u_xy - (u_zz - 2 * u_xz)  # test stat
     diff_var = mmd_diff_var(Kyy, Kzz, Kxy, Kxz)
-    sqrt_diff_var = math.sqrt(diff_var)
+    sqrt_diff_var = math.sqrt(_tensor_to_numpy(diff_var))
 
-    pvalue = scipy.stats.norm.cdf(-t / sqrt_diff_var)
-    tstat = t / sqrt_diff_var
+    t_np = _tensor_to_numpy(t)
+    pvalue = scipy.stats.norm.cdf(-t_np / sqrt_diff_var)
+    tstat = t_np / sqrt_diff_var
 
-    mmd_xy = u_xx + u_yy - 2 * u_xy
-    mmd_xz = u_xx + u_zz - 2 * u_xz
+    mmd_xy = _tensor_to_numpy(u_xx + u_yy - 2 * u_xy)
+    mmd_xz = _tensor_to_numpy(u_xx + u_zz - 2 * u_xz)
     return pvalue, tstat, mmd_xy, mmd_xz

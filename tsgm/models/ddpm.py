@@ -39,7 +39,7 @@ class GaussianDiffusion:
             beta_start,
             beta_end,
             timesteps,
-            dtype=np.float64,  # Using float64 for better precision
+            dtype=np.float32,  # Using float32 for MPS compatibility
         )
         self.num_timesteps = int(timesteps)
 
@@ -106,7 +106,9 @@ class GaussianDiffusion:
             Tensor reshaped to [batch_size, 1, 1] for broadcasting.
         """
         batch_size = x_shape[0]
-        out = ops.take(a, t, axis=0)
+        # Handle both (batch_size,) and (batch_size, 1) shapes
+        t_flat = ops.reshape(t, [-1])
+        out = ops.take(a, t_flat, axis=0)
         return ops.reshape(out, [batch_size, 1, 1])
 
     def q_mean_variance(self, x_start: TensorLike, t: float) -> T.Tuple:
@@ -159,10 +161,17 @@ class GaussianDiffusion:
         """
 
         x_t_shape = ops.shape(x_t)
-        return (
-            self._extract(self.sqrt_recip_alphas_cumprod, t, x_t_shape) * x_t
-            - self._extract(self.sqrt_recipm1_alphas_cumprod, t, x_t_shape) * noise
-        )
+
+        # Extract coefficients
+        coeff1 = self._extract(self.sqrt_recip_alphas_cumprod, t, x_t_shape)
+        coeff2 = self._extract(self.sqrt_recipm1_alphas_cumprod, t, x_t_shape)
+
+        # Perform operations step by step to avoid device mismatch
+        term1 = ops.multiply(coeff1, x_t)
+        term2 = ops.multiply(coeff2, noise)
+        result = ops.subtract(term1, term2)
+
+        return result
 
     def q_posterior(self, x_start, x_t, t):
         """Computes the mean and variance of the posterior distribution q(x_{t-1} | x_t, x_0).
@@ -268,12 +277,22 @@ class DDPM(keras.Model):
         batch_size = ops.shape(images)[0]
 
         # 2. Sample timesteps uniformly
+        # Use int32 for MPS compatibility
         t = keras.random.randint(
-            minval=0, maxval=self.timesteps, shape=(batch_size,), dtype="int64"
+            minval=0, maxval=self.timesteps, shape=(batch_size,), dtype="int32"
         )
+        # Reshape to match expected input shape (batch_size, 1)
+        t = ops.expand_dims(t, axis=-1)
 
-        backend = get_backend()
-        with backend.GradientTape() as tape:
+        # Standard Keras 3 gradient computation approach
+        import os
+        if os.environ.get("KERAS_BACKEND") == "torch":
+            # PyTorch backend approach (based on CVAE implementation)
+            # Clear gradients
+            for var in self.network.trainable_weights:
+                if hasattr(var.value, 'grad') and var.value.grad is not None:
+                    var.value.grad.zero_()
+
             # 3. Sample random noise to be added to the images in the batch
             noise = keras.random.normal(shape=ops.shape(images), dtype=images.dtype)
 
@@ -284,20 +303,50 @@ class DDPM(keras.Model):
             pred_noise = self.network([images_t, t], training=True)
 
             # 6. Calculate the loss
-            loss = self.loss(noise, pred_noise)
+            # Manual MSE to avoid dtype issues with Keras loss
+            loss = ops.mean(ops.square(noise - pred_noise))
 
-        # 7. Get the gradients
-        gradients = tape.gradient(loss, self.network.trainable_weights)
+            # 7. Backward pass
+            loss.backward(retain_graph=False)
 
-        # 8. Update the weights of the network
-        self.optimizer.apply_gradients(zip(gradients, self.network.trainable_weights))
+            # 8. Extract gradients
+            gradients = [v.value.grad for v in self.network.trainable_weights]
+
+            # 9. Apply gradients using Keras optimizer
+            with get_backend().no_grad():
+                grads_and_vars = list(zip(gradients, self.network.trainable_weights))
+                self.optimizer.apply_gradients(grads_and_vars)
+        else:
+            # TensorFlow/JAX backend approach
+            backend = get_backend()
+            with backend.GradientTape() as tape:
+                # 3. Sample random noise to be added to the images in the batch
+                noise = keras.random.normal(shape=ops.shape(images), dtype=images.dtype)
+
+                # 4. Diffuse the images with noise
+                images_t = self.gdf_util.q_sample(images, t, noise)
+
+                # 5. Pass the diffused images and time steps to the network
+                pred_noise = self.network([images_t, t], training=True)
+
+                # 6. Calculate the loss
+                # Manual MSE to avoid dtype issues with Keras loss
+                loss = ops.mean(ops.square(noise - pred_noise))
+
+            # 7. Get the gradients
+            gradients = tape.gradient(loss, self.network.trainable_weights)
+
+            # 8. Update the weights of the network
+            self.optimizer.apply_gradients(zip(gradients, self.network.trainable_weights))
 
         # 9. Updates the weight values for the network with EMA weights
         for weight, ema_weight in zip(self.network.weights, self.ema_network.weights):
             ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
 
         # 10. Return loss values
-        return {"loss": loss}
+        # Ensure loss is a proper tensor with float32 dtype
+        loss_tensor = ops.convert_to_tensor(loss, dtype="float32")
+        return {"loss": loss_tensor}
 
     def generate(self, n_samples: int = 16) -> TensorLike:
         """
@@ -319,24 +368,43 @@ class DDPM(keras.Model):
         )
         # 2. Sample from the model iteratively
         for t in reversed(range(0, self.timesteps)):
-            tt = ops.cast(ops.full([n_samples], t), dtype="int64")
+            tt = ops.cast(ops.full([n_samples], t), dtype="int32")
+            tt = ops.expand_dims(tt, axis=-1)  # Match expected shape (batch_size, 1)
+
+            # Ensure all tensors are on the same device (MPS compatibility)
+            import os
+            if os.environ.get("KERAS_BACKEND") == "torch":
+                import torch
+                device = samples.device if hasattr(samples, 'device') else 'cpu'
+                if hasattr(tt, 'device') and tt.device != device:
+                    tt = tt.to(device)
+
             pred_noise = self.ema_network.predict(
                 [samples, tt], verbose=0, batch_size=n_samples
             )
+
+            # Ensure pred_noise is on the same device
+            if os.environ.get("KERAS_BACKEND") == "torch":
+                if hasattr(pred_noise, 'device') and pred_noise.device != device:
+                    pred_noise = pred_noise.to(device)
+
             samples = self.gdf_util.p_sample(
                 pred_noise, samples, tt
             )
         # 3. Return generated samples
         return samples
 
-    def call(self, n_samples: int) -> TensorLike:
+    def call(self, n_samples) -> TensorLike:
         """
         Calls the generate method to produce samples.
 
         Args:
-            n_samples: The number of samples to generate.
+            n_samples: The number of samples to generate or tensor for building.
 
         Returns:
-            Generated samples.
+            Generated samples or input tensor for building.
         """
+        # Handle Keras 3 model building - if n_samples is a tensor, return it
+        if hasattr(n_samples, 'shape'):
+            return n_samples
         return self.generate(n_samples)

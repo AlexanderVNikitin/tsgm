@@ -54,6 +54,16 @@ class GAN(keras.Model):
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
 
+    def call(self, inputs):
+        """
+        Forward pass for the GAN model.
+        This method is required for Keras 3 compatibility with PyTorch backend.
+        """
+        # For GAN training, we don't typically call the model directly.
+        # This is just a placeholder to satisfy Keras 3 requirements.
+        # Return the inputs as-is since this is mainly used for building the model.
+        return inputs
+
     def wgan_discriminator_loss(self, real_sample, fake_sample):
         real_loss = ops.mean(real_sample)
         fake_loss = ops.mean(fake_sample)
@@ -74,7 +84,8 @@ class GAN(keras.Model):
         return grads
 
     def gradient_penalty_torch(self, torch, interpolated):
-        interpolated.requires_grad = True
+        # Create a new tensor that requires grad instead of modifying existing one
+        interpolated = interpolated.detach().requires_grad_(True)
         pred = self.discriminator(interpolated, training=True)
         grads = torch.autograd.grad(outputs=pred, inputs=interpolated,
                                     grad_outputs=ops.ones_like(pred),
@@ -83,7 +94,9 @@ class GAN(keras.Model):
 
     def gradient_penalty(self, batch_size, real_samples, fake_samples):
         # get the interpolated samples
-        alpha = keras.random.normal([batch_size, 1, 1], 0.0, 1.0)
+        alpha_shape = [batch_size, 1, 1]
+        # Create alpha on the same device as real_samples
+        alpha = ops.ones_like(real_samples[:, :1, :1]) * keras.random.normal(alpha_shape, 0.0, 1.0)
         diff = fake_samples - real_samples
         interpolated = real_samples + alpha * diff
         backend = get_backend()
@@ -194,7 +207,19 @@ class GAN(keras.Model):
         }
 
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict[str, float]:
-        real_data = data
+        # Handle PyTorch DataLoader format - extract tensor from list
+        if isinstance(data, (list, tuple)) and len(data) == 1:
+            real_data = data[0]
+        else:
+            real_data = data
+
+        # Ensure real_data is on the same device as model parameters (MPS)
+        if hasattr(real_data, 'device'):
+            # Get device from first model parameter
+            model_device = next(self.generator.parameters()).device
+            if real_data.device != model_device:
+                real_data = real_data.to(model_device)
+
         batch_size = ops.shape(real_data)[0]
         # Generate ts
         random_vector = self._get_random_vector_labels(batch_size)
@@ -231,7 +256,9 @@ class GAN(keras.Model):
         d_gradients = [v.value.grad for v in d_trainable_weights]
 
         with torch.no_grad():
-            self.d_optimizer.apply_gradients(d_gradients, d_trainable_weights)
+            # Keras 3 expects (gradient, variable) pairs
+            grads_and_vars = list(zip(d_gradients, d_trainable_weights))
+            self.d_optimizer.apply_gradients(grads_and_vars)
         random_vector = self._get_random_vector_labels(batch_size=batch_size)
         misleading_labels = ops.zeros((batch_size, 1))
         fake_data = self.generator(random_vector)
@@ -249,7 +276,9 @@ class GAN(keras.Model):
         g_gradients = [v.value.grad for v in g_trainable_weights]
 
         with torch.no_grad():
-            self.g_optimizer.apply_gradients(g_gradients, g_trainable_weights)
+            # Keras 3 expects (gradient, variable) pairs
+            grads_and_vars = list(zip(g_gradients, g_trainable_weights))
+            self.g_optimizer.apply_gradients(grads_and_vars)
 
         self.gen_loss_tracker.update_state(g_loss)
         self.disc_loss_tracker.update_state(d_loss)
@@ -325,6 +354,16 @@ class ConditionalGAN(keras.Model):
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
         self._temporal = temporal
+
+    def call(self, inputs):
+        """
+        Forward pass for the ConditionalGAN model.
+        This method is required for Keras 3 compatibility with PyTorch backend.
+        """
+        # For Conditional GAN training, we don't typically call the model directly.
+        # This is just a placeholder to satisfy Keras 3 requirements.
+        # Return the inputs as-is since this is mainly used for building the model.
+        return inputs
 
     @property
     def metrics(self) -> T.List:
@@ -456,7 +495,12 @@ class ConditionalGAN(keras.Model):
         }
 
     def train_step_torch(self, torch, data: T.Tuple) -> T.Dict[str, float]:
-        real_ts, labels = data
+        # Handle PyTorch DataLoader format
+        if isinstance(data, (list, tuple)) and len(data) == 2:
+            real_ts, labels = data
+        else:
+            # Fallback for single input
+            real_ts, labels = data, None
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:
@@ -496,7 +540,9 @@ class ConditionalGAN(keras.Model):
         d_gradients = [v.value.grad for v in d_trainable_weights]
 
         with torch.no_grad():
-            self.d_optimizer.apply_gradients(d_gradients, d_trainable_weights)
+            # Keras 3 expects (gradient, variable) pairs
+            grads_and_vars = list(zip(d_gradients, d_trainable_weights))
+            self.d_optimizer.apply_gradients(grads_and_vars)
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
 
         # Pretend that all samples are real
@@ -515,7 +561,9 @@ class ConditionalGAN(keras.Model):
         g_gradients = [v.value.grad for v in g_trainable_weights]
 
         with torch.no_grad():
-            self.g_optimizer.apply_gradients(g_gradients, g_trainable_weights)
+            # Keras 3 expects (gradient, variable) pairs
+            grads_and_vars = list(zip(g_gradients, g_trainable_weights))
+            self.g_optimizer.apply_gradients(grads_and_vars)
 
         self.gen_loss_tracker.update_state(g_loss)
         self.disc_loss_tracker.update_state(d_loss)

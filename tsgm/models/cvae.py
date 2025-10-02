@@ -96,6 +96,9 @@ class BetaVAE(keras.Model):
         kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
         kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
         total_loss = reconstruction_loss + kl_loss
+        # Ensure total_loss is a scalar for PyTorch backward()
+        if hasattr(total_loss, 'shape') and len(total_loss.shape) > 0:
+            total_loss = ops.mean(total_loss)
         self.zero_grad()
         total_loss.backward()
 
@@ -204,7 +207,8 @@ class cBetaVAE(keras.Model):
         """
         #  keras 3.0 support
         batch_size = ops.shape(labels)[0]
-        z = keras.random.normal((batch_size, self._seq_len, self.latent_dim), dtype=labels.dtype)
+        dtype = 'float32' if os.environ.get("KERAS_BACKEND") == "torch" else labels.dtype
+        z = keras.random.normal((batch_size, self._seq_len, self.latent_dim), dtype=dtype)
         decoder_input = self._get_decoder_input(z, labels)
         return (self.decoder(decoder_input), labels)
 
@@ -218,7 +222,12 @@ class cBetaVAE(keras.Model):
         :returns: Generated samples
         :rtype: tsgm.types.Tensor
         """
-        X, labels = data
+        # Handle both single tensor and tuple of (X, labels)
+        if isinstance(data, (list, tuple)) and len(data) == 2:
+            X, labels = data
+        else:
+            # During model building, just return the input
+            return data
         encoder_input = self._get_encoder_input(X, labels)
         z_mean, _, _ = self.encoder(encoder_input)
         decoder_input = self._get_decoder_input(z_mean, labels)
@@ -236,6 +245,8 @@ class cBetaVAE(keras.Model):
 
     def _get_encoder_input(self, X: tsgm.types.Tensor, labels: tsgm.types.Tensor) -> tsgm.types.Tensor:
         #  keras 3.0 support
+        if os.environ.get("KERAS_BACKEND") == "torch" and hasattr(labels, 'dtype'):
+            labels = ops.cast(labels, 'float32')
         if self._temporal:
             return ops.concatenate([X, labels[:, :, None]], axis=2)
         else:
@@ -244,6 +255,8 @@ class cBetaVAE(keras.Model):
 
     def _get_decoder_input(self, z: tsgm.types.Tensor, labels: tsgm.types.Tensor) -> tsgm.types.Tensor:
         #  keras 3.0 support
+        if os.environ.get("KERAS_BACKEND") == "torch" and hasattr(labels, 'dtype'):
+            labels = ops.cast(labels, 'float32')
         if self._temporal:
             rep_labels = labels[:, :, None]
         else:
@@ -285,14 +298,19 @@ class cBetaVAE(keras.Model):
         kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
         kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
         total_loss = reconstruction_loss + self.beta * kl_loss
-        self.optimizer.zero_grad()
+        # Ensure total_loss is a scalar for PyTorch backward()
+        if hasattr(total_loss, 'shape') and len(total_loss.shape) > 0:
+            total_loss = ops.mean(total_loss)
+        self.zero_grad()
         total_loss.backward()
 
         trainable_weights = [v for v in self.trainable_weights]
         gradients = [v.value.grad for v in trainable_weights]
 
         with torch.no_grad():
-            self.optimizer.apply(gradients, trainable_weights)
+            # Keras 3 expects (gradient, variable) pairs
+            grads_and_vars = list(zip(gradients, trainable_weights))
+            self.optimizer.apply_gradients(grads_and_vars)
 
         self.total_loss_tracker.update_state(total_loss)
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)

@@ -16,6 +16,25 @@ logger = logging.getLogger('monitors')
 logger.setLevel(logging.DEBUG)
 
 
+def _to_numpy(tensor):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(tensor, torch.Tensor):
+                return tensor.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(tensor, 'numpy'):
+        try:
+            return tensor.numpy()
+        except TypeError:
+            # Handle cases where .numpy() might fail (e.g., MPS tensors)
+            if hasattr(tensor, 'cpu'):
+                return tensor.cpu().numpy()
+    return np.asarray(tensor)
+
+
 class GANMonitor(keras.callbacks.Callback):
     """
     GANMonitor is a Keras callback for monitoring and visualizing generated samples during training.
@@ -85,7 +104,8 @@ class GANMonitor(keras.callbacks.Callback):
         generated_samples = self.model.generator(generator_input)
 
         for i in range(generated_samples.shape[0]):
-            label = np.argmax(labels[i][None, :], axis=1)
+            labels_np = _to_numpy(labels)
+            label = np.argmax(labels_np[i][None, :], axis=1)
             tsgm.utils.visualize_ts_lineplot(
                 generated_samples[i][None, :],
                 label, 1)  # TODO: update visualize_ts API
@@ -151,9 +171,12 @@ class VAEMonitor(keras.callbacks.Callback):
         labels = []
         for i in range(self._output_dim):
             if not len(labels):
-                labels = keras.utils.to_categorical([i], self._output_dim)
+                # Use float32 for MPS compatibility
+                labels = keras.utils.to_categorical([i], self._output_dim).astype('float32')
             else:
-                labels = ops.concatenate((labels, keras.utils.to_categorical([i], self._output_dim)), 0)
+                # Use float32 for MPS compatibility
+                new_label = keras.utils.to_categorical([i], self._output_dim).astype('float32')
+                labels = ops.concatenate((labels, new_label), 0)
 
         labels = ops.repeat(labels, self._num_samples, axis=0)
         generated_images, _ = self.model.generate(labels)
@@ -161,7 +184,7 @@ class VAEMonitor(keras.callbacks.Callback):
         for i in range(self._output_dim * self._num_samples):
             sns.lineplot(
                 x=range(0, generated_images[i].shape[0]),
-                y=ops.squeeze(generated_images[i]).numpy()
+                y=_to_numpy(ops.squeeze(generated_images[i]))
             )
             if self._save:
                 plt.savefig(os.path.join(self._save_path, "epoch_{}_sample_{}".format(epoch, i)))

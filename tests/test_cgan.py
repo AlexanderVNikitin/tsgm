@@ -27,7 +27,8 @@ def _gen_dataset(seq_len: int, feature_dim: int, batch_size: int):
         dataset = backend.data.Dataset.from_tensor_slices(X_train)
         dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     elif os.environ.get("KERAS_BACKEND") == "torch":
-        dataset = backend.utils.data.TensorDataset(X_train)
+        X_train_tensor = backend.from_numpy(X_train)
+        dataset = backend.utils.data.TensorDataset(X_train_tensor)
         dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataset
 
@@ -44,7 +45,9 @@ def _gen_cond_dataset(seq_len: int, batch_size: int):
         dataset = backend.data.Dataset.from_tensor_slices((X_train, y))
         dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     elif os.environ.get("KERAS_BACKEND") == "torch":
-        dataset = backend.utils.data.TensorDataset(X_train, y)
+        X_train_tensor = backend.from_numpy(X_train)
+        y_tensor = backend.from_numpy(y)
+        dataset = backend.utils.data.TensorDataset(X_train_tensor, y_tensor)
         dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataset, y
 
@@ -61,7 +64,9 @@ def _gen_t_cond_dataset(seq_len: int, batch_size: int):
         dataset = backend.data.Dataset.from_tensor_slices((X_train, y))
         dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     elif os.environ.get("KERAS_BACKEND") == "torch":
-        dataset = backend.utils.data.TensorDataset(X_train, y)
+        X_train_tensor = backend.from_numpy(X_train)
+        y_tensor = backend.from_numpy(y)
+        dataset = backend.utils.data.TensorDataset(X_train_tensor, y_tensor)
         dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataset, y
 
@@ -126,7 +131,16 @@ def test_cgan():
     assert cond_gan.discriminator is not None
 
     # Check generation
-    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    # Handle PyTorch DataLoader vs TensorFlow dataset
+    if hasattr(dataset, 'as_numpy_iterator'):
+        # TensorFlow dataset
+        labels = next(dataset.as_numpy_iterator())[1][:10]
+    else:
+        # PyTorch DataLoader
+        batch = next(iter(dataset))
+        labels = batch[1][:10].cpu().numpy() if hasattr(batch[1], 'cpu') else batch[1][:10]
+
+    generated_samples = cond_gan.generate(labels)
     assert generated_samples.shape == (10, seq_len, 1)
 
 
@@ -160,7 +174,16 @@ def test_cgan_seq_len_33():
     assert cond_gan.discriminator is not None
 
     # Check generation
-    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    # Handle PyTorch DataLoader vs TensorFlow dataset
+    if hasattr(dataset, 'as_numpy_iterator'):
+        # TensorFlow dataset
+        labels = next(dataset.as_numpy_iterator())[1][:10]
+    else:
+        # PyTorch DataLoader
+        batch = next(iter(dataset))
+        labels = batch[1][:10].cpu().numpy() if hasattr(batch[1], 'cpu') else batch[1][:10]
+
+    generated_samples = cond_gan.generate(labels)
 
     assert generated_samples.shape == (10, seq_len, 1)
 
@@ -191,7 +214,16 @@ def test_temporal_cgan():
     assert cond_gan.discriminator is not None
 
     # Check generation
-    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    # Handle PyTorch DataLoader vs TensorFlow dataset
+    if hasattr(dataset, 'as_numpy_iterator'):
+        # TensorFlow dataset
+        labels = next(dataset.as_numpy_iterator())[1][:10]
+    else:
+        # PyTorch DataLoader
+        batch = next(iter(dataset))
+        labels = batch[1][:10].cpu().numpy() if hasattr(batch[1], 'cpu') else batch[1][:10]
+
+    generated_samples = cond_gan.generate(labels)
     assert generated_samples.shape == (10, seq_len, 1)
 
 
@@ -221,7 +253,16 @@ def test_temporal_cgan_seq_len_55():
     assert cond_gan.discriminator is not None
 
     # Check generation
-    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    # Handle PyTorch DataLoader vs TensorFlow dataset
+    if hasattr(dataset, 'as_numpy_iterator'):
+        # TensorFlow dataset
+        labels = next(dataset.as_numpy_iterator())[1][:10]
+    else:
+        # PyTorch DataLoader
+        batch = next(iter(dataset))
+        labels = batch[1][:10].cpu().numpy() if hasattr(batch[1], 'cpu') else batch[1][:10]
+
+    generated_samples = cond_gan.generate(labels)
     assert generated_samples.shape == (10, seq_len, 1)
 
 
@@ -274,7 +315,16 @@ def test_dp_compiler():
     assert cond_gan.discriminator is not None
 
     # Check generation
-    generated_samples = cond_gan.generate(next(dataset.as_numpy_iterator())[1][:10])
+    # Handle PyTorch DataLoader vs TensorFlow dataset
+    if hasattr(dataset, 'as_numpy_iterator'):
+        # TensorFlow dataset
+        labels = next(dataset.as_numpy_iterator())[1][:10]
+    else:
+        # PyTorch DataLoader
+        batch = next(iter(dataset))
+        labels = batch[1][:10].cpu().numpy() if hasattr(batch[1], 'cpu') else batch[1][:10]
+
+    generated_samples = cond_gan.generate(labels)
     assert generated_samples.shape == (10, 64, 1)    
 
 

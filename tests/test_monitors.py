@@ -2,10 +2,11 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 import random
+import numpy as np
 
 import keras
 from keras import ops
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 import tsgm
 
@@ -15,9 +16,10 @@ def _get_labels(num_samples, output_dim):
     for i in range(num_samples):
         sample = random.randint(0, output_dim - 1)
         if labels is None:
-            labels = keras.utils.to_categorical([sample], output_dim)
+            labels = keras.utils.to_categorical([sample], output_dim).astype('float32')
         else:
-            labels = ops.concatenate((labels, keras.utils.to_categorical([sample], output_dim)), 0)
+            new_label = keras.utils.to_categorical([sample], output_dim).astype('float32')
+            labels = ops.concatenate((labels, new_label), 0)
     return labels
 
 
@@ -50,7 +52,9 @@ def test_vaemonitor(save, monkeypatch):
     
     # Create mock model and patch the model property for Keras 3.0 compatibility
     mock_model = MagicMock()
-    mock_model.generate = lambda x: (x[:, 0][:, None], None)
+    # Create mock tensor with proper shape [num_samples*output_dim, seq_len, feat_dim]
+    mock_generated = np.random.randn(n_samples * n_classes, 10, 1).astype('float32')
+    mock_model.generate = lambda x: (ops.convert_to_tensor(mock_generated), None)
     
     with patch.object(type(vae_monitor), 'model', new=mock_model):
         vae_monitor.on_epoch_end(epoch=2)

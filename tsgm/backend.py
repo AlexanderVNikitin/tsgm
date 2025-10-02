@@ -1,5 +1,14 @@
 import os
 
+# Enable MPS fallback for unsupported operations early (like linalg_qr in LSTM)
+# This must be set before importing PyTorch for the first time
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
+# For TimeGAN compatibility, check if we should disable MPS entirely
+if os.environ.get("DISABLE_MPS_FOR_TIMEGAN", "0") == "1":
+    # Completely disable MPS to avoid broadcasting and device issues
+    os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+
 # Set the Keras backend before importing Keras anywhere
 # This must be done before any Keras imports
 
@@ -87,6 +96,11 @@ try:
     torch = torch_module
     import torch.utils
     import torch.utils.data
+
+    # Set default tensor type to float32 for MPS compatibility
+    if torch.backends.mps.is_available():
+        torch.set_default_dtype(torch.float32)
+
     if not _has_jax and not _has_tensorflow:
         Keras_Dataset = torch.utils.data.DataLoader
     _has_torch = True

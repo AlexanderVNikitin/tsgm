@@ -1,5 +1,6 @@
 import abc
 import copy
+import os
 import sklearn
 from scipy import integrate
 from tqdm import tqdm
@@ -13,6 +14,25 @@ import tsgm
 
 # Lazy loading of distributions
 distributions = None
+
+
+def _to_numpy(x):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(x, torch.Tensor):
+                return x.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(x, 'numpy'):
+        try:
+            return x.numpy()
+        except TypeError:
+            # Handle cases where .numpy() might fail
+            if hasattr(x, 'cpu'):
+                return x.cpu().numpy()
+    return np.asarray(x)
 
 
 def _get_distributions():
@@ -299,9 +319,9 @@ class SineConstSimulator(ModelBasedSimulator):
             D = self._data.D
             if isinstance(D, int):
                 D = (D,)  # for PyTorch compatibility
-            scales = self._scale.sample(D)
-            consts = self._const.sample(D)
-            shifts = self._shift.sample(D)
+            scales = _to_numpy(self._scale.sample(D))
+            consts = _to_numpy(self._const.sample(D))
+            shifts = _to_numpy(self._shift.sample(D))
             if np.random.random() < 0.5:
                 times = np.repeat(np.arange(0, self._data.T, 1)[:, None], self._data.D, axis=1) / 10
                 result_X.append(np.sin(times + shifts) * scales)
