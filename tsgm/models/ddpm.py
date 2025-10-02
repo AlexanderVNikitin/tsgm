@@ -1,6 +1,7 @@
 """
 The implementation is based on Keras DDPM implementation: https://keras.io/examples/generative/ddpm/
 """
+import os
 import numpy as np
 import keras
 from keras import ops
@@ -285,7 +286,6 @@ class DDPM(keras.Model):
         t = ops.expand_dims(t, axis=-1)
 
         # Standard Keras 3 gradient computation approach
-        import os
         if os.environ.get("KERAS_BACKEND") == "torch":
             # PyTorch backend approach (based on CVAE implementation)
             # Clear gradients
@@ -372,9 +372,7 @@ class DDPM(keras.Model):
             tt = ops.expand_dims(tt, axis=-1)  # Match expected shape (batch_size, 1)
 
             # Ensure all tensors are on the same device (MPS compatibility)
-            import os
             if os.environ.get("KERAS_BACKEND") == "torch":
-                import torch
                 device = samples.device if hasattr(samples, 'device') else 'cpu'
                 if hasattr(tt, 'device') and tt.device != device:
                     tt = tt.to(device)

@@ -132,7 +132,7 @@ STATE_POPULATION = {
 def aggregate_by_weeks_max(df: pd.DataFrame) -> pd.DataFrame:
     df['date'] = pd.to_datetime(df['date'])  # + pd.to_timedelta(7, unit='d')
     df = df.groupby(['state', pd.Grouper(key='date', freq='W-MON')])\
-           .agg({"cases": max, "deaths": max})\
+           .agg({"cases": "max", "deaths": "max"})\
            .reset_index()\
            .sort_values('date')
     return df

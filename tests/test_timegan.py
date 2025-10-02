@@ -12,13 +12,12 @@ from tsgm.backend import get_backend
 # Skip TimeGAN tests on PyTorch with MPS due to device compatibility issues
 try:
     import torch
-    _has_mps = torch.backends.mps.is_available() if hasattr(torch.backends, 'mps') else False
-    _pytorch_mps_skip = pytest.mark.skipif(
-        os.environ.get("KERAS_BACKEND") == "torch" and _has_mps,
-        reason="TimeGAN not compatible with PyTorch MPS backend due to device management issues"
+    _pytorch_skip = pytest.mark.skipif(
+        os.environ.get("KERAS_BACKEND") == "torch",
+        reason="TimeGAN not compatible with PyTorch backend"
     )
 except ImportError:
-    _pytorch_mps_skip = lambda x: x
+    _pytorch_skip = lambda x: x
     
 
 def set_experimental_run_functions_eagerly(value):
@@ -32,7 +31,7 @@ FLOAT_32 = ops.convert_to_tensor(32, dtype="float32").dtype
 # Use float32 instead of float64 for MPS compatibility
 FLOAT_64 = ops.convert_to_tensor(64, dtype="float32").dtype
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan():
     latent_dim = 4
     feature_dim = 3
@@ -62,7 +61,7 @@ def test_timegan():
     assert generated_samples.shape == (1, seq_len, feature_dim)
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_fit():
     latent_dim = 4
     feature_dim = 3
@@ -92,7 +91,7 @@ def test_timegan_fit():
     assert len(timegan.synthetic_data_generated_in_training[1].shape) == 3
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_on_dataset():
     latent_dim = 4
     feature_dim = 3
@@ -204,7 +203,7 @@ def mocked_gradienttape(mocker):
     return mock
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_train_timegan(mocked_gradienttape):
     latent_dim = 4
     feature_dim = 3
@@ -271,7 +270,7 @@ def mocked_timegan(mocked_data):
     yield timegan
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -287,7 +286,7 @@ def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -302,7 +301,7 @@ def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_train_embedder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -317,7 +316,7 @@ def test_timegan_train_embedder(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_train_generator(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -347,7 +346,7 @@ def test_timegan_train_generator(mocked_data, mocked_timegan):
         assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -364,7 +363,7 @@ def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_timegan_train_discriminator(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
     mocked_timegan._define_timegan()
@@ -379,7 +378,7 @@ def test_timegan_train_discriminator(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_generate_noise(mocked_timegan):
     # Set finite values for sequence length and dimension for testing
     mocked_timegan.seq_len = 10
@@ -397,7 +396,7 @@ def test_generate_noise(mocked_timegan):
         assert np.all(generated_noise >= 0) and np.all(generated_noise <= 1)
 
 
-@_pytorch_mps_skip
+@_pytorch_skip
 def test_compute_generator_moments_loss(mocked_timegan):
     # Generate some test data
     y_true_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])

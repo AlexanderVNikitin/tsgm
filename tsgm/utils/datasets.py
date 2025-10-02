@@ -349,8 +349,17 @@ def get_power_consumption() -> npt.NDArray:
     file_utils.download_all_resources(url, path, resources=[("household_power_consumption.zip", None)])
 
     df = pd.read_csv(
-        os.path.join(path, "household_power_consumption.txt"), sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
-        low_memory=False, na_values=['nan', '?'], index_col='dt')
+        os.path.join(path, "household_power_consumption.txt"), sep=';',
+        low_memory=False, na_values=['nan', '?']
+    )
+    # Combine date and time columns explicitly and parse deterministically
+    dt = pd.to_datetime(
+        df['Date'].astype(str) + ' ' + df['Time'].astype(str),
+        format='%d/%m/%Y %H:%M:%S', errors='coerce'
+    )
+    df.index = dt
+    df.drop(columns=['Date', 'Time'], inplace=True)
+    df.index.name = 'dt'
     return df.to_numpy()
 
 

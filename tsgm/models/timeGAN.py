@@ -207,7 +207,6 @@ class TimeGAN(keras.Model):
         self._mse = emb_loss if emb_loss is not None else keras.losses.MeanSquaredError()
         self._bce = clf_loss if clf_loss is not None else keras.losses.BinaryCrossentropy()
 
-
     def _move_models_to_device(self) -> None:
         """Move all models to the configured device (CPU for MPS compatibility)."""
         if self._device == "cpu" and _has_torch and os.environ.get("KERAS_BACKEND") == "torch":
@@ -822,6 +821,7 @@ class TimeGAN(keras.Model):
             class NoiseDataset(torch.utils.data.IterableDataset):
                 def __init__(self, generator_fn):
                     self.generator_fn = generator_fn
+
                 def __iter__(self):
                     return self.generator_fn()
 
@@ -848,7 +848,7 @@ class TimeGAN(keras.Model):
             dataset = torch.utils.data.TensorDataset(data)
             return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
-    def fit(
+    def fit(  # noqa: C901 - suppress cyclomatic complexity warning for this function
         self,
         data: T.Union[TensorLike, Keras_Dataset],
         epochs: int,
@@ -1004,7 +1004,6 @@ class TimeGAN(keras.Model):
                 self.synthetic_data_generated_in_training[epoch] = _sample
 
         logger.info("Finished Joint Training")
-        return
 
     def generate(self, n_samples: int) -> TensorLike:
         """

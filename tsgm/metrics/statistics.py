@@ -23,12 +23,14 @@ def _to_numpy(ts: tsgm.types.Tensor) -> np.ndarray:
         try:
             import tensorflow as tf
             if hasattr(ts, 'numpy'):
+                tf.__version__
                 return ts.numpy()
         except ImportError:
             pass
     elif os.environ.get("KERAS_BACKEND") == "jax":
         try:
             import jax.numpy as jnp
+            jnp.__version__
             if hasattr(ts, '__array__'):
                 return np.array(ts)
         except ImportError:
