@@ -141,10 +141,33 @@ def test_get_power_consumption_second_call(mocker):
     assert file_download_mock.call_count == 0
 
 
-def test_get_stock_data():
+def test_get_stock_data(mocker):
+    # Mock yfinance download to return fake stock data
+    mock_df = mock.MagicMock()
+    mock_df.empty = False
+    mock_df.to_numpy.return_value = np.array([
+        [150.0, 155.0, 149.0, 152.0, 1000000, 152.0],  # OHLCVA data
+        [152.0, 156.0, 151.0, 154.0, 1100000, 154.0],
+        [154.0, 158.0, 153.0, 157.0, 1200000, 157.0]
+    ])
+
+    mocker.patch('tsgm.utils.datasets.yf.download', return_value=mock_df)
+
     X = tsgm.utils.get_stock_data("AAPL")
 
     assert len(X.shape) == 3
+    assert X.shape == (1, 3, 6)  # batch_size=1, time_steps=3, features=6
+
+
+def test_get_stock_data_invalid_ticker(mocker):
+    # Mock yfinance download to return empty dataframe for invalid ticker
+    mock_df = mock.MagicMock()
+    mock_df.empty = True
+
+    mocker.patch('tsgm.utils.datasets.yf.download', return_value=mock_df)
+
+    with pytest.raises(ValueError, match="Cannot download ticker INVALID"):
+        tsgm.utils.get_stock_data("INVALID")
 
 
 def test_get_energy_data():
