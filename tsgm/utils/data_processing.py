@@ -1,5 +1,6 @@
 import numpy as np
-from tensorflow.python.types.core import TensorLike
+#  make TensorLike more flexible
+from tsgm.types import Tensor as TensorLike
 import typing as T
 
 

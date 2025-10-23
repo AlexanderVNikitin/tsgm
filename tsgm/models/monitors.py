@@ -1,8 +1,8 @@
 import os
 import logging
-import tensorflow as tf
 import numpy as np
-from tensorflow import keras
+import keras
+from keras import ops
 import typing as T
 
 import seaborn as sns
@@ -14,6 +14,25 @@ import tsgm.utils
 
 logger = logging.getLogger('monitors')
 logger.setLevel(logging.DEBUG)
+
+
+def _to_numpy(tensor):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(tensor, torch.Tensor):
+                return tensor.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(tensor, 'numpy'):
+        try:
+            return tensor.numpy()
+        except TypeError:
+            # Handle cases where .numpy() might fail (e.g., MPS tensors)
+            if hasattr(tensor, 'cpu'):
+                return tensor.cpu().numpy()
+    return np.asarray(tensor)
 
 
 class GANMonitor(keras.callbacks.Callback):
@@ -72,7 +91,7 @@ class GANMonitor(keras.callbacks.Callback):
         :type logs: dict
         """
         if self._mode in ["clf", "reg"]:
-            random_latent_vectors = tf.random.normal(shape=(self._num_samples, self._latent_dim))
+            random_latent_vectors = keras.random.normal(shape=(self._num_samples, self._latent_dim))
         elif self._mode == "temporal":
             raise NotImplementedError
             # random_latent_vectors = tf.random.normal(shape=(self._output_dim * self._num_samples, self._latent_dim))
@@ -81,11 +100,12 @@ class GANMonitor(keras.callbacks.Callback):
 
         labels = self._labels[:self._num_samples]
 
-        generator_input = tf.concat([random_latent_vectors, labels], 1)
+        generator_input = ops.concatenate([random_latent_vectors, labels], 1)
         generated_samples = self.model.generator(generator_input)
 
         for i in range(generated_samples.shape[0]):
-            label = np.argmax(labels[i][None, :], axis=1)
+            labels_np = _to_numpy(labels)
+            label = np.argmax(labels_np[i][None, :], axis=1)
             tsgm.utils.visualize_ts_lineplot(
                 generated_samples[i][None, :],
                 label, 1)  # TODO: update visualize_ts API
@@ -151,17 +171,20 @@ class VAEMonitor(keras.callbacks.Callback):
         labels = []
         for i in range(self._output_dim):
             if not len(labels):
-                labels = keras.utils.to_categorical([i], self._output_dim)
+                # Use float32 for MPS compatibility
+                labels = keras.utils.to_categorical([i], self._output_dim).astype('float32')
             else:
-                labels = tf.concat((labels, keras.utils.to_categorical([i], self._output_dim)), 0)
+                # Use float32 for MPS compatibility
+                new_label = keras.utils.to_categorical([i], self._output_dim).astype('float32')
+                labels = ops.concatenate((labels, new_label), 0)
 
-        labels = tf.repeat(labels, self._num_samples, axis=0)
+        labels = ops.repeat(labels, self._num_samples, axis=0)
         generated_images, _ = self.model.generate(labels)
 
         for i in range(self._output_dim * self._num_samples):
             sns.lineplot(
                 x=range(0, generated_images[i].shape[0]),
-                y=tf.squeeze(generated_images[i]).numpy()
+                y=_to_numpy(ops.squeeze(generated_images[i]))
             )
             if self._save:
                 plt.savefig(os.path.join(self._save_path, "epoch_{}_sample_{}".format(epoch, i)))

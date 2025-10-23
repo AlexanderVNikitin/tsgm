@@ -14,8 +14,8 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.io.arff
 
-from tensorflow import keras
-from tensorflow.python.types.core import TensorLike
+import keras
+from tsgm.types import Tensor as TensorLike
 
 from tsgm.utils import covid19_data_utils
 from tsgm.utils import file_utils
@@ -349,8 +349,17 @@ def get_power_consumption() -> npt.NDArray:
     file_utils.download_all_resources(url, path, resources=[("household_power_consumption.zip", None)])
 
     df = pd.read_csv(
-        os.path.join(path, "household_power_consumption.txt"), sep=';', parse_dates={'dt' : ['Date', 'Time']}, infer_datetime_format=True,
-        low_memory=False, na_values=['nan', '?'], index_col='dt')
+        os.path.join(path, "household_power_consumption.txt"), sep=';',
+        low_memory=False, na_values=['nan', '?']
+    )
+    # Combine date and time columns explicitly and parse deterministically
+    dt = pd.to_datetime(
+        df['Date'].astype(str) + ' ' + df['Time'].astype(str),
+        format='%d/%m/%Y %H:%M:%S', errors='coerce'
+    )
+    df.index = dt
+    df.drop(columns=['Date', 'Time'], inplace=True)
+    df.index.name = 'dt'
     return df.to_numpy()
 
 
@@ -405,11 +414,7 @@ def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
     :return: A tuple containing the training data, training labels, testing data, and testing labels.
     :rtype: tuple[TensorLike, TensorLike, TensorLike, TensorLike]
     """
-    cur_path = os.path.dirname(__file__)
-    path_to_folder = os.path.join(cur_path, "../../data/")
-    path_to_resource = os.path.join(path_to_folder, "mnist.npz")
-
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data(path_to_resource)
+    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
     x_train = x_train.reshape(-1, 28 * 28, 1)
     x_test = x_test.reshape(-1, 28 * 28, 1)
 

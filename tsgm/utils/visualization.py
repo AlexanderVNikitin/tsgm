@@ -4,12 +4,32 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-import tensorflow as tf
-
+import os
+from tsgm.backend import get_backend
 import tsgm
 
 
+backend = get_backend()
 DEFAULT_PALETTE_TSNE = {"hist": "red", "gen": "blue"}
+
+
+def _to_numpy(tensor):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(tensor, torch.Tensor):
+                return tensor.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(tensor, 'numpy'):
+        try:
+            return tensor.numpy()
+        except TypeError:
+            # Handle cases where .numpy() might fail (e.g., MPS tensors)
+            if hasattr(tensor, 'cpu'):
+                return tensor.cpu().numpy()
+    return np.asarray(tensor)
 
 
 def visualize_dataset(
@@ -30,7 +50,7 @@ def visualize_dataset(
     if isinstance(dataset, tsgm.dataset.Dataset):
         X = dataset.X
         y = dataset.y
-    elif isinstance(dataset, np.ndarray) or tf.is_tensor(dataset):
+    elif isinstance(dataset, np.ndarray) or backend.is_tensor(dataset):
         X = dataset
         y = None
     else:
@@ -54,6 +74,7 @@ def visualize_dataset(
     plt.title("Generated data")
 
     plt.savefig(path)
+    plt.close()
 
 
 def visualize_tsne_unlabeled(
@@ -127,6 +148,7 @@ def visualize_tsne_unlabeled(
         markerscale=markerscale,
     )
     plt.savefig(path)
+    plt.close()
 
 
 def visualize_tsne(
@@ -191,6 +213,7 @@ def visualize_tsne(
     plt.box(False)
     plt.axis("off")
     plt.savefig(path)
+    plt.close()
 
 
 def visualize_ts(ts: tsgm.types.Tensor, num: int = 5) -> None:
@@ -260,27 +283,32 @@ def visualize_ts_lineplot(
     for i, sample_id in enumerate(ids):
         if not unite_features:
             feature_id = np.random.randint(ts.shape[2])
+            ts_np = _to_numpy(ts)
             sns.lineplot(
-                x=range(ts.shape[1]),
-                y=ts[sample_id, :, feature_id],
+                x=range(ts_np.shape[1]),
+                y=ts_np[sample_id, :, feature_id],
                 ax=axs[i],
                 label=rf"feature \#{feature_id}",
             )
         else:
             for feat_id in range(ts.shape[2]):
+                ts_np = _to_numpy(ts)
                 sns.lineplot(
-                    x=range(ts.shape[1]), y=ts[sample_id, :, feat_id], ax=axs[i],
+                    x=range(ts_np.shape[1]), y=ts_np[sample_id, :, feat_id], ax=axs[i],
                     label="Generated"
                 )
         if ys is not None:
             axs[i].tick_params(labelsize=tick_size, which="both")
-            if len(ys.shape) == 1:
-                axs[i].set_title(ys[sample_id], fontsize=legend_fontsize)
-            elif len(ys.shape) == 2:
+            ys_np = _to_numpy(ys)
+            if len(ys_np.shape) == 1:
+                axs[i].set_title(ys_np[sample_id], fontsize=legend_fontsize)
+            elif len(ys_np.shape) == 2:
                 ax2 = axs[i].twinx()
+                ts_np = _to_numpy(ts)
+                ys_np = _to_numpy(ys)
                 sns.lineplot(
-                    x=range(ts.shape[1]),
-                    y=ys[sample_id],
+                    x=range(ts_np.shape[1]),
+                    y=ys_np[sample_id],
                     ax=ax2,
                     color="g",
                     label="Condition",
@@ -394,3 +422,4 @@ def visualize_training_loss(
     ax.xaxis.set_ticks_position("bottom")
 
     plt.savefig(path, dpi=80)
+    plt.close(fig)

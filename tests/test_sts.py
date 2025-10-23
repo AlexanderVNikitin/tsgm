@@ -1,10 +1,12 @@
 import pytest
+import os
 
 import numpy as np
 
 import tsgm
 
 
+@pytest.mark.skipif(os.environ.get("KERAS_BACKEND") == "torch", reason="STS model only available in TensorFlow backend")
 def test_sts():
     ts = np.sin(np.arange(0, 10, 0.1))[None, :, None]
     sine_ds = tsgm.dataset.Dataset(ts, y=None)

@@ -2,14 +2,16 @@ import abc
 import math
 import tsgm
 import typing as T
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+#  import keras3.0 here, the LocallyConnected1D is not supported in keras3.0, I replace it with Conv1D
+import keras
+from keras import layers
+#  replace tf with ops in keras3.0
+from keras import ops
 
 from prettytable import PrettyTable
 
 
-class Sampling(tf.keras.layers.Layer):
+class Sampling(keras.layers.Layer):
     """
     Custom Keras layer for sampling from a latent space.
 
@@ -28,8 +30,10 @@ class Sampling(tf.keras.layers.Layer):
         :rtype: tsgm.types.Tensor
         """
         z_mean, z_log_var = inputs
-        epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        #  random noise for keras3.0
+        epsilon = keras.random.normal(shape=ops.shape(z_mean))
+        #  ops for keras3.0
+        return z_mean + ops.exp(0.5 * z_log_var) * epsilon
 
 
 class Architecture(abc.ABC):
@@ -188,32 +192,25 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
 
-        dense_shape = self._encoder.layers[-6].output_shape[1] * self._seq_len
+        # In Keras 3.0, compute dense_shape based on encoder architecture
+        # The last Conv1D layer has 64 filters, and sequence length is preserved
+        dense_shape = 64 * self._seq_len
 
         x = layers.Dense(dense_shape, activation="relu")(x)
 
         x = layers.Reshape((self._seq_len, dense_shape // self._seq_len))(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        # Use Conv1D layers instead of Conv1DTranspose to avoid PyTorch compatibility issues
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(64, 2, activation="relu", strides=1, padding="same")(
-            x
-        )
+        x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        x = layers.Conv1DTranspose(
-            64, 10, activation="relu", strides=1, padding="same"
-        )(x)
+        x = layers.Conv1D(64, 10, activation="relu", padding="same")(x)
         x = layers.Dropout(rate=0.2)(x)
-        decoder_outputs = layers.Conv1DTranspose(
+        decoder_outputs = layers.Conv1D(
             self._feat_dim, 3, activation="sigmoid", padding="same"
         )(x)
         decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
@@ -266,20 +263,20 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
             )
         )
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(inputs)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        d_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="sigmoid")(x)
+        d_output = layers.Conv1D(self._feat_dim, 1, activation="sigmoid")(x)
 
         decoder = keras.Model(inputs, d_output, name="decoder")
         return decoder
@@ -318,16 +315,16 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
     def _build_discriminator(self) -> keras.models.Model:
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.Conv1D(64, 3, strides=2, padding="same")(d_input)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Dropout(rate=0.2)(x)
         x = layers.GlobalAvgPool1D()(x)
         d_output = layers.Dense(1, activation="sigmoid")(x)
@@ -337,16 +334,16 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
     def _build_generator(self) -> keras.models.Model:
         g_input = keras.Input((self.generator_in_channels,))
         x = layers.Dense(8 * 8 * self._seq_len)(g_input)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Reshape((self._seq_len, 64))(x)
         x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Conv1DTranspose(128, 4, strides=2, padding="same")(x)
-        x = layers.LeakyReLU(alpha=0.2)(x)
+        x = layers.LeakyReLU(negative_slope=0.2)(x)
         x = layers.Conv1D(1, 8, padding="same")(x)
         x = layers.LSTM(256, return_sequences=True)(x)
 
@@ -355,7 +352,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -426,7 +423,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
 
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
@@ -501,7 +498,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation="tanh")(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -700,7 +697,7 @@ class BasicRecurrentArchitecture(Architecture):
         return cell
 
     def _make_network(self, model: keras.models.Model, activation: str, return_sequences: bool) -> keras.models.Model:
-        _cells = tf.keras.layers.StackedRNNCells(
+        _cells = keras.layers.StackedRNNCells(
             [self._rnn_cell() for _ in range(self.n_layers)],
             name=f"{self.network_type}_x{self.n_layers}",
         )
@@ -866,7 +863,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
-        g_output = layers.LocallyConnected1D(self._feat_dim, 1, activation=output_activation)(x)
+        g_output = layers.Conv1D(self._feat_dim, 1, activation=output_activation)(x)
         generator = keras.Model(g_input, g_output, name="generator")
         return generator
 
@@ -917,15 +914,22 @@ class WaveGANArchitecture(BaseGANArchitecture):
         if rad <= 0 or x.shape[1] <= 1:
             return x
 
-        b, x_len, nch = x.get_shape().as_list()
-
-        phase = tf.random.uniform([], minval=-rad, maxval=rad + 1, dtype=tf.int32)
-        pad_l, pad_r = tf.maximum(phase, 0), tf.maximum(-phase, 0)
+        x_len, nch = ops.shape(x)[1], ops.shape(x)[2]
+        #  for keras 3.0 - manual reflect padding to avoid ops.pad issues
+        phase = keras.random.randint([], minval=-rad, maxval=rad + 1, dtype="int32")
+        pad_l, pad_r = ops.maximum(phase, 0), ops.maximum(-phase, 0)
         phase_start = pad_r
-        x = tf.pad(x, [[0, 0], [pad_l, pad_r], [0, 0]], mode="reflect")
+
+        # Manual reflect padding
+        if pad_l > 0:
+            left_pad = ops.flip(x[:, 1:pad_l + 1], axis=1)
+            x = ops.concatenate([left_pad, x], axis=1)
+        if pad_r > 0:
+            right_pad = ops.flip(x[:, -(pad_r + 1):-1], axis=1)
+            x = ops.concatenate([x, right_pad], axis=1)
 
         x = x[:, phase_start:phase_start + x_len]
-        x.set_shape([b, x_len, nch])
+        x = ops.reshape(x, (-1, x_len, nch))
 
         return x
 
@@ -969,13 +973,15 @@ class TimeEmbedding(layers.Layer):
         super().__init__(**kwargs)
         self.dim = dim
         self.half_dim = dim // 2
-        self.emb = math.log(10000) / (self.half_dim - 1)
-        self.emb = tf.exp(tf.range(self.half_dim, dtype=tf.float32) * -self.emb)
+        self.emb_coeff = math.log(10000) / (self.half_dim - 1)
 
     def call(self, inputs: tsgm.types.Tensor) -> tsgm.types.Tensor:
-        inputs = tf.cast(inputs, dtype=tf.float32)
-        emb = inputs[:, None] * self.emb[None, :]
-        emb = tf.concat([tf.sin(emb), tf.cos(emb)], axis=-1)
+        inputs = ops.cast(inputs, dtype="float32")
+        # Create embedding coefficients in call() for proper device handling
+        emb_range = ops.arange(self.half_dim, dtype="float32")
+        emb = ops.exp(emb_range * -self.emb_coeff)
+        emb = inputs[:, None] * emb[None, :]
+        emb = ops.concatenate([ops.sin(emb), ops.cos(emb)], axis=-1)
 
         return emb
 

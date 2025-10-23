@@ -10,7 +10,8 @@ from sklearn.metrics import precision_score
 from scipy.stats import entropy
 from tqdm import tqdm
 from scipy.spatial.distance import pdist, squareform
-from tensorflow.python.types.core import TensorLike
+#  make TensorLike more flexible
+from tsgm.types import Tensor as TensorLike
 
 import tsgm
 
@@ -531,7 +532,7 @@ class PredictiveParityMetric:
         unique_groups_hist, unique_groups_synth = set(groups_hist), set(groups_synth)
         all_groups = unique_groups_hist | unique_groups_synth
         if len(all_groups) - len(unique_groups_hist) - len(unique_groups_synth) != 0:
-            logger.warn("Groups in historical and synthetic data are not entirely identical.")
+            logger.warning("Groups in historical and synthetic data are not entirely identical.")
         result = {}
         for g in all_groups:
             y_true_g_hist, y_pred_g_hist = y_true_hist[groups_hist == g], y_pred_hist[groups_hist == g]

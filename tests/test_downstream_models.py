@@ -1,9 +1,11 @@
 import pytest
 import copy
 import itertools
-from tensorflow import keras
-
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import tsgm
+import keras
 
 
 def _get_gunpoint_dataset():
@@ -80,7 +82,7 @@ def test_classification_blocks_3_layers():
              keras.layers.Dropout(0.2)]
     blocks = list(itertools.chain(*[copy.deepcopy(block) for _ in range(3)]))
     for i, b in enumerate(blocks):
-        b._name = b._name + str(i)
+        b.name = b.name + str(i)
 
     model = tsgm.models.zoo["clf_block"](
         seq_len=seq_len, feat_dim=feat_dim,

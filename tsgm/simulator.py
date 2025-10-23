@@ -1,14 +1,45 @@
 import abc
 import copy
+import os
 import sklearn
 from scipy import integrate
 from tqdm import tqdm
 import typing as T
 import numpy as np
-import tensorflow_probability as tfp
-from tensorflow.python.types.core import TensorLike
 
+from tsgm.backend import get_distributions
+from tsgm.types import Tensor as TensorLike
 import tsgm
+
+
+# Lazy loading of distributions
+distributions = None
+
+
+def _to_numpy(x):
+    """Convert tensor to numpy array safely across backends."""
+    if os.environ.get("KERAS_BACKEND") == "torch":
+        try:
+            import torch
+            if isinstance(x, torch.Tensor):
+                return x.detach().cpu().numpy()
+        except ImportError:
+            pass
+    elif hasattr(x, 'numpy'):
+        try:
+            return x.numpy()
+        except TypeError:
+            # Handle cases where .numpy() might fail
+            if hasattr(x, 'cpu'):
+                return x.cpu().numpy()
+    return np.asarray(x)
+
+
+def _get_distributions():
+    global distributions
+    if distributions is None:
+        distributions = get_distributions()
+    return distributions
 
 
 class BaseSimulator(abc.ABC):
@@ -265,9 +296,11 @@ class SineConstSimulator(ModelBasedSimulator):
             max_scale (float): Maximum value for the scale parameter.
             max_const (float): Maximum value for the constant parameter.
         """
-        self._scale = tfp.distributions.Uniform(0, max_scale)
-        self._const = tfp.distributions.Uniform(0, max_const)
-        self._shift = tfp.distributions.Uniform(0, 2)
+        #  change to pdists usage
+        distributions = _get_distributions()
+        self._scale = distributions.Uniform(0, max_scale)
+        self._const = distributions.Uniform(0, max_const)
+        self._shift = distributions.Uniform(0, 2)
 
         super().set_params({"max_scale": max_scale, "max_const": max_const})
 
@@ -283,9 +316,12 @@ class SineConstSimulator(ModelBasedSimulator):
         """
         result_X, result_y = [], []
         for i in range(num_samples):
-            scales = self._scale.sample(self._data.D)
-            consts = self._const.sample(self._data.D)
-            shifts = self._shift.sample(self._data.D)
+            D = self._data.D
+            if isinstance(D, int):
+                D = (D,)  # for PyTorch compatibility
+            scales = _to_numpy(self._scale.sample(D))
+            consts = _to_numpy(self._const.sample(D))
+            shifts = _to_numpy(self._shift.sample(D))
             if np.random.random() < 0.5:
                 times = np.repeat(np.arange(0, self._data.T, 1)[:, None], self._data.D, axis=1) / 10
                 result_X.append(np.sin(times + shifts) * scales)
