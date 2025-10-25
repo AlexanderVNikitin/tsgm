@@ -879,9 +879,9 @@ class TimeGAN(keras.Model):
         ), "One of the loss functions is not defined. Please call .compile() to set them"
 
         # take tf.data.Dataset | torch.utils.data.Dataloader | TensorLike
-        if os.environ["KERAS_BACKEND"] == "tensorflow" and isinstance(data, Keras_Dataset):
+        if os.environ["KERAS_BACKEND"] == "tensorflow" and Keras_Dataset is not None and isinstance(data, Keras_Dataset):
             batches = iter(data.repeat())
-        elif os.environ["KERAS_BACKEND"] == "torch" and isinstance(data, Keras_Dataset):
+        elif os.environ["KERAS_BACKEND"] == "torch" and Keras_Dataset is not None and isinstance(data, Keras_Dataset):
             # Create repeating iterator for PyTorch DataLoader
             def repeating_iter():
                 while True:

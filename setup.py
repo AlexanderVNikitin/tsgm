@@ -69,24 +69,24 @@ setup(name='tsgm',
         "console_scripts": ["tsgm-gd=cli.gd:main", "tsgm-eval=cli.eval:main"],
       },
       install_requires=[
-          "scipy",
-          "numpy",          
-          "networkx",
-          "seaborn",
-          "scikit-learn",
-          "prettytable",
+          "scipy>=1.9.0",
+          "numpy==1.26.4",
+          "networkx>=3.1,<3.3",
+          "seaborn==0.13.2",
+          "scikit-learn==1.6.1",
+          "prettytable==3.16.0",
           "antropy==0.1.6",
           "yfinance==0.2.61",
-          "tqdm",
-          "dtaidistance >= 2.3.10",
-          "keras >= 3.0.0",
-          "statsmodels"
+          "tqdm==4.67.1",
+          "dtaidistance==2.3.13",
+          "keras==3.10.0",
+          "statsmodels==0.14.5"
       ],
       extras_require={
-          "tensorflow": ["tensorflow >= 2.16.0", "tensorflow-probability >= 0.24.0", "tf-keras"],
-          "torch": ["torch", "torchvision"],
-          "jax": ["jax", "jaxlib"],
-          "all": ["tensorflow >= 2.16.0", "tensorflow-probability >= 0.24.0", "tf-keras", "torch", "torchvision", "jax", "jaxlib"]
+          "tensorflow": ["tensorflow==2.20.0", "tensorflow-probability==0.25.0", "tf-keras==2.20.1"],
+          "torch": ["torch==2.6.0", "torchvision==0.21.0"],
+          "jax": ["jax==0.4.30", "jaxlib==0.4.30"],
+          "all": ["tensorflow==2.20.0", "tensorflow-probability==0.25.0", "tf-keras==2.20.1", "torch==2.6.0", "torchvision==0.21.0", "jax==0.4.30", "jaxlib==0.4.30"]
       },
       package_data={'tsgm': ['README.md']},
       packages=find_packages())
