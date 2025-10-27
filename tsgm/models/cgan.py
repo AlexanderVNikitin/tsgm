@@ -587,6 +587,8 @@ class ConditionalGAN(keras.Model):
             return self.train_step_tf(backend, data)
         elif os.environ.get("KERAS_BACKEND") == "torch":
             return self.train_step_torch(backend, data)
+        else:
+            raise ValueError(f"Unsupported backend: {os.environ.get('KERAS_BACKEND')}")
 
     def generate(self, labels: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """

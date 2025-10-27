@@ -262,16 +262,17 @@ class DDPM(keras.Model):
         self.seq_len = None
         self.feat_dim = None
 
-    def train_step(self, images: TensorLike) -> T.Dict:
+    def train_step(self, data: TensorLike) -> T.Dict:
         """
         Performs a single training step on a batch of images.
 
         Args:
-            images: A batch of images to train on.
+            data: A batch of images to train on.
 
         Returns:
             A dictionary containing the loss value for the training step.
         """
+        images = data
         self.seq_len, self.feat_dim = images.shape[1], images.shape[2]
 
         # 1. Get the batch size
@@ -381,10 +382,12 @@ class DDPM(keras.Model):
                 [samples, tt], verbose=0, batch_size=n_samples
             )
 
-            # Ensure pred_noise is on the same device
+            # Convert pred_noise back to tensor if needed for device compatibility
             if os.environ.get("KERAS_BACKEND") == "torch":
-                if hasattr(pred_noise, 'device') and pred_noise.device != device:
-                    pred_noise = pred_noise.to(device)
+                if isinstance(pred_noise, np.ndarray):
+                    pred_noise = ops.convert_to_tensor(pred_noise, dtype="float32")
+                if hasattr(pred_noise, 'device') and hasattr(samples, 'device') and pred_noise.device != samples.device:
+                    pred_noise = pred_noise.to(samples.device)
 
             samples = self.gdf_util.p_sample(
                 pred_noise, samples, tt
