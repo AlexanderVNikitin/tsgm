@@ -148,7 +148,6 @@ def visualize_tsne_unlabeled(
         markerscale=markerscale,
     )
     plt.savefig(path)
-    plt.close()
 
 
 def visualize_tsne(
@@ -213,7 +212,6 @@ def visualize_tsne(
     plt.box(False)
     plt.axis("off")
     plt.savefig(path)
-    plt.close()
 
 
 def visualize_ts(ts: tsgm.types.Tensor, num: int = 5) -> None:
@@ -422,4 +420,3 @@ def visualize_training_loss(
     ax.xaxis.set_ticks_position("bottom")
 
     plt.savefig(path, dpi=80)
-    plt.close(fig)

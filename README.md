@@ -160,7 +160,7 @@ result = gan.generate(100)
 
 - [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alexandervnikitin/tsgm/blob/main/tutorials/evaluation.ipynb) Tutorial [Evaluation of Synthetic Time Series Data](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/evaluation.ipynb)
 
-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alexandervnikitin/tsgm/blob/main/tutorials/Model%20Selection.ipyn) Tutorial [Model Selection](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Model%20Selection.ipynb)
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alexandervnikitin/tsgm/blob/main/tutorials/Model%20Selection.ipynb) Tutorial [Model Selection](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Model%20Selection.ipynb)
 
 - [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alexandervnikitin/tsgm/blob/main/tutorials/Using%20Multiple%20GPUs%20or%20TPU.ipynb) Tutorial [Multiple GPUs or TPU with TSGM](https://github.com/AlexanderVNikitin/tsgm/blob/main/tutorials/Using%20Multiple%20GPUs%20or%20TPU.ipynb)
 
