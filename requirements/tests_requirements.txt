@@ -1,9 +1,10 @@
 black
 click
-flake8
+ruff
 isort
 mypy
 pytest
 pytest-cov
 pytest-random-order
 pytest-mock
+setuptools
