@@ -1,0 +1,11 @@
+line-length = 140
+
+[lint]
+select = ["E", "F", "W", "C90"]
+ignore = ["E203", "E266", "E501"]
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[lint.mccabe]
+max-complexity = 18
