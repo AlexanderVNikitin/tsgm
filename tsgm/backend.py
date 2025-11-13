@@ -103,9 +103,9 @@ except (ImportError, AttributeError):
 # Try to import PyTorch
 try:
     import torch as torch_module
-    torch = torch_module
     import torch.utils
     import torch.utils.data
+    torch = torch_module
 
     # Set default tensor type to float32 for MPS compatibility
     if torch.backends.mps.is_available():
