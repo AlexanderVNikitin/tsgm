@@ -604,7 +604,7 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
         for _ in range(self._n_conv_lstm_blocks):
             x = layers.Conv1D(filters=64, kernel_size=3, activation="relu")(x)
             x = layers.Dropout(0.2)(x)
-            x = layers.LSTM(128, activation="relu", return_sequences=True)(x)
+            x = layers.LSTM(128, activation="tanh", return_sequences=True)(x)
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation="relu")(x)
