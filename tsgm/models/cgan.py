@@ -404,15 +404,22 @@ class ConditionalGAN(keras.Model):
         self.dp = generator_dp and discriminator_dp
 
     def wgan_discriminator_loss(self, real_sample, fake_sample):
+        #KERAS 3
         real_loss = ops.mean(real_sample)
         fake_loss = ops.mean(fake_sample)
         return fake_loss - real_loss
+        #KERAS 2
+        #return tf.reduce_mean(fake_sample) - tf.reduce_mean(real_sample)
 
     # Define the loss functions to be used for generator
     def wgan_generator_loss(self, fake_sample):
+        #KERAS 3
         return -ops.mean(fake_sample)
+        #KERAS 2
+        #return -tf.reduce_mean(fake_sample)
 
     def gradient_penalty_tf(self, tf, interpolated):
+    
         with tf.GradientTape() as gp_tape:
             gp_tape.watch(interpolated)
             # 1. Get the discriminator output for this interpolated sample.
@@ -484,38 +491,45 @@ class ConditionalGAN(keras.Model):
             rep_labels = labels
 
         rep_labels = ops.reshape(rep_labels, (-1, self._seq_len, output_dim))
-
-        # Generate Fake Data
-        random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
-
-        # Concatenate TS with Labels for the Discriminator
-        fake_data = ops.concatenate([generated_ts, rep_labels], -1)
-        real_data = ops.concatenate([real_ts, rep_labels], -1)
+    
+        # n_critic is typically 5 for WGAN
+        n_critic = 5 if self.use_wgan else 1
         
-        # Combined data (used for standard GAN only)
-        combined_data = ops.concatenate([fake_data, real_data], axis=0)
+        for _ in range(n_critic):
+            
+            # 1. Train Discriminator
+            
+            # Generate Fake Data
+            random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
+            generated_ts = self.generator(random_vector_labels)
 
-        # 1. Train Discriminator
-        with tf.GradientTape() as tape:
-            if self.use_wgan:
-                fake_logits = self.discriminator(fake_data, training=True)
-                real_logits = self.discriminator(real_data, training=True)
-                d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
-                
-                # GP is calculated on the CONCATENATED data (ts + labels)
-                gp = self.gradient_penalty(batch_size, real_data, fake_data)
-                d_loss = d_cost + gp * self.gp_weight
+            # Concatenate TS with Labels for the Discriminator
+            fake_data = ops.concatenate([generated_ts, rep_labels], -1)
+            real_data = ops.concatenate([real_ts, rep_labels], -1)
+            
+            # Combined data (used for standard GAN only)
+            combined_data = ops.concatenate([fake_data, real_data], axis=0)
+            
+            
+            with tf.GradientTape() as tape:
+                if self.use_wgan:
+                    fake_logits = self.discriminator(fake_data, training=True)
+                    real_logits = self.discriminator(real_data, training=True)
+                    d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
+                    
+                    # GP is calculated on the CONCATENATED data (ts + labels)
+                    gp = self.gradient_penalty(batch_size, real_data, fake_data)
+                    d_loss = d_cost + gp * self.gp_weight
+                else:
+                    desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
+                    predictions = self.discriminator(combined_data)
+                    d_loss = self.loss_fn(desc_labels, predictions)
+
+            if self.dp:
+                self.d_optimizer.minimize(d_loss, self.discriminator.trainable_weights, tape=tape)
             else:
-                desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
-                predictions = self.discriminator(combined_data)
-                d_loss = self.loss_fn(desc_labels, predictions)
-
-        if self.dp:
-            self.d_optimizer.minimize(d_loss, self.discriminator.trainable_weights, tape=tape)
-        else:
-            grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-            self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
+                grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+                self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
 
         # 2. Train Generator
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
@@ -564,36 +578,40 @@ class ConditionalGAN(keras.Model):
 
         rep_labels = ops.reshape(rep_labels, (-1, self._seq_len, output_dim))
 
-        # Generate Fake Data
-        random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
+        n_critic = 5 if self.use_wgan else 1
+        for _ in range(n_critic):        
+            # Generate Fake Data
+            random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
+            generated_ts = self.generator(random_vector_labels)
+            # Concatenate TS with Labels
+            fake_data = ops.concatenate([generated_ts, rep_labels], -1)
+            real_data = ops.concatenate([real_ts, rep_labels], -1)
+            combined_data = ops.concatenate([fake_data, real_data], axis=0)
 
-        # Concatenate TS with Labels
-        fake_data = ops.concatenate([generated_ts, rep_labels], -1)
-        real_data = ops.concatenate([real_ts, rep_labels], -1)
-        combined_data = ops.concatenate([fake_data, real_data], axis=0)
 
-        # 1. Train Discriminator
-        if self.use_wgan:
-            fake_logits = self.discriminator(fake_data, training=True)
-            real_logits = self.discriminator(real_data, training=True)
-            d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
-            gp = self.gradient_penalty(batch_size, real_data, fake_data)
-            d_loss = d_cost + gp * self.gp_weight
-        else:
-            desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
-            predictions = self.discriminator(combined_data)
-            d_loss = self.loss_fn(desc_labels, predictions)
-            
-        self.discriminator.zero_grad()
-        d_loss.backward()
+            # 1. Train Discriminator
+            if self.use_wgan:
+                fake_logits = self.discriminator(fake_data, training=True)
+                real_logits = self.discriminator(real_data, training=True)
+                d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
+                gp = self.gradient_penalty(batch_size, real_data, fake_data)
+                d_loss = d_cost + gp * self.gp_weight
+            else:
+                desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
+                predictions = self.discriminator(combined_data)
+                d_loss = self.loss_fn(desc_labels, predictions)
+                
+            self.discriminator.zero_grad()
+            d_loss.backward()
 
-        d_trainable_weights = [v for v in self.discriminator.trainable_weights]
-        d_gradients = [v.value.grad for v in d_trainable_weights]
+            d_trainable_weights = [v for v in self.discriminator.trainable_weights]
+            d_gradients = [v.value.grad for v in d_trainable_weights]
 
-        with torch.no_grad():
-            grads_and_vars = list(zip(d_gradients, d_trainable_weights))
-            self.d_optimizer.apply_gradients(grads_and_vars)
+            with torch.no_grad():
+                grads_and_vars = list(zip(d_gradients, d_trainable_weights))
+                self.d_optimizer.apply_gradients(grads_and_vars)
+                
+        
 
         # 2. Train Generator
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
