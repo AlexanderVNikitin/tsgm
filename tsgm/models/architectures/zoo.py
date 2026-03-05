@@ -138,10 +138,12 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
     """
     This class defines the architecture for a Variational Autoencoder (VAE) with Convolutional Layers.
 
-    Parameters:
-        seq_len (int): Length of input sequence.
-        feat_dim (int): Dimensionality of input features.
-        latent_dim (int): Dimensionality of latent space.
+    :param seq_len: Length of input sequence.
+    :type seq_len: int
+    :param feat_dim: Dimensionality of input features.
+    :type feat_dim: int
+    :param latent_dim: Dimensionality of latent space.
+    :type latent_dim: int
     """
     arch_type = "vae:unconditional"
 
@@ -149,11 +151,11 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         """
         Initializes the VAE_CONV5Architecture.
 
-        :parameter seq_len: Length of input sequences.
+        :param seq_len: Length of input sequences.
         :type seq_len: int
-        :parameter feat_dim: Dimensionality of input features.
+        :param feat_dim: Dimensionality of input features.
         :type feat_dim: int
-        :parameter latent_dim: Dimensionality of latent space.
+        :param latent_dim: Dimensionality of latent space.
         :type latent_dim: int
         """
         super().__init__()
@@ -292,13 +294,13 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         """
         Initializes the cGAN_Conv4Architecture.
 
-        :parameter seq_len: Length of input sequence.
+        :param seq_len: Length of input sequence.
         :type seq_len: int
-        :parameter feat_dim: Dimensionality of input features.
+        :param feat_dim: Dimensionality of input features.
         :type feat_dim: int
-        :parameter latent_dim: Dimensionality of latent space.
+        :param latent_dim: Dimensionality of latent space.
         :type latent_dim: int
-        :parameter output_dim: Dimensionality of output.
+        :param output_dim: Dimensionality of output.
         :type output_dim: int
         """
         super().__init__()
@@ -367,13 +369,13 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         """
         Initializes the tcGAN_Conv4Architecture.
 
-        :parameter seq_len: Length of input sequence.
+        :param seq_len: Length of input sequence.
         :type seq_len: int
-        :parameter feat_dim: Dimensionality of input features.
+        :param feat_dim: Dimensionality of input features.
         :type feat_dim: int
-        :parameter latent_dim: Dimensionality of latent space.
+        :param latent_dim: Dimensionality of latent space.
         :type latent_dim: int
-        :parameter output_dim: Dimensionality of output.
+        :param output_dim: Dimensionality of output.
         :type output_dim: int
         """
         super().__init__()
@@ -439,13 +441,13 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         """
         Initializes the cGAN_LSTMConv3Architecture.
 
-        :parameter seq_len: Length of input sequence.
+        :param seq_len: Length of input sequence.
         :type seq_len: int
-        :parameter feat_dim: Dimensionality of input features.
+        :param feat_dim: Dimensionality of input features.
         :type feat_dim: int
-        :parameter latent_dim: Dimensionality of latent space.
+        :param latent_dim: Dimensionality of latent space.
         :type latent_dim: int
-        :parameter output_dim: Dimensionality of output.
+        :param output_dim: Dimensionality of output.
         :type output_dim: int
         """
         super().__init__()
@@ -744,14 +746,12 @@ class TransformerClfArchitecture(BaseClassificationArchitecture):
         :type num_heads: int
         :param ff_dim: Feed forward dimension in the attention block (default is 64).
         :type ff_dim: int
-        :param output_dim: Dimensionality of the output.
-        :type output_dim: int
-        :param dropout_rate: Dropout probability (default is 0.5).
-        :type dropout_rate: float, optional
         :param n_blocks: Number of transformer blocks (default is 1).
-        :type n_blocks: int, optional
+        :type n_blocks: int
+        :param dropout_rate: Dropout probability (default is 0.5).
+        :type dropout_rate: float
         :param output_dim: Number of classes (default is 2).
-        :type output_dim: int, optional
+        :type output_dim: int
         """
 
         self._num_heads = num_heads
@@ -989,14 +989,6 @@ class TimeEmbedding(layers.Layer):
 class BaseDenoisingArchitecture(Architecture):
     """
     Base class for denoising architectures in DDPM (Denoising Diffusion Probabilistic Models, `tsgm.models.ddpm`).
-
-    Attributes:
-        arch_type: A string indicating the type of architecture, set to "ddpm:denoising".
-        _seq_len: The length of the input sequences.
-        _feat_dim: The dimensionality of the input features.
-        _n_filters: The number of filters used in the convolutional layers.
-        _n_conv_layers: The number of convolutional layers in the model.
-        _model: The Keras model instance built using the `_build_model` method.
     """
 
     arch_type = "ddpm:denoising"
@@ -1005,12 +997,14 @@ class BaseDenoisingArchitecture(Architecture):
         """
         Initializes the BaseDenoisingArchitecture with the specified parameters.
 
-        Args:
-            seq_len (int): The length of the input sequences.
-            feat_dim (int): The dimensionality of the input features.
-            n_filters (int, optional): The number of filters for convolutional layers. Default is 64.
-            n_conv_layers (int, optional): The number of convolutional layers. Default is 3.
-            **kwargs: Additional keyword arguments to be passed to the parent class `Architecture`.
+        :param seq_len: The length of the input sequences.
+        :type seq_len: int
+        :param feat_dim: The dimensionality of the input features.
+        :type feat_dim: int
+        :param n_filters: The number of filters for convolutional layers. Default is 64.
+        :type n_filters: int
+        :param n_conv_layers: The number of convolutional layers. Default is 3.
+        :type n_conv_layers: int
         """
         self._seq_len = seq_len
         self._feat_dim = feat_dim
@@ -1023,8 +1017,8 @@ class BaseDenoisingArchitecture(Architecture):
         """
         Provides access to the Keras model instance.
 
-        Returns:
-            keras.models.Model: The Keras model instance built by `_build_model`.
+        :returns: The Keras model instance built by `_build_model`.
+        :rtype: keras.models.Model
         """
         return self._model
 
@@ -1042,8 +1036,7 @@ class BaseDenoisingArchitecture(Architecture):
         Abstract method for building the Keras model.
         Subclasses must implement this method to define the specific architecture of the model.
 
-        Raises:
-            NotImplementedError: If the method is not overridden by a subclass.
+        :raises NotImplementedError: If the method is not overridden by a subclass.
         """
         raise NotImplementedError
 
@@ -1054,9 +1047,6 @@ class DDPMConvDenoiser(BaseDenoisingArchitecture):
 
     This class defines a convolutional neural network architecture used as a denoiser in DDPM.
     It predicts the noise added to the input samples during the diffusion process.
-
-    Attributes:
-        arch_type: A string indicating the architecture type, set to "ddpm:denoiser".
     """
     arch_type = "ddpm:denoiser"
 
@@ -1064,8 +1054,7 @@ class DDPMConvDenoiser(BaseDenoisingArchitecture):
         """
         Initializes the DDPMConvDenoiser model with additional parameters.
 
-        Args:
-            **kwargs: Additional keyword arguments to be passed to the parent class.
+        :param kwargs: Additional keyword arguments to be passed to the parent class.
         """
         super().__init__(**kwargs)
 
@@ -1079,8 +1068,8 @@ class DDPMConvDenoiser(BaseDenoisingArchitecture):
             - `n_conv_layers` convolutional layers to process the combined features and time embeddings.
             - A final convolutional layer to output the predicted noise.
 
-        Returns:
-            keras.Model: The Keras model instance for the DDPM denoiser.
+        :returns: The Keras model instance for the DDPM denoiser.
+        :rtype: keras.Model
         """
         inputs = keras.Input(shape=(self._seq_len, self._feat_dim))
 

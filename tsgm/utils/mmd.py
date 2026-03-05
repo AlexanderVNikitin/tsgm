@@ -47,7 +47,7 @@ def _tensor_to_numpy(tensor):
     return np.asarray(tensor)
 
 
-#  make guassian kernel fit with both pytorch and tensorflow
+#  make Gaussian kernel fit with both pytorch and tensorflow
 def exp_quad_kernel(x: TensorLike, y: TensorLike):
     length_scale, feature_ndims = 1.0, 2
     x_expanded = ops.expand_dims(x, axis=-feature_ndims - 1)

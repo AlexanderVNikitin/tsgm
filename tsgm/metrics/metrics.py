@@ -107,9 +107,11 @@ class ConsistencyMetric(Metric):
     def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: tsgm.dataset.DatasetOrTensor) -> float:
         """
         :param D1: A time series dataset.
-        :type D1: tsgm.dataset.DatasetOrTensor.
+        :type D1: tsgm.dataset.DatasetOrTensor
         :param D2: A time series dataset.
-        :type D2: tsgm.dataset.DatasetOrTensor.
+        :type D2: tsgm.dataset.DatasetOrTensor
+        :param D_test: A test time series dataset.
+        :type D_test: tsgm.dataset.DatasetOrTensor
 
         :returns: consistency metric between D1 & D2.
         """
@@ -148,9 +150,13 @@ class DownstreamPerformanceMetric(Metric):
     def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: T.Optional[tsgm.dataset.DatasetOrTensor], return_std: bool = False) -> float:
         """
         :param D1: A time series dataset.
-        :type D1: tsgm.dataset.DatasetOrTensor.
+        :type D1: tsgm.dataset.DatasetOrTensor
         :param D2: A time series dataset.
-        :type D2: tsgm.dataset.DatasetOrTensor.
+        :type D2: tsgm.dataset.DatasetOrTensor
+        :param D_test: A test time series dataset.
+        :type D_test: tsgm.dataset.DatasetOrTensor
+        :param return_std: Whether to also return the standard deviation. Default is False.
+        :type return_std: bool
 
         :returns: downstream performance metric between D1 & D2.
         """
@@ -178,22 +184,22 @@ class PrivacyMembershipInferenceMetric(Metric):
     """
     def __init__(self, attacker: T.Any, metric: T.Optional[T.Callable] = None) -> None:
         """
-        :param attacker: An attacker, one class classififier (OCC) that implements methods `.fit` and `.predict`
+        :param attacker: An attacker, one class classifier (OCC) that implements methods `.fit` and `.predict`
         :type attacker: typing.Any
         :param metric: Measures quality of attacker (precision by default)
-        :type attacker: typing.Callable
+        :type metric: typing.Callable
         """
         self._attacker = attacker
         self._metric = metric or sklearn.metrics.precision_score
 
     def __call__(self, d_tr: tsgm.dataset.Dataset, d_syn: tsgm.dataset.Dataset, d_test: tsgm.dataset.Dataset) -> float:
         """
-        :param d_tr: Training dataset (the dataset that was used to produce `d_dyn`).
-        :type d_tr: tsgm.dataset.DatasetOrTensor.
-        :param d_syn: Training dataset (the dataset that was used to produce `d_dyn`).
-        :type d_syn: tsgm.dataset.DatasetOrTensor.
-        :param d_test: Training dataset (the dataset that was used to produce `d_dyn`).
-        :type d_test: tsgm.dataset.DatasetOrTensor.
+        :param d_tr: Training dataset (real data).
+        :type d_tr: tsgm.dataset.Dataset
+        :param d_syn: Synthetic dataset (generated data).
+        :type d_syn: tsgm.dataset.Dataset
+        :param d_test: Test dataset (held-out real data).
+        :type d_test: tsgm.dataset.Dataset
 
         :returns: how well the attacker can distinguish `d_tr` & `d_test` when it is trained on `d_syn`.
         """
@@ -205,13 +211,7 @@ class PrivacyMembershipInferenceMetric(Metric):
 
 class MMDMetric(Metric):
     """
-    This metric calculated MMD between real and synthetic samples
-
-    Args:
-        d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
-
-    Returns:
-        float: The computed spectral entropy.
+    This metric calculates MMD between real and synthetic samples.
 
     Example:
         >>> metric = MMDMetric(kernel)
@@ -310,12 +310,6 @@ class EntropyMetric(Metric):
     """
     Calculates the spectral entropy of a dataset or tensor as a sum of individual entropies.
 
-    Args:
-        d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
-
-    Returns:
-        float: The computed spectral entropy.
-
     Example:
         >>> metric = EntropyMetric()
         >>> dataset = tsgm.dataset.Dataset(...)
@@ -326,11 +320,11 @@ class EntropyMetric(Metric):
         """
         Calculate the spectral entropy of the input dataset or tensor.
 
-        Args:
-            d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor.
+        :param d: The input dataset or tensor.
+        :type d: tsgm.dataset.DatasetOrTensor
 
-        Returns:
-            float: The computed spectral entropy.
+        :returns: The computed spectral entropy.
+        :rtype: float
         """
         X = _dataset_or_tensor_to_tensor(d)
         return np.sum(_spectral_entropy_sum(X), axis=None)
@@ -346,11 +340,11 @@ class ShannonEntropyMetric(Metric):
         """
         Private method to calculate the Shannon Entropy for a given set of labels.
 
-        Parameters:
-        labels (array-like): The labels or categories for which the diversity measure is to be calculated.
+        :param labels: The labels or categories for which the diversity measure is to be calculated.
+        :type labels: array-like
 
-        Returns:
-        float: The Shannon Entropy value.
+        :returns: The Shannon Entropy value.
+        :rtype: float
         """
         _, counts = np.unique(labels, return_counts=True)
         return entropy(counts)
@@ -359,14 +353,13 @@ class ShannonEntropyMetric(Metric):
         """
         Calculate the Shannon entropy for the dataset.
 
-        Parameters:
-        d (tsgm.dataset.DatasetOrTensor): The dataset or tensor object containing the labels.
+        :param d: The dataset or tensor object containing the labels.
+        :type d: tsgm.dataset.DatasetOrTensor
 
-        Returns:
-        float: The Shannon entropy value.
+        :returns: The Shannon entropy value.
+        :rtype: float
 
-        Raises:
-        AssertionError: If the dataset does not contain labels.
+        :raises AssertionError: If the dataset does not contain labels.
         """
         y = d.y
         assert y is not None, "The dataset must contain labels."
@@ -383,11 +376,11 @@ class PairwiseDistanceMetric(Metric):
         """
         Computes the pairwise Euclidean distances for a set of time series.
 
-        Parameters:
-        ts (numpy.ndarray): A 2D array where each row represents a time series.
+        :param ts: A 2D array where each row represents a time series.
+        :type ts: numpy.ndarray
 
-        Returns:
-        numpy.ndarray: A 2D array representing the pairwise Euclidean distance matrix.
+        :returns: A 2D array representing the pairwise Euclidean distance matrix.
+        :rtype: numpy.ndarray
         """
         distances = pdist(np.reshape(ts, (ts.shape[0], -1)), metric='euclidean')
         return squareform(distances)
@@ -396,11 +389,11 @@ class PairwiseDistanceMetric(Metric):
         """
         Calculates the pairwise Euclidean distances for a dataset or tensor.
 
-        Parameters:
-        d (tsgm.dataset.DatasetOrTensor): The input dataset or tensor containing time series data.
+        :param d: The input dataset or tensor containing time series data.
+        :type d: tsgm.dataset.DatasetOrTensor
 
-        Returns:
-        float: The pairwise Euclidean distances of the input data.
+        :returns: The pairwise Euclidean distances of the input data.
+        :rtype: TensorLike
         """
         X = _dataset_or_tensor_to_tensor(d)
         return self.pairwise_euclidean_distances(X)
@@ -413,17 +406,6 @@ class DemographicParityMetric(Metric):
     This metric assesses the difference in the distributions of a target variable among different groups in two datasets.
     By default, it uses the Kolmogorov-Smirnov statistic to quantify the maximum vertical deviation between the cumulative distribution functions
     of the target variable for the historical and synthetic data within each group.
-
-    Args:
-        d_hist (tsgm.dataset.DatasetOrTensor): The historical input dataset or tensor.
-        groups_hist (TensorLike): The group assignments for the historical data.
-        d_synth (tsgm.dataset.DatasetOrTensor): The synthetic input dataset or tensor.
-        groups_synth (TensorLike): The group assignments for the synthetic data.
-        metric (callable, optional): The metric used to compare the target variable distributions within each group.
-            Default is the Kolmogorov-Smirnov statistic.
-
-    Returns:
-        dict: A dictionary mapping each group to the computed demographic parity metric.
 
     Example:
         >>> metric = DemographicParityMetric()
@@ -441,16 +423,20 @@ class DemographicParityMetric(Metric):
         """
         Calculate the demographic parity metric for the input datasets.
 
-        Args:
-            d_hist (tsgm.dataset.DatasetOrTensor): The historical input dataset or tensor.
-            groups_hist (TensorLike): The group assignments for the historical data.
-            d_synth (tsgm.dataset.DatasetOrTensor): The synthetic input dataset or tensor.
-            groups_synth (TensorLike): The group assignments for the synthetic data.
-            metric (callable, optional): The metric used to compare the target variable distributions within each group.
-                Default is the Kolmogorov-Smirnov statistic.
+        :param d_hist: The historical input dataset or tensor.
+        :type d_hist: tsgm.dataset.DatasetOrTensor
+        :param groups_hist: The group assignments for the historical data.
+        :type groups_hist: TensorLike
+        :param d_synth: The synthetic input dataset or tensor.
+        :type d_synth: tsgm.dataset.DatasetOrTensor
+        :param groups_synth: The group assignments for the synthetic data.
+        :type groups_synth: TensorLike
+        :param metric: The metric used to compare the target variable distributions within each group.
+            Default is the Kolmogorov-Smirnov statistic.
+        :type metric: callable
 
-        Returns:
-            dict: A dictionary mapping each group to the computed demographic parity metric.
+        :returns: A dictionary mapping each group to the computed demographic parity metric.
+        :rtype: dict
         """
 
         y_hist, y_synth = d_hist.y, d_synth.y
@@ -480,19 +466,6 @@ class PredictiveParityMetric:
     model among different groups in two datasets.
     By default, it uses precision to quantify the predictive performance of the model within each group.
 
-    Args:
-        y_true_hist (TensorLike): The true target values for the historical data.
-        y_pred_hist (TensorLike): The predicted target values for the historical data.
-        groups_hist (TensorLike): The group assignments for the historical data.
-        y_true_synth (TensorLike): The true target values for the synthetic data.
-        y_pred_synth (TensorLike): The predicted target values for the synthetic data.
-        groups_synth (TensorLike): The group assignments for the synthetic data.
-        metric (callable, optional): The metric used to compare the predictive performance within each group.
-            Default is precision score.
-
-    Returns:
-        dict: A dictionary mapping each group to the computed predictive parity metric.
-
     Example:
         >>> metric = PredictiveParityMetric()
         >>> y_true_hist = [0, 1, 0, 1, 1, 0]
@@ -515,18 +488,24 @@ class PredictiveParityMetric:
         """
         Calculate the predictive parity metric for the input datasets.
 
-        Args:
-            y_true_hist (TensorLike): The true target values for the historical data.
-            y_pred_hist (TensorLike): The predicted target values for the historical data.
-            groups_hist (TensorLike): The group assignments for the historical data.
-            y_true_synth (TensorLike): The true target values for the synthetic data.
-            y_pred_synth (TensorLike): The predicted target values for the synthetic data.
-            groups_synth (TensorLike): The group assignments for the synthetic data.
-            metric (callable, optional): The metric used to compare the predictive performance within each group.
-                Default is precision score.
+        :param y_true_hist: The true target values for the historical data.
+        :type y_true_hist: TensorLike
+        :param y_pred_hist: The predicted target values for the historical data.
+        :type y_pred_hist: TensorLike
+        :param groups_hist: The group assignments for the historical data.
+        :type groups_hist: TensorLike
+        :param y_true_synth: The true target values for the synthetic data.
+        :type y_true_synth: TensorLike
+        :param y_pred_synth: The predicted target values for the synthetic data.
+        :type y_pred_synth: TensorLike
+        :param groups_synth: The group assignments for the synthetic data.
+        :type groups_synth: TensorLike
+        :param metric: The metric used to compare the predictive performance within each group.
+            Default is precision score.
+        :type metric: callable
 
-        Returns:
-            dict: A dictionary mapping each group to the computed predictive parity metric.
+        :returns: A dictionary mapping each group to the computed predictive parity metric.
+        :rtype: dict
         """
         assert len(y_true_hist) == len(y_pred_hist) == len(groups_hist) == len(y_true_synth) == len(y_pred_synth) == len(groups_synth)
         unique_groups_hist, unique_groups_synth = set(groups_hist), set(groups_synth)

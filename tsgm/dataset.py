@@ -18,9 +18,9 @@ class DatasetProperties:
         :param N: The number of samples.
         :type N: int
         :param D: The number of dimensions.
-        :type data: int
-        :param T: The number of timestemps.
-        :type statistics: list
+        :type D: int
+        :param T: The number of timesteps.
+        :type T: int
         :param variables: The properties of each covariate.
         :type variables: list
         """
@@ -37,12 +37,12 @@ class Dataset(DatasetProperties):
     """
     def __init__(self, x: tsgm.types.Tensor, y: tsgm.types.Tensor, metadata: T.Optional[T.Dict] = None):
         """
-        :param x: The matrix of time series with dimensions NxDxT
+        :param x: The matrix of time series with dimensions NxDxT.
         :type x: tsgm.types.Tensor
-        :param y: The lables of a time series.
+        :param y: The labels of a time series.
         :type y: tsgm.types.Tensor
         :param metadata: Additional info for the dataset.
-        :type statistics: typing.Optional[typing.Dict]
+        :type metadata: typing.Optional[typing.Dict]
         """
         self._x = x
         self._y = y

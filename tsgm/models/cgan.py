@@ -40,7 +40,7 @@ class GAN(keras.Model):
         :type generator: keras.Model
         :param latent_dim: The size of the noise vector.
         :type latent_dim: int
-        :param use_wgan: Use Wasserstein GAN with gradien penalty
+        :param use_wgan: Use Wasserstein GAN with gradient penalty.
         :type use_wgan: bool
         """
         super(GAN, self).__init__()
@@ -122,9 +122,9 @@ class GAN(keras.Model):
         Compiles the generator and discriminator models.
 
         :param d_optimizer: An optimizer for the GAN's discriminator.
-        :type d_optimizer: keras.Model
+        :type d_optimizer: keras.optimizers.Optimizer
         :param g_optimizer: An optimizer for the GAN's generator.
-        :type generator: keras.Model
+        :type g_optimizer: keras.optimizers.Optimizer
         :param loss_fn: Loss function.
         :type loss_fn: keras.losses.Loss
         """
@@ -344,6 +344,8 @@ class ConditionalGAN(keras.Model):
         :type latent_dim: int
         :param temporal: Indicates whether the time series temporally labeled or not.
         :type temporal: bool
+        :param use_wgan: Use Wasserstein GAN with gradient penalty. Default is False.
+        :type use_wgan: bool
         """
         super(ConditionalGAN, self).__init__()
         self.discriminator = discriminator
@@ -378,9 +380,9 @@ class ConditionalGAN(keras.Model):
         Compiles the generator and discriminator models.
 
         :param d_optimizer: An optimizer for the GAN's discriminator.
-        :type d_optimizer: keras.Model
+        :type d_optimizer: keras.optimizers.Optimizer
         :param g_optimizer: An optimizer for the GAN's generator.
-        :type generator: keras.Model
+        :type g_optimizer: keras.optimizers.Optimizer
         :param loss_fn: Loss function.
         :type loss_fn: keras.losses.Loss
         """
@@ -594,10 +596,10 @@ class ConditionalGAN(keras.Model):
         """
         Generates new data from the model.
 
-        :param labels: the number of samples to be generated.
+        :param labels: The labels for which to generate samples.
         :type labels: tsgm.types.Tensor
 
-        :returns: generated samples
+        :returns: Generated samples.
         :rtype: tsgm.types.Tensor
         """
         batch_size = labels.shape[0]

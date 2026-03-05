@@ -56,13 +56,17 @@ class BaseCompose:
 
 
 class GaussianNoise(BaseAugmenter):
-    """Apply noise to the input time series.
-    Args:
-        variance ((float, float) or float): variance range for noise. If var_limit is a single float, the range
-            will be (0, var_limit). Default: (10.0, 50.0).
-        mean (float): mean of the noise. Default: 0
-        per_feature (bool): if set to True, noise will be sampled for each feature independently.
-            Otherwise, the noise will be sampled once for all features. Default: True
+    """
+    Apply noise to the input time series.
+
+    :param variance: Variance range for noise. If var_limit is a single float, the range
+        will be (0, var_limit). Default: (10.0, 50.0).
+    :type variance: float or tuple(float, float)
+    :param mean: Mean of the noise. Default: 0.
+    :type mean: float
+    :param per_feature: If set to True, noise will be sampled for each feature independently.
+        Otherwise, the noise will be sampled once for all features. Default: True.
+    :type per_feature: bool
     """
 
     def __init__(
@@ -114,10 +118,12 @@ class GaussianNoise(BaseAugmenter):
 
 
 class SliceAndShuffle(BaseAugmenter):
-    """Slice the time series in k pieces and create a new time series by shuffling.
-    Args:
-        per_feature (bool): if set to True, each time series is sliced independently.
-            Otherwise, all features are sliced in the same way. Default: True
+    """
+    Slice the time series in k pieces and create a new time series by shuffling.
+
+    :param per_feature: If set to True, each time series is sliced independently.
+        Otherwise, all features are sliced in the same way. Default: True.
+    :type per_feature: bool
     """
 
     def __init__(
@@ -310,7 +316,7 @@ class WindowWarping(BaseAugmenter):
 
     def generate(self, X: TensorLike, y: Optional[TensorLike] = None, window_ratio: float = 0.2, scales: Tuple = (0.25, 1.0), n_samples: int = 1) -> AugmentationOutput:
         """
-        Generates augmented samples via MagnitudeWarping for (X, y)
+        Generates augmented samples via WindowWarping for (X, y)
 
         :param X: Input data tensor of shape (n_data, n_timesteps, n_features).
         :type X: TensorLike
@@ -322,9 +328,9 @@ class WindowWarping(BaseAugmenter):
             Default is 0.2.
         :type window_ratio: float
 
-        :param scale: A tuple specifying the scale range for warping.
+        :param scales: A tuple specifying the scale range for warping.
             Default is (0.25, 1.0).
-        :type scale: tuple
+        :type scales: tuple
 
         :param n_samples: Number of augmented samples to generate. Default is 1.
         :type n_samples: int
@@ -403,24 +409,24 @@ class DTWBarycentricAveraging(BaseAugmenter):
         **kwargs,
     ) -> AugmentationOutput:
         """
-        Parameters
-        ----------
-        X : TensorLike, the timeseries dataset
-        y : TensorLike or None, the classes
-        n_samples : int, number of samples to generate (per class, if y is given)
-        num_initial_samples : int or None (default: None)
-            The number of timeseries to draw (per class) from the dataset before computing DTW_BA.
+        :param X: The timeseries dataset.
+        :type X: TensorLike
+        :param y: The classes, or None.
+        :type y: TensorLike or None
+        :param n_samples: Number of samples to generate (per class, if y is given).
+        :type n_samples: int
+        :param num_initial_samples: The number of timeseries to draw (per class) from the dataset before computing DTW_BA.
             If None, use the entire set (per class).
-        initial_timeseries : array or None (default: None)
-            Initial timesteries to start from for the optimization process, with shape (original_size, d).
-            In case y is given, the shape of initial_timeseries is assumed to be (n_classes, original_size, d)
-        initial_labels: array or None (default: None)
-            Labels for samples from `initial_timeseries`
-        Returns
-        -------
-        np.array of shape (n_samples, original_size, d) if y is None
-            or (n_classes * n_samples, original_size, d),
-            and np.array of labels (or None)
+        :type num_initial_samples: int or None
+        :param initial_timeseries: Initial timeseries to start from for the optimization process, with shape (original_size, d).
+            In case y is given, the shape of initial_timeseries is assumed to be (n_classes, original_size, d).
+        :type initial_timeseries: array or None
+        :param initial_labels: Labels for samples from `initial_timeseries`.
+        :type initial_labels: array or None
+
+        :returns: np.array of shape (n_samples, original_size, d) if y is None
+            or (n_classes * n_samples, original_size, d), and np.array of labels (or None).
+        :rtype: tuple
         """
         assert initial_timeseries is None or len(initial_timeseries) == n_samples
         has_labels = y is not None
