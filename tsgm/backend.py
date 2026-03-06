@@ -54,7 +54,8 @@ def _set_keras_backend():
             os.environ["KERAS_BACKEND"] = backend
             return backend
 
-    raise ImportError("No backend found. Please install jax, tensorflow, or torch.")
+    # No backend available — allow graceful degradation (e.g. for doc builds)
+    return None
 
 
 # Set backend before any other imports
@@ -124,14 +125,13 @@ except (ImportError, AttributeError):
     tensorflow_probability = None
     _has_tfp = False
 
-# If no backend is available, raise an error
-if not _has_jax and not _has_tensorflow and not _has_torch:
-    raise ImportError("No backend found. Please install jax, tensorflow, or torch.")
-
 # Set Keras_Dataset based on the current backend
-if os.environ["KERAS_BACKEND"] == "tensorflow" and _has_tensorflow:
+if not _has_jax and not _has_tensorflow and not _has_torch:
+    # No backend available — skip Keras_Dataset setup (e.g. doc builds)
+    pass
+elif os.environ.get("KERAS_BACKEND") == "tensorflow" and _has_tensorflow:
     Keras_Dataset = tf.data.Dataset
-elif os.environ["KERAS_BACKEND"] == "torch" and _has_torch:
+elif os.environ.get("KERAS_BACKEND") == "torch" and _has_torch:
     Keras_Dataset = torch.utils.data.DataLoader
 else:
     # For JAX backend or when no backend is available, keep Keras_Dataset as None
@@ -141,15 +141,16 @@ else:
 
 def get_backend():
     """Get the current backend module."""
-    if os.environ["KERAS_BACKEND"] == "jax":
+    backend = os.environ.get("KERAS_BACKEND", "")
+    if backend == "jax":
         if jax is None:
             raise ImportError("JAX backend requested but not available.")
         return jax
-    elif os.environ["KERAS_BACKEND"] == "tensorflow":
+    elif backend == "tensorflow":
         if tf is None:
             raise ImportError("TensorFlow backend requested but not available.")
         return tf
-    elif os.environ["KERAS_BACKEND"] == "torch":
+    elif backend == "torch":
         if torch is None:
             raise ImportError("PyTorch backend requested but not available.")
         return torch
@@ -182,17 +183,18 @@ class JAXDistributionsWrapper:
 
 def get_distributions():
     """Get the distributions module for the current backend."""
-    if os.environ["KERAS_BACKEND"] == "jax":
+    backend = os.environ.get("KERAS_BACKEND", "")
+    if backend == "jax":
         try:
             import jax.scipy.stats as jax_distributions  # noqa: F401
             return JAXDistributionsWrapper()
         except ImportError:
             raise ImportError("JAX distributions not available. Install with: pip install jax")
-    elif os.environ["KERAS_BACKEND"] == "tensorflow":
+    elif backend == "tensorflow":
         if tensorflow_probability is None:
             raise ImportError("TensorFlow Probability not available. Install with: pip install tensorflow-probability")
         return tensorflow_probability.distributions
-    elif os.environ["KERAS_BACKEND"] == "torch":
+    elif backend == "torch":
         if torch is None:
             raise ImportError("PyTorch not available. Install with: pip install torch")
         return torch.distributions
@@ -204,9 +206,10 @@ def get_distributions():
 
 def tf_function_decorator(func):
     """Decorator that applies tf.function for TensorFlow, jax.jit for JAX, or no-op for PyTorch backend."""
-    if os.environ["KERAS_BACKEND"] == "tensorflow" and tf is not None:
+    backend = os.environ.get("KERAS_BACKEND", "")
+    if backend == "tensorflow" and tf is not None:
         return tf.function(func)
-    elif os.environ["KERAS_BACKEND"] == "jax" and jax is not None:
+    elif backend == "jax" and jax is not None:
         return jax.jit(func)
     else:
         # no op decorator

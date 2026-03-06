@@ -86,7 +86,7 @@ Simulators
 
 
 Data Processing Utils
---------------
+---------------------
 .. automodule:: tsgm.utils.data_processing
     :members:
     :undoc-members:
