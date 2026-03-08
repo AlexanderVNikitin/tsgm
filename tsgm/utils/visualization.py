@@ -321,7 +321,9 @@ def visualize_ts_lineplot(
                     for legobj in leg.legend_handles:
                         legobj.set_linewidth(2.0)
                 else:
-                    ax2.get_legend().remove()
+                    leg2 = ax2.get_legend()
+                    if leg2 is not None:
+                        leg2.remove()
             else:
                 raise ValueError("ys contains too many dimensions")
         if i == 0:
@@ -329,7 +331,9 @@ def visualize_ts_lineplot(
             for legobj in leg.legend_handles:
                 legobj.set_linewidth(2.0)
         else:
-            axs[i].get_legend().remove()
+            leg = axs[i].get_legend()
+            if leg is not None:
+                leg.remove()
         if i != len(ids) - 1:
             axs[i].set_xticks([])
 
