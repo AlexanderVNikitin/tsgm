@@ -34,10 +34,9 @@ jobs:
           if [ -f requirements/requirements.txt ]; then pip install -r requirements/requirements.txt; fi
           if [ -f requirements/tests_requirements.txt ]; then pip install -r requirements/tests_requirements.txt; fi
           pip install -e .[${{ matrix.backend }}]
-      - name: Lint with flake8
+      - name: Lint with ruff
         run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 ./tsgm 
+          ruff check ./tsgm
       - name: Test with pytest
         run: |
           pytest
