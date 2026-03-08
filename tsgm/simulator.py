@@ -461,7 +461,7 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
 def _lv_derivative(X, t, alpha, beta, delta, gamma):
     x, y = X
     dotx = x * (alpha - beta * y)
-    doty = y * (-delta + gamma * x)
+    doty = y * (-gamma + delta * x)
     return np.array([dotx, doty])
 
 

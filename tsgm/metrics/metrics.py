@@ -101,10 +101,10 @@ class ConsistencyMetric(Metric):
         """
         self._evaluators = evaluators
 
-    def _apply_models(self, D: tsgm.dataset.DatasetOrTensor, D_test: tsgm.dataset.DatasetOrTensor) -> T.List:
+    def _apply_models(self, D: tsgm.dataset.DatasetOrTensor, D_test: T.Optional[tsgm.dataset.DatasetOrTensor] = None) -> T.List:
         return [e.evaluate(D, D_test) for e in self._evaluators]
 
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: tsgm.dataset.DatasetOrTensor) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: T.Optional[tsgm.dataset.DatasetOrTensor] = None) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor
@@ -147,7 +147,7 @@ class DownstreamPerformanceMetric(Metric):
         """
         self._evaluator = evaluator
 
-    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: T.Optional[tsgm.dataset.DatasetOrTensor], return_std: bool = False) -> float:
+    def __call__(self, D1: tsgm.dataset.DatasetOrTensor, D2: tsgm.dataset.DatasetOrTensor, D_test: T.Optional[tsgm.dataset.DatasetOrTensor] = None, return_std: bool = False) -> float:
         """
         :param D1: A time series dataset.
         :type D1: tsgm.dataset.DatasetOrTensor
@@ -204,7 +204,7 @@ class PrivacyMembershipInferenceMetric(Metric):
         :returns: how well the attacker can distinguish `d_tr` & `d_test` when it is trained on `d_syn`.
         """
         self._attacker.fit(d_syn.Xy_concat)
-        labels = self._attacker.predict((d_tr + d_test).Xy_concat)
+        labels = self._attacker.predict((d_tr | d_test).Xy_concat)
         correct_labels = [1] * len(d_tr) + [-1] * len(d_test)
         return 1 - self._metric(labels, correct_labels)
 

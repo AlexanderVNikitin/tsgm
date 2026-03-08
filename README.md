@@ -191,7 +191,7 @@ TSGM implements several generative models for synthetic time series data.
 | cBetaVAE  | [cBetaVAE](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.models.cvae.cBetaVAE) | Data-driven | Conditional version of BetaVAE. It supports temporal a scalar condiotioning.|
 | TimeGAN | [TimeGAN](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.models.timegan.TimeGAN) | Data-driven | TSGM implementation of TimeGAN from [paper](https://papers.nips.cc/paper_files/paper/2019/hash/c9efe5f26cd17ba6216bbe2a7d26d490-Abstract.html) |
 | SineConstSimulator | [SineConstSimulator](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.simulator.SineConstSimulator) | Simulator-based | Simulator-based synthetic signal that switches between constant and periodics functions. |
-| Lotka Volterra | [LotkaVolterraSimulator](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.simulator.LotkaVolterraSimulator) | Simulator-based | Simulator-based synthetic signal that switches between constant and periodics functions. |
+| Lotka Volterra | [LotkaVolterraSimulator](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.simulator.LotkaVolterraSimulator) | Simulator-based | Simulator-based synthetic signal that models predator-prey population dynamics using Lotka-Volterra equations. |
 | PdM Simulator | [PdMSimulator](https://tsgm.readthedocs.io/en/latest/modules/root.html#tsgm.simulator.PredictiveMaintenanceSimulator) | Simulator-based | Simulator of predictive maintenance with multiple pieces of equipment from [paper](https://arxiv.org/pdf/2206.11574) |
 
 ## :chart_with_upwards_trend: Metrics
