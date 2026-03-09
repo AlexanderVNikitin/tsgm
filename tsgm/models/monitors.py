@@ -45,14 +45,17 @@ class GANMonitor(keras.callbacks.Callback):
     :param latent_dim: The dimensionality of the latent space. Defaults to 128.
     :type latent_dim: int
 
-    :param output_dim: The dimensionality of the output space. Defaults to 2.
-    :type output_dim: int
+    :param labels: The labels for conditional generation.
+    :type labels: tsgm.types.Tensor
 
     :param save: Whether to save the generated samples. Defaults to True.
     :type save: bool
 
     :param save_path: The path to save the generated samples. Defaults to None.
     :type save_path: str
+
+    :param mode: The generation mode, one of 'clf' or 'reg'. Defaults to 'clf'.
+    :type mode: str
     :raises ValueError: If the mode is not one of ['clf', 'reg']
 
     :note: If `save` is True and `save_path` is not specified, the default save path is "/tmp/".

@@ -130,31 +130,30 @@ def gen_sine_vs_const_dataset(N: int, T: int, D: int, max_value: int = 10, const
 class UCRDataManager:
     """
     A manager for UCR collection of time series datasets.
+
     If you find these datasets useful, please cite:
-    @misc{UCRArchive2018,
-        title = {The UCR Time Series Classification Archive},
-        author = {Dau, Hoang Anh and Keogh, Eamonn and Kamgar, Kaveh and Yeh, Chin-Chia Michael and Zhu, Yan
-                  and Gharghabi, Shaghayegh and Ratanamahatana, Chotirat Ann and Yanping and Hu, Bing
-                  and Begum, Nurjahan and Bagnall, Anthony and Mueen, Abdullah and Batista, Gustavo, and Hexagon-ML},
-        year = {2018},
-        month = {October},
-        note = {\\url{https://www.cs.ucr.edu/~eamonn/time_series_data_2018/}}
-    }
+
+    Dau, Hoang Anh, Eamonn Keogh, Kaveh Kamgar, Chin-Chia Michael Yeh, Yan Zhu, Shaghayegh
+    Gharghabi, Chotirat Ann Ratanamahatana, Yanping Chen, Bing Hu, Nurjahan Begum, Anthony Bagnall,
+    Abdullah Mueen and Gustavo Batista (2018). "The UCR Time Series Classification Archive."
+    https://www.cs.ucr.edu/~eamonn/time_series_data_2018/
     """
     mirrors = ["https://www.cs.ucr.edu/~eamonn/time_series_data_2018/"]
     resources = [("UCRArchive_2018.zip", 0)]
     key = "someone"
     default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data")
 
-    def __init__(self, path: str = default_path, ds: str = "gunpoint") -> None:
+    def __init__(self, path: T.Optional[str] = None, ds: str = "gunpoint") -> None:
         """
-        :param path: a relative path to the stored UCR dataset.
-        :type path: str
+        :param path: a relative path to the stored UCR dataset. If None, uses the default data directory.
+        :type path: str or None
         :param ds: Name of the dataset. The list of names is available at https://www.cs.ucr.edu/~eamonn/time_series_data_2018/ (case sensitive!).
         :type ds: str
 
         :raises ValueError: When there is no stored UCR archive, or the name of the dataset is incorrect.
         """
+        if path is None:
+            path = self.default_path
         file_utils.download_all_resources(self.mirrors[0], path, self.resources, pwd=bytes(self.key, 'utf-8'))
         path = os.path.join(path, "UCRArchive_2018")
 
@@ -421,7 +420,7 @@ def get_mnist_data() -> T.Tuple[TensorLike, TensorLike, TensorLike, TensorLike]:
     return x_train, y_train, x_test, y_test
 
 
-def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> float:
+def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> npt.NDArray:
     """
     This function calculates the exponential quadratic kernel matrix between two sets of points,
     given by matrices `x` and `y`.
@@ -439,7 +438,7 @@ def _exponential_quadratic(x: npt.NDArray, y: npt.NDArray) -> float:
 
 def get_gp_samples_data(
         num_samples: int, max_time: int,
-        covar_func: T.Callable = _exponential_quadratic) -> npt.NDArray:
+        covar_func: T.Optional[T.Callable] = None) -> npt.NDArray:
     """
     Generates samples from a Gaussian process.
 
@@ -450,14 +449,14 @@ def get_gp_samples_data(
     :type num_samples: int
     :param max_time: Maximum time value for the samples.
     :type max_time: int
-    :param covar_func: Covariance function to use. Defaults to `_exponential_quadratic`.
-    :type covar_func: Callable, optional
+    :param covar_func: Covariance function to use. Defaults to ``_exponential_quadratic``.
+    :type covar_func: Callable or None, optional
 
     :return: Generated samples from the Gaussian process.
     :rtype: numpy.ndarray
     """
-
-    #  TODO: connect this implementation with `models.gp
+    if covar_func is None:
+        covar_func = _exponential_quadratic
     times = np.expand_dims(np.linspace(0, max_time, max_time), 1)
     sigma = covar_func(times, times)
 
@@ -515,14 +514,14 @@ def download_physionet2012() -> None:
 
 def _get_physionet_X_dataframe(dataset_path: str) -> pd.DataFrame:
     """
-    Reads txt files from folder 'dataset_path' and returns
+    Reads txt files from folder ``dataset_path`` and returns
     a dataframe (X) with the Physionet dataset.
 
-    Args:
-        dataset_path (str): Path to the dataset folder.
+    :param dataset_path: Path to the dataset folder.
+    :type dataset_path: str
 
-    Returns:
-        pd.DataFrame: The features (X) dataframe.
+    :return: The features (X) dataframe.
+    :rtype: pd.DataFrame
     """
     txt_all = list()
     for f in os.listdir(dataset_path):
@@ -539,14 +538,14 @@ def _get_physionet_X_dataframe(dataset_path: str) -> pd.DataFrame:
 
 def _get_physionet_y_dataframe(file_path: str) -> pd.DataFrame:
     """
-    Reads txt files from folder 'dataset_path' and returns
+    Reads a txt file from ``file_path`` and returns
     a dataframe (y) with the Physionet data.
 
-    Args:
-        dataset_path (str): Path to the dataset folder.
+    :param file_path: Path to the outcomes file.
+    :type file_path: str
 
-    Returns:
-        pd.DataFrame: The target (y) dataframe.
+    :return: The target (y) dataframe.
+    :rtype: pd.DataFrame
     """
     y = pd.read_csv(file_path)
     y.set_index('RecordID', inplace=True)
@@ -557,20 +556,26 @@ def _get_physionet_y_dataframe(file_path: str) -> pd.DataFrame:
 
 def get_covid_19() -> T.Tuple[TensorLike, T.Tuple, T.List]:
     """
-    Loads Covid-19 dataset with additional graph information
-    The dataset is based on data from The New York Times, based on reports from state and local health agencies [1].
+    Loads Covid-19 dataset with additional graph information.
 
-    And was adapted to graph case in [2].
-    [1] The New York Times. (2021). Coronavirus (Covid-19) Data in the United States. Retrieved [Insert Date Here], from https://github.com/nytimes/covid-19-data.
-    [2] Alexander V. Nikitin, St John, Arno Solin, Samuel Kaski Proceedings of The 25th International Conference on Artificial Intelligence and Statistics, PMLR 151:10640-10660, 2022.
+    The dataset is based on data from The New York Times, based on reports
+    from state and local health agencies:
 
-    Returns:
-    -------
-    tuple
-        First element is time series data (n_nodes x n_timestamps x n_features). Each timestamp consists of
-        the number of deaths, cases, deaths normalized by the population, and cases normalized by the population.
-        The second element is the graph tuple (nodes, edges).
-        The third element is the order of states.
+    The New York Times (2021). "Coronavirus (Covid-19) Data in the United States."
+    https://github.com/nytimes/covid-19-data
+
+    Adapted to the graph case in:
+
+    Alexander V. Nikitin, ST John, Arno Solin, Samuel Kaski.
+    "Non-separable spatio-temporal graph kernels via SPDEs."
+    Proceedings of The 25th International Conference on Artificial Intelligence
+    and Statistics, PMLR 151:10640-10660, 2022.
+
+    :return: A tuple ``(data, graph, states)`` where ``data`` has shape
+        (n_nodes, n_timestamps, n_features) with features being deaths, cases,
+        deaths normalized by population, and cases normalized by population;
+        ``graph`` is a tuple (nodes, edges); and ``states`` is the list of state names.
+    :rtype: tuple[TensorLike, tuple, list]
     """
     base_url = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
     destination_folder = "covid19"

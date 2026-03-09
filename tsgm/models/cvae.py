@@ -14,14 +14,12 @@ class BetaVAE(keras.Model):
     """
     def __init__(self, encoder: keras.Model, decoder: keras.Model, beta: float = 1.0, **kwargs) -> None:
         """
-        :param encoder: An encoder model which takes a time series as input and check
-            whether the image is real or fake.
+        :param encoder: An encoder model which takes a time series as input.
         :type encoder: keras.Model
-        :param decoder: Takes as input a random noise vector of `latent_dim` length and returns
-            a simulated time-series.
+        :param decoder: Takes as input a random noise vector and returns a simulated time-series.
         :type decoder: keras.Model
-        :param latent_dim: The size of the noise vector.
-        :type latent_dim: int
+        :param beta: The weight of the KL divergence term. Default is 1.0.
+        :type beta: float
         """
         super(BetaVAE, self).__init__(**kwargs)
         self.beta = beta
@@ -38,7 +36,7 @@ class BetaVAE(keras.Model):
     @property
     def metrics(self) -> T.List:
         """
-        :returns: A list of metrics trackers (e.g., generator's loss and discriminator's loss).
+        :returns: A list of metrics trackers (total loss, reconstruction loss, and KL loss).
         """
         return [
             self.total_loss_tracker,
@@ -50,7 +48,7 @@ class BetaVAE(keras.Model):
         """
         Encodes and decodes time series dataset X.
 
-        :param X: The size of the noise vector.
+        :param X: The input time series tensor.
         :type X: tsgm.types.Tensor
 
         :returns: Generated samples
@@ -199,10 +197,10 @@ class cBetaVAE(keras.Model):
         """
         Generates new data from the model.
 
-        :param labels: the number of samples to be generated.
+        :param labels: The labels for which to generate conditional samples.
         :type labels: tsgm.types.Tensor
 
-        :returns: a tuple of synthetically generated data and labels.
+        :returns: A tuple of synthetically generated data and labels.
         :rtype: T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor]
         """
         #  keras 3.0 support
@@ -214,12 +212,12 @@ class cBetaVAE(keras.Model):
 
     def call(self, data: tsgm.types.Tensor) -> tsgm.types.Tensor:
         """
-        Encodes and decodes time series dataset X.
+        Encodes and decodes time series dataset.
 
-        :param X: The size of the noise vector.
-        :type X: tsgm.types.Tensor
+        :param data: The input data, either a tensor or a tuple of (X, labels).
+        :type data: tsgm.types.Tensor
 
-        :returns: Generated samples
+        :returns: Generated samples.
         :rtype: tsgm.types.Tensor
         """
         # Handle both single tensor and tuple of (X, labels)

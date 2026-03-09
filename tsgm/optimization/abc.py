@@ -48,8 +48,8 @@ class RejectionSampler(ABCAlgorithm):
         :type epsilon: float
         :param discrepancy: discrepancy measure function
         :type discrepancy: Callable
-        :param priors: set of priors for each of the simulator parametors, defaults to DEFAULT_PRIOR
-        :type prior: dict
+        :param priors: set of priors for each of the simulator parameters, defaults to DEFAULT_PRIOR
+        :type priors: dict
         """
         self._epsilon = epsilon
         self._simulator = simulator.clone()
@@ -68,8 +68,8 @@ class RejectionSampler(ABCAlgorithm):
         """
         Samples parameters from the rejection sampler.
 
-        :param n_samples: Number of samples
-        :type simulator: int
+        :param n_samples: Number of samples.
+        :type n_samples: int
         :returns: A list of samples. Each sample is represent as dict.
         :rtype: T.List[T.Dict]
         """

@@ -110,6 +110,8 @@ def visualize_tsne_unlabeled(
     :type markersize: int, optional
     :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
     :type feature_averaging: bool, optional
+    :param perplexity: The perplexity parameter for t-SNE. Defaults to 30.0.
+    :type perplexity: float, optional
     """
     tsne = sklearn.manifold.TSNE(n_components=2, perplexity=perplexity, learning_rate="auto", init="random")
 
@@ -178,6 +180,8 @@ def visualize_tsne(
     :type path: str, optional
     :param feature_averaging: Whether to compute the average features for each class. Defaults to False.
     :type feature_averaging: bool, optional
+    :param perplexity: The perplexity parameter for t-SNE. Defaults to 30.0.
+    :type perplexity: float, optional
     """
     tsne = sklearn.manifold.TSNE(n_components=2, perplexity=perplexity, learning_rate="auto", init="random")
 
@@ -226,8 +230,7 @@ def visualize_ts(ts: tsgm.types.Tensor, num: int = 5) -> None:
     :param num: The number of time series to display. Defaults to 5.
     :type num: int, optional
 
-    Raises:
-        AssertionError: If the input tensor does not have three dimensions.
+    :raises AssertionError: If the input tensor does not have three dimensions.
 
     Example:
         >>> visualize_ts(time_series_tensor, num=10)
@@ -318,7 +321,9 @@ def visualize_ts_lineplot(
                     for legobj in leg.legend_handles:
                         legobj.set_linewidth(2.0)
                 else:
-                    ax2.get_legend().remove()
+                    leg2 = ax2.get_legend()
+                    if leg2 is not None:
+                        leg2.remove()
             else:
                 raise ValueError("ys contains too many dimensions")
         if i == 0:
@@ -326,7 +331,9 @@ def visualize_ts_lineplot(
             for legobj in leg.legend_handles:
                 legobj.set_linewidth(2.0)
         else:
-            axs[i].get_legend().remove()
+            leg = axs[i].get_legend()
+            if leg is not None:
+                leg.remove()
         if i != len(ids) - 1:
             axs[i].set_xticks([])
 
@@ -374,9 +381,12 @@ def visualize_training_loss(
     """
     Plot training losses as a function of the epochs
 
-    :param loss_vector: np.array, having shape num of metrics times number of epochs
-    :param labels: list of strings
-    :param path: str, where to save the plot
+    :param loss_vector: Array having shape num_metrics x num_epochs.
+    :type loss_vector: tsgm.types.Tensor
+    :param labels: List of label strings for each metric.
+    :type labels: tuple
+    :param path: Where to save the plot.
+    :type path: str
     """
     num_of_metrics = loss_vector.shape[0]
     num_of_epochs = loss_vector[0].shape[0]

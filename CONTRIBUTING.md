@@ -2,9 +2,10 @@
 
 <!-- toc -->
 
-- [Contributing to TSGM](#contributing-to-tsgm)
-- [Development](#development)
-- [Documenting](#documenting)
+- [Table of Contents](#table-of-contents)
+  - [Contributing to TSGM](#contributing-to-tsgm)
+  - [Development](#development)
+  - [Documenting](#documenting)
 
 <!-- tocstop -->
 
@@ -22,10 +23,11 @@ pip install -r requirements/requirements.txt
 pip install -r requirements/tests_requirements.txt
 pip install -r requirements/docs_requirements.txt
 ```
+and a backend of your choice (PyTorch, Jax or TensorFlow) to run tests.
 
 and then, install TSGM in development mode:
 ```bash
-python setup.py develop
+pip install -e .
 ```
 
 To run tests, use pytest, for example:
@@ -35,7 +37,7 @@ pytest tests/test_cgan.py::test_temporal_cgan
 
 To run linters, use:
 ```bash
-flake8 tsgm/
+ruff check tsgm/
 ```
 
 ## Documenting

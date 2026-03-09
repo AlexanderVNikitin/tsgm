@@ -12,12 +12,20 @@
 #
 import os
 import sys
-import datetime
-import sphinx_rtd_theme
-import doctest
-import tsgm
 sys.path.insert(0, os.path.abspath('..'))
 
+# Read version without importing the full package (avoids needing ML backends)
+_version_globals = {}
+with open(os.path.join(os.path.abspath('..'), 'tsgm', 'version.py')) as _f:
+    exec(_f.read(), _version_globals)
+
+# Mock heavy ML dependencies that are not available on RTD
+autodoc_mock_imports = [
+    "tensorflow", "tensorflow_probability", "tf_keras",
+    "torch", "torchvision",
+    "jax", "jaxlib",
+    "keras",
+]
 
 # -- Project information -----------------------------------------------------
 
@@ -41,6 +49,7 @@ autoapi_options = [
     "imported-members",
     "show-inheritance",
 ]
+autoapi_keep_files = True
 
 source_suffix = '.rst'
 #master_doc = 'index'
@@ -50,14 +59,13 @@ copyright = '2022, Alexander Nikitin'
 author = 'Alexander Nikitin'
 
 # The full version, including alpha/beta/rc tags
-release = tsgm.__version__
+release = _version_globals['__version__']
 
 default_role = "any"  # try and turn all `` into links
 add_module_names = False  # Remove namespaces from class/method signatures
 
 
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 ### intersphinx: Link to other project's documentation (see mapping below)
 extensions.append("sphinx.ext.intersphinx")
@@ -92,17 +100,12 @@ latex_elements = {
 """,
 }
 
-html_theme = 'sphinx_rtd_theme'
-
 html_logo = "_static/logo_docs.png"
 
 
 # theme-specific options. see theme docs for more info
 html_theme_options = {
-    "show_prev_next": False,
-    "github_url": "https://github.com/",
     'collapse_navigation': False,
-    'display_version': True,
     'logo_only': True,
 }
 

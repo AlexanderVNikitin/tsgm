@@ -184,14 +184,20 @@ class TimeGAN(keras.Model):
         """
         Assign optimizers and loss functions.
 
-        :param d_optimizer: An optimizer for the GAN's discriminator
-        :param g_optimizer: An optimizer for the GAN's generator
-        :param emb_optimizer: An optimizer for the GAN's embedder
-        :param supgan_optimizer: An optimizer for the adversarial supervised network
-        :param ae_optimizer: An optimizer for the autoencoder network
-        :param emb_loss: A loss function for the embedding recovery
-        :param clf_loss: A loss function for the discriminator task
-        :return: None
+        :param d_optimizer: An optimizer for the GAN's discriminator.
+        :type d_optimizer: keras.optimizers.Optimizer
+        :param g_optimizer: An optimizer for the GAN's generator.
+        :type g_optimizer: keras.optimizers.Optimizer
+        :param emb_optimizer: An optimizer for the GAN's embedder.
+        :type emb_optimizer: keras.optimizers.Optimizer
+        :param supgan_optimizer: An optimizer for the adversarial supervised network.
+        :type supgan_optimizer: keras.optimizers.Optimizer
+        :param ae_optimizer: An optimizer for the autoencoder network.
+        :type ae_optimizer: keras.optimizers.Optimizer
+        :param emb_loss: A loss function for the embedding recovery.
+        :type emb_loss: keras.losses.Loss
+        :param clf_loss: A loss function for the discriminator task.
+        :type clf_loss: keras.losses.Loss
         """
         # ----------------------------
         # Optimizers - create fresh instances for Keras 3.0 compatibility
@@ -739,9 +745,13 @@ class TimeGAN(keras.Model):
         y_true: TensorLike, y_pred: TensorLike
     ) -> float:
         """
-        :param y_true: TensorLike
-        :param y_pred: TensorLike
-        :return G_loss_V: float
+        :param y_true: True values.
+        :type y_true: TensorLike
+        :param y_pred: Predicted values.
+        :type y_pred: TensorLike
+
+        :returns: Generator moments loss.
+        :rtype: float
         """
         _eps = 1e-6
         y_true_mean, y_true_var = ops.nn.moments(x=y_true, axes=[0])
@@ -757,9 +767,13 @@ class TimeGAN(keras.Model):
 
     def _check_discriminator_loss(self, X: TensorLike, Z: TensorLike) -> float:
         """
-        :param X: TensorLike
-        :param Z: TensorLike
-        :return D_loss: float
+        :param X: Real data tensor.
+        :type X: TensorLike
+        :param Z: Random noise tensor.
+        :type Z: TensorLike
+
+        :returns: Discriminator loss.
+        :rtype: float
         """
         try:
             # Loss on false negatives
@@ -858,14 +872,17 @@ class TimeGAN(keras.Model):
         **kwargs,
     ):
         """
-        :param data: TensorLike, the training data
-        :param epochs: int, the number of epochs for the training loops
-        :param checkpoints_interval: int, the interval for printing out loss values
-            (loss values will be print out every 'checkpoints_interval' epochs)
-            Default: None (no print out)
-        :param generate_synthetic: list of int, a list of epoch numbers when synthetic data samples are generated
-            Default: [] (no generation)
-        :return None
+        :param data: The training data.
+        :type data: TensorLike
+        :param epochs: The number of epochs for the training loops.
+        :type epochs: int
+        :param checkpoints_interval: The interval for printing out loss values
+            (loss values will be printed every `checkpoints_interval` epochs).
+            Default: None (no print out).
+        :type checkpoints_interval: int or None
+        :param generate_synthetic: A list of epoch numbers when synthetic data samples are generated.
+            Default: () (no generation).
+        :type generate_synthetic: tuple
         """
         assert not (
             self.autoencoder_opt is None

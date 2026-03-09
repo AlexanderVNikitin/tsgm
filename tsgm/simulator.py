@@ -45,31 +45,17 @@ def _get_distributions():
 class BaseSimulator(abc.ABC):
     """
     Abstract base class for simulators. This class defines the interface for simulators.
-
-    Methods
-    -------
-    generate(num_samples: int, *args) -> tsgm.dataset.Dataset
-        Generate a dataset with the specified number of samples.
-
-    dump(path: str, format: str = "csv") -> None
-        Save the generated dataset to a file in the specified format.
     """
     @abc.abstractmethod
     def generate(self, num_samples: int, *args) -> tsgm.dataset.Dataset:
         """
         Abstract method to generate a dataset.
 
-        Parameters
-        ----------
-        num_samples : int
-            Number of samples to generate.
-        *args
-            Additional arguments to be passed to the method.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Returns
-        -------
-        tsgm.dataset.Dataset
-            The generated dataset.
+        :returns: The generated dataset.
+        :rtype: tsgm.dataset.Dataset
         """
         pass
 
@@ -78,12 +64,10 @@ class BaseSimulator(abc.ABC):
         """
         Abstract method to save the generated dataset to a file.
 
-        Parameters
-        ----------
-        path : str
-            The file path where the dataset will be saved.
-        format : str, optional
-            The format in which to save the dataset, by default "csv".
+        :param path: The file path where the dataset will be saved.
+        :type path: str
+        :param format: The format in which to save the dataset, by default "csv".
+        :type format: str
         """
         pass
 
@@ -92,24 +76,13 @@ class Simulator(BaseSimulator):
     """
     Concrete class for a basic simulator. This class implements the basic methods for fitting a model and
     generating a dataset, but does not implement the generation and dump methods.
-
-    Attributes
-    ----------
-    _data : tsgm.dataset.DatasetProperties
-        Properties of the dataset to be used by the simulator.
-    _driver : Optional[tsgm.types.Model]
-        The model to be used for generating data.
     """
     def __init__(self, data: tsgm.dataset.DatasetProperties, driver: T.Optional[tsgm.types.Model] = None):
         """
-        Initialize the Simulator with dataset properties and an optional model.
-
-        Parameters
-        ----------
-        data : tsgm.dataset.DatasetProperties
-            Properties of the dataset to be used.
-        driver : Optional[tsgm.types.Model], optional
-            The model to be used for generating data, by default None.
+        :param data: Properties of the dataset to be used.
+        :type data: tsgm.dataset.DatasetProperties
+        :param driver: The model to be used for generating data, by default None.
+        :type driver: typing.Optional[tsgm.types.Model]
         """
         self._data = data
         self._driver = driver
@@ -118,10 +91,7 @@ class Simulator(BaseSimulator):
         """
         Fit the model using the dataset properties.
 
-        Parameters
-        ----------
-        **kwargs
-            Additional keyword arguments to pass to the model's fit method.
+        :param kwargs: Additional keyword arguments to pass to the model's fit method.
         """
         if self._data.y is not None:
             self._driver.fit(self._data.X, self._data.y, **kwargs)
@@ -132,22 +102,13 @@ class Simulator(BaseSimulator):
         """
         Method to generate a dataset. Not implemented in this class.
 
-        Parameters
-        ----------
-        num_samples : int
-            Number of samples to generate.
-        *args
-            Additional arguments to be passed to the method.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Returns
-        -------
-        TensorLike
-            The generated dataset.
+        :returns: The generated dataset.
+        :rtype: TensorLike
 
-        Raises
-        ------
-        NotImplementedError
-            This method is not implemented in this class.
+        :raises NotImplementedError: This method is not implemented in this class.
         """
         raise NotImplementedError
 
@@ -155,17 +116,12 @@ class Simulator(BaseSimulator):
         """
         Method to save the generated dataset to a file. Not implemented in this class.
 
-        Parameters
-        ----------
-        path : str
-            The file path where the dataset will be saved.
-        format : str, optional
-            The format in which to save the dataset, by default "csv".
+        :param path: The file path where the dataset will be saved.
+        :type path: str
+        :param format: The format in which to save the dataset, by default "csv".
+        :type format: str
 
-        Raises
-        ------
-        NotImplementedError
-            This method is not implemented in this class.
+        :raises NotImplementedError: This method is not implemented in this class.
         """
         raise NotImplementedError
 
@@ -173,10 +129,8 @@ class Simulator(BaseSimulator):
         """
         Create a deep copy of the simulator.
 
-        Returns
-        -------
-        Simulator
-            A deep copy of the current simulator instance.
+        :returns: A deep copy of the current simulator instance.
+        :rtype: Simulator
         """
         return Simulator(copy.deepcopy(self._data))
 
@@ -185,26 +139,11 @@ class ModelBasedSimulator(Simulator):
     """
     A simulator that is based on a model. This class extends the Simulator class and provides additional
     methods for handling model parameters.
-
-    Methods
-    -------
-    params() -> T.Dict[str, T.Any]
-        Get a dictionary of the simulator's parameters.
-
-    set_params(params: T.Dict[str, T.Any]) -> None
-        Set the simulator's parameters from a dictionary.
-
-    generate(num_samples: int, *args) -> None
-        Generate a dataset with the specified number of samples.
     """
     def __init__(self, data: tsgm.dataset.DatasetProperties):
         """
-        Initialize the ModelBasedSimulator with dataset properties.
-
-        Parameters
-        ----------
-        data : tsgm.dataset.DatasetProperties
-            Properties of the dataset to be used.
+        :param data: Properties of the dataset to be used.
+        :type data: tsgm.dataset.DatasetProperties
         """
         super().__init__(data)
 
@@ -212,10 +151,8 @@ class ModelBasedSimulator(Simulator):
         """
         Get a dictionary of the simulator's parameters.
 
-        Returns
-        -------
-        dict
-            A dictionary containing the simulator's parameters.
+        :returns: A dictionary containing the simulator's parameters.
+        :rtype: dict
         """
         params = copy.deepcopy(self.__dict__)
         if "_data" in params:
@@ -228,10 +165,8 @@ class ModelBasedSimulator(Simulator):
         """
         Set the simulator's parameters from a dictionary.
 
-        Parameters
-        ----------
-        params : dict
-            A dictionary containing the parameters to set.
+        :param params: A dictionary containing the parameters to set.
+        :type params: dict
         """
         for param_name, param_value in params.items():
             self.__dict__[param_name] = param_value
@@ -241,17 +176,10 @@ class ModelBasedSimulator(Simulator):
         """
         Abstract method to generate a dataset. Must be implemented by subclasses.
 
-        Parameters
-        ----------
-        num_samples : int
-            Number of samples to generate.
-        *args
-            Additional arguments to be passed to the method.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Raises
-        ------
-        NotImplementedError
-            This method is not implemented in this class and must be overridden by subclasses.
+        :raises NotImplementedError: This method is not implemented in this class and must be overridden by subclasses.
         """
         raise NotImplementedError
 
@@ -264,25 +192,15 @@ class NNSimulator(Simulator):
 class SineConstSimulator(ModelBasedSimulator):
     """
     Sine and Constant Function Simulator class that extends the ModelBasedSimulator base class.
-
-    Attributes:
-        _scale: TensorFlow probability distribution for scaling factor.
-        _const: TensorFlow probability distribution for constant.
-        _shift: TensorFlow probability distribution for shift.
-
-    Methods:
-        __init__(data, max_scale=10.0, max_const=5.0): Initializes the simulator with dataset properties and optional parameters.
-        set_params(max_scale, max_const, *args, **kwargs): Sets the parameters for scale, constant, and shift distributions.
-        generate(num_samples, *args) -> tsgm.dataset.Dataset: Generates a dataset based on sine and constant functions.
-        clone() -> SineConstSimulator: Creates and returns a deep copy of the current simulator.
     """
     def __init__(self, data: tsgm.dataset.DatasetProperties, max_scale: float = 10.0, max_const: float = 5.0) -> None:
         """
-        Initializes the SineConstSimulator with dataset properties and optional maximum scale and constant values.
-        Args:
-            data (tsgm.dataset.DatasetProperties): Dataset properties for the simulator.
-            max_scale (float, optional): Maximum value for the scale parameter. Defaults to 10.0.
-            max_const (float, optional): Maximum value for the constant parameter. Defaults to 5.0.
+        :param data: Dataset properties for the simulator.
+        :type data: tsgm.dataset.DatasetProperties
+        :param max_scale: Maximum value for the scale parameter. Defaults to 10.0.
+        :type max_scale: float
+        :param max_const: Maximum value for the constant parameter. Defaults to 5.0.
+        :type max_const: float
         """
         super().__init__(data)
 
@@ -292,9 +210,10 @@ class SineConstSimulator(ModelBasedSimulator):
         """
         Sets the parameters for scale, constant, and shift distributions.
 
-        Args:
-            max_scale (float): Maximum value for the scale parameter.
-            max_const (float): Maximum value for the constant parameter.
+        :param max_scale: Maximum value for the scale parameter.
+        :type max_scale: float
+        :param max_const: Maximum value for the constant parameter.
+        :type max_const: float
         """
         #  change to pdists usage
         distributions = _get_distributions()
@@ -308,11 +227,11 @@ class SineConstSimulator(ModelBasedSimulator):
         """
         Generates a dataset based on sine and constant functions.
 
-        Args:
-            num_samples (int): Number of samples to generate.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Returns:
-            tsgm.dataset.Dataset: A dataset containing generated samples.
+        :returns: A dataset containing generated samples.
+        :rtype: tsgm.dataset.Dataset
         """
         result_X, result_y = [], []
         for i in range(num_samples):
@@ -335,8 +254,8 @@ class SineConstSimulator(ModelBasedSimulator):
         """
         Creates a deep copy of the current SineConstSimulator instance.
 
-        Returns:
-            SineConstSimulator: A new instance of SineConstSimulator with copied data and parameters.
+        :returns: A new instance of SineConstSimulator with copied data and parameters.
+        :rtype: SineConstSimulator
         """
         copy_simulator = SineConstSimulator(self._data)
         params = self.params()
@@ -351,19 +270,6 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
     From publication:
     Nikitin, Alexander, and Samuel Kaski. "Human-in-the-loop large-scale predictive maintenance of
     workstations." Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining. 2022.
-
-    Attributes:
-        CAT_FEATURES (list): List of categorical feature indices.
-        encoders (dict): Dictionary of OneHotEncoders for categorical features.
-    Methods:
-        __init__(data): Initializes the simulator with dataset properties and sets encoders.
-        S(lmbd, t): Calculates the survival curve.
-        R(rho, lmbd, t): Calculates the recovery curve parameter.
-        set_params(**kwargs): Sets the parameters for the simulator.
-        mixture_function(a, x): Calculates the mixture function.
-        sample_equipment(num_samples): Samples equipment data and generates the dataset.
-        generate(num_samples): Generates the predictive maintenance dataset.
-        clone() -> PredictiveMaintenanceSimulator: Creates and returns a deep copy of the current simulator.
     """
 
     # categorical features
@@ -373,8 +279,8 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Initializes the PredictiveMaintenanceSimulator with dataset properties and sets encoders for categorical features.
 
-        Args:
-            data (tsgm.dataset.DatasetProperties): Dataset properties for the simulator.
+        :param data: Dataset properties for the simulator.
+        :type data: tsgm.dataset.DatasetProperties
         """
         self._data = data
         self.encoders = {d: sklearn.preprocessing.OneHotEncoder() for d in self.CAT_FEATURES}
@@ -387,12 +293,13 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Calculates the survival curve.
 
-        Args:
-            lmbd: Lambda parameter for the exponential distribution.
-            t: Time variable.
+        :param lmbd: Lambda parameter for the exponential distribution.
+        :type lmbd: float
+        :param t: Time variable.
+        :type t: float
 
-        Returns:
-            float: Survival probability at time t.
+        :returns: Survival probability at time t.
+        :rtype: float
         """
         return np.exp(-lmbd * t)
 
@@ -400,13 +307,15 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Calculates the recovery curve parameter.
 
-        Args:
-            rho: Rho parameter for the recovery function.
-            lmbd: Lambda parameter for the exponential distribution.
-            t: Time variable.
+        :param rho: Rho parameter for the recovery function.
+        :type rho: float
+        :param lmbd: Lambda parameter for the exponential distribution.
+        :type lmbd: float
+        :param t: Time variable.
+        :type t: float
 
-        Returns:
-            float: Recovery curve parameter at time t.
+        :returns: Recovery curve parameter at time t.
+        :rtype: float
         """
         s_ = self.S(lmbd, t)
         return (1 - s_) - rho
@@ -415,8 +324,7 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Sets the parameters for the simulator.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments for setting simulator parameters.
+        :param kwargs: Arbitrary keyword arguments for setting simulator parameters.
         """
         if "switches" in kwargs:
             self._switches = kwargs["switches"]
@@ -443,12 +351,13 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Calculates the mixture function.
 
-        Args:
-            a: Mixture parameter.
-            x: Input variable.
+        :param a: Mixture parameter.
+        :type a: float
+        :param x: Input variable.
+        :type x: float
 
-        Returns:
-            float: Mixture function value.
+        :returns: Mixture function value.
+        :rtype: float
         """
         return (a**x - 1) / (a - 1)
 
@@ -456,11 +365,11 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Samples equipment data and generates the dataset.
 
-        Args:
-            num_samples (int): Number of samples to generate.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Returns:
-            tuple: A tuple containing the dataset and equipment information.
+        :returns: A tuple containing the dataset and equipment information.
+        :rtype: tuple
         """
         equipment, dataset = [], []
         for _ in tqdm(range(num_samples)):
@@ -525,11 +434,11 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Samples equipment data and generates the dataset.
 
-        Args:
-            num_samples (int): Number of samples to generate.
+        :param num_samples: Number of samples to generate.
+        :type num_samples: int
 
-        Returns:
-            tuple: A tuple containing the dataset and equipment information.
+        :returns: A tuple containing the dataset and equipment information.
+        :rtype: tuple
         """
         return self.sample_equipment(num_samples)
 
@@ -537,8 +446,8 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
         """
         Creates a deep copy of the current PredictiveMaintenanceSimulator instance.
 
-        Returns:
-            PredictiveMaintenanceSimulator: A new instance of PredictiveMaintenanceSimulator with copied data and parameters.
+        :returns: A new instance of PredictiveMaintenanceSimulator with copied data and parameters.
+        :rtype: PredictiveMaintenanceSimulator
         """
         copy_simulator = PredictiveMaintenanceSimulator(self._data)
         params = self.params()
@@ -552,7 +461,7 @@ class PredictiveMaintenanceSimulator(ModelBasedSimulator):
 def _lv_derivative(X, t, alpha, beta, delta, gamma):
     x, y = X
     dotx = x * (alpha - beta * y)
-    doty = y * (-delta + gamma * x)
+    doty = y * (-gamma + delta * x)
     return np.array([dotx, doty])
 
 
@@ -570,14 +479,20 @@ class LotkaVolterraSimulator(ModelBasedSimulator):
         """
         Initializes the Lotka-Volterra simulator with given parameters.
 
-        Args:
-            data (tsgm.dataset.DatasetProperties): The dataset properties.
-            alpha (float): The maximum prey per capita growth rate. Default is 1.
-            beta (float): The effect of the presence of predators on the prey death rate. Default is 1.
-            gamma (float): The predator's per capita death rate. Default is 1.
-            delta (float): The effect of the presence of prey on the predator's growth rate. Default is 1.
-            x0 (float): The initial population density of prey. Default is 1.
-            y0 (float): The initial population density of predator. Default is 1.
+        :param data: The dataset properties.
+        :type data: tsgm.dataset.DatasetProperties
+        :param alpha: The maximum prey per capita growth rate. Default is 1.
+        :type alpha: float
+        :param beta: The effect of the presence of predators on the prey death rate. Default is 1.
+        :type beta: float
+        :param gamma: The predator's per capita death rate. Default is 1.
+        :type gamma: float
+        :param delta: The effect of the presence of prey on the predator's growth rate. Default is 1.
+        :type delta: float
+        :param x0: The initial population density of prey. Default is 1.
+        :type x0: float
+        :param y0: The initial population density of predator. Default is 1.
+        :type y0: float
         """
         self._data = data
 
@@ -594,14 +509,18 @@ class LotkaVolterraSimulator(ModelBasedSimulator):
         """
         Sets the parameters for the simulator.
 
-        Args:
-            alpha (float): The maximum prey per capita growth rate.
-            beta (float): The effect of the presence of predators on the prey death rate.
-            gamma (float): The predator's per capita death rate.
-            delta (float): The effect of the presence of prey on the predator's growth rate.
-            x0 (float): The initial population density of prey.
-            y0 (float): The initial population density of predator.
-            **kwargs: Arbitrary keyword arguments for setting simulator parameters.
+        :param alpha: The maximum prey per capita growth rate.
+        :type alpha: float
+        :param beta: The effect of the presence of predators on the prey death rate.
+        :type beta: float
+        :param gamma: The predator's per capita death rate.
+        :type gamma: float
+        :param delta: The effect of the presence of prey on the predator's growth rate.
+        :type delta: float
+        :param x0: The initial population density of prey.
+        :type x0: float
+        :param y0: The initial population density of predator.
+        :type y0: float
         """
         super().set_params({
             "alpha": alpha,
@@ -616,12 +535,13 @@ class LotkaVolterraSimulator(ModelBasedSimulator):
         """
         Generates the simulation data based on the Lotka-Volterra equations.
 
-        Args:
-            num_samples (int): The number of sample points to generate.
-            tmax (float): The maximum time value for the simulation. Default is 1.
+        :param num_samples: The number of sample points to generate.
+        :type num_samples: int
+        :param tmax: The maximum time value for the simulation. Default is 1.
+        :type tmax: float
 
-        Returns:
-            np.ndarray: An array containing the population densities of prey and predators over time.
+        :returns: An array containing the population densities of prey and predators over time.
+        :rtype: np.ndarray
         """
         t = np.linspace(0., tmax, num_samples)
         X0 = [self.x0, self.y0]
@@ -632,8 +552,8 @@ class LotkaVolterraSimulator(ModelBasedSimulator):
         """
         Creates a deep copy of the current LotkaVolterraSimulator instance.
 
-        Returns:
-            LotkaVolterraSimulator: A new instance of LotkaVolterraSimulator with copied data and parameters.
+        :returns: A new instance of LotkaVolterraSimulator with copied data and parameters.
+        :rtype: LotkaVolterraSimulator
         """
         copy_simulator = LotkaVolterraSimulator(self._data)
         params = self.params()
