@@ -59,9 +59,8 @@ format: ## Formats code with `black` and `isort`
 check: ## Runs all static checks such as code formatting checks, linting, mypy
 	@echo "\n=== black (formatting) ================================="
 	black --check --line-length=100 $(LINT_NAMES)
-	@echo "\n=== flake8 (linting)===================================="
-	flake8 --statistics \
-		   --exclude=.ipynb_checkpoints ./tsgm
+	@echo "\n=== ruff (linting)===================================="
+	ruff check ./tsgm
 	@echo "\n=== mypy (static type checking) ========================"
 	mypy $(TYPE_NAMES)
 

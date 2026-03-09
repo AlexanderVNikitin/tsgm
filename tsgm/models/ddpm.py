@@ -12,17 +12,20 @@ import typing as T
 
 
 class GaussianDiffusion:
-    """Gaussian diffusion utility for generating samples using a diffusion process.
+    """
+    Gaussian diffusion utility for generating samples using a diffusion process.
 
     This class implements a Gaussian diffusion process, where a sample is gradually
     perturbed by adding Gaussian noise over a series of timesteps. It also includes
     methods to reverse the diffusion process, predicting the original data from
     the noisy samples.
 
-    Args:
-        beta_start (float): Start value of the scheduled variance for the diffusion process.
-        beta_end (float): End value of the scheduled variance for the diffusion process.
-        timesteps (int): Number of timesteps in the forward process.
+    :param beta_start: Start value of the scheduled variance for the diffusion process.
+    :type beta_start: float
+    :param beta_end: End value of the scheduled variance for the diffusion process.
+    :type beta_end: float
+    :param timesteps: Number of timesteps in the forward process.
+    :type timesteps: int
     """
 
     def __init__(
@@ -98,13 +101,15 @@ class GaussianDiffusion:
         """
         Extracts coefficients for a specific timestep and reshapes them for broadcasting.
 
-        Args:
-            a: Tensor to extract from.
-            t: Timestep for which the coefficients are to be extracted.
-            x_shape: Shape of the current batched samples.
+        :param a: Tensor to extract from.
+        :type a: TensorLike
+        :param t: Timestep for which the coefficients are to be extracted.
+        :type t: int
+        :param x_shape: Shape of the current batched samples.
+        :type x_shape: tuple
 
-        Returns:
-            Tensor reshaped to [batch_size, 1, 1] for broadcasting.
+        :returns: Tensor reshaped to [batch_size, 1, 1] for broadcasting.
+        :rtype: TensorLike
         """
         batch_size = x_shape[0]
         # Handle both (batch_size,) and (batch_size, 1) shapes
@@ -113,15 +118,16 @@ class GaussianDiffusion:
         return ops.reshape(out, [batch_size, 1, 1])
 
     def q_mean_variance(self, x_start: TensorLike, t: float) -> T.Tuple:
-        """Extracts the mean and variance at a specific timestep in the forward diffusion process.
+        """
+        Extracts the mean and variance at a specific timestep in the forward diffusion process.
 
-        Args:
-            x_start: Initial sample (before the first diffusion step).
-            t: A timestep.
+        :param x_start: Initial sample (before the first diffusion step).
+        :type x_start: TensorLike
+        :param t: A timestep.
+        :type t: float
 
-        Returns:
-            mean, variance, log_variance: Tensors representing the mean, variance,
-            and log variance of the distribution at `t`.
+        :returns: Tensors representing the mean, variance, and log variance of the distribution at `t`.
+        :rtype: tuple
         """
         x_start_shape = ops.shape(x_start)
         mean = self._extract(self.sqrt_alphas_cumprod, t, x_start_shape) * x_start
@@ -132,15 +138,18 @@ class GaussianDiffusion:
         return mean, variance, log_variance
 
     def q_sample(self, x_start: TensorLike, t: float, noise: float) -> T.Tuple:
-        """Performs the forward diffusion step by adding Gaussian noise to the sample.
+        """
+        Performs the forward diffusion step by adding Gaussian noise to the sample.
 
-        Args:
-            x_start: Initial sample (before the first diffusion step)
-            t: Current timestep
-            noise: Gaussian noise to be added at timestep `t`
+        :param x_start: Initial sample (before the first diffusion step).
+        :type x_start: TensorLike
+        :param t: Current timestep.
+        :type t: float
+        :param noise: Gaussian noise to be added at timestep `t`.
+        :type noise: float
 
-        Returns:
-            Diffused samples at timestep `t`
+        :returns: Diffused samples at timestep `t`.
+        :rtype: TensorLike
         """
         x_start_shape = ops.shape(x_start)
         return (
@@ -150,15 +159,18 @@ class GaussianDiffusion:
         )
 
     def predict_start_from_noise(self, x_t: TensorLike, t, noise):
-        """Predicts the initial sample from the noisy sample at timestep `t`.
+        """
+        Predicts the initial sample from the noisy sample at timestep `t`.
 
-        Args:
-            x_t: Noisy sample at timestep `t`.
-            t: Current timestep.
-            noise: Gaussian noise added at timestep `t`.
+        :param x_t: Noisy sample at timestep `t`.
+        :type x_t: TensorLike
+        :param t: Current timestep.
+        :type t: int
+        :param noise: Gaussian noise added at timestep `t`.
+        :type noise: TensorLike
 
-        Returns:
-            Predicted initial sample.
+        :returns: Predicted initial sample.
+        :rtype: TensorLike
         """
 
         x_t_shape = ops.shape(x_t)
@@ -175,15 +187,18 @@ class GaussianDiffusion:
         return result
 
     def q_posterior(self, x_start, x_t, t):
-        """Computes the mean and variance of the posterior distribution q(x_{t-1} | x_t, x_0).
+        """
+        Computes the mean and variance of the posterior distribution q(x_{t-1} | x_t, x_0).
 
-        Args:
-            x_start: Initial sample (x_0) for the posterior computation.
-            x_t: Sample at timestep `t`.
-            t: Current timestep.
+        :param x_start: Initial sample (x_0) for the posterior computation.
+        :type x_start: TensorLike
+        :param x_t: Sample at timestep `t`.
+        :type x_t: TensorLike
+        :param t: Current timestep.
+        :type t: int
 
-        Returns:
-            Posterior mean, variance, and clipped log variance at the current timestep.
+        :returns: Posterior mean, variance, and clipped log variance at the current timestep.
+        :rtype: tuple
         """
 
         x_t_shape = ops.shape(x_t)
@@ -198,16 +213,18 @@ class GaussianDiffusion:
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(self, pred_noise, x, t):
-        """Predicts the mean and variance for the reverse diffusion step.
+        """
+        Predicts the mean and variance for the reverse diffusion step.
 
-        Args:
-            pred_noise: Noise predicted by the diffusion model.
-            x: Samples at a given timestep for which the noise was predicted.
-            t: Current timestep.
+        :param pred_noise: Noise predicted by the diffusion model.
+        :type pred_noise: TensorLike
+        :param x: Samples at a given timestep for which the noise was predicted.
+        :type x: TensorLike
+        :param t: Current timestep.
+        :type t: int
 
-        Returns:
-            model_mean, posterior_variance, posterior_log_variance: Tensors
-            representing the mean and variance of the model at the current timestep.
+        :returns: Model mean, posterior variance, and posterior log variance tensors.
+        :rtype: tuple
         """
         x_recon = self.predict_start_from_noise(x, t=t, noise=pred_noise)
 
@@ -217,15 +234,18 @@ class GaussianDiffusion:
         return model_mean, posterior_variance, posterior_log_variance
 
     def p_sample(self, pred_noise, x, t):
-        """Generates a sample from the diffusion model by reversing the diffusion process.
+        """
+        Generates a sample from the diffusion model by reversing the diffusion process.
 
-        Args:
-            pred_noise: Noise predicted by the diffusion model.
-            x: Samples at a given timestep for which the noise was predicted.
-            t: Current timestep.
+        :param pred_noise: Noise predicted by the diffusion model.
+        :type pred_noise: TensorLike
+        :param x: Samples at a given timestep for which the noise was predicted.
+        :type x: TensorLike
+        :param t: Current timestep.
+        :type t: int
 
-        Returns:
-            Sample generated by reversing the diffusion process at timestep `t`.
+        :returns: Sample generated by reversing the diffusion process at timestep `t`.
+        :rtype: TensorLike
         """
         model_mean, _, model_log_variance = self.p_mean_variance(
             pred_noise, x=x, t=t
@@ -240,13 +260,16 @@ class GaussianDiffusion:
 
 class DDPM(keras.Model):
     """
-    Denoising Diffusion Probabilistic Model
+    Denoising Diffusion Probabilistic Model.
 
-    Args:
-        network (keras.Model): A Keras model that predicts the noise added to the images.
-        ema_network (keras.Model): EMA model, a clone of `network`
-        timesteps (int): The number of timesteps in the diffusion process.
-        ema (float): The decay factor for the EMA, default is 0.999.
+    :param network: A Keras model that predicts the noise added to the images.
+    :type network: keras.Model
+    :param ema_network: EMA model, a clone of `network`.
+    :type ema_network: keras.Model
+    :param timesteps: The number of timesteps in the diffusion process.
+    :type timesteps: int
+    :param ema: The decay factor for the EMA, default is 0.999.
+    :type ema: float
     """
     def __init__(self, network: keras.Model, ema_network: keras.Model, timesteps: int, ema: float = 0.999) -> None:
         super().__init__()
@@ -264,13 +287,13 @@ class DDPM(keras.Model):
 
     def train_step(self, data: TensorLike) -> T.Dict:
         """
-        Performs a single training step on a batch of images.
+        Performs a single training step on a batch of time series data.
 
-        Args:
-            data: A batch of images to train on.
+        :param data: A batch of time series data to train on.
+        :type data: TensorLike
 
-        Returns:
-            A dictionary containing the loss value for the training step.
+        :returns: A dictionary containing the loss value for the training step.
+        :rtype: dict
         """
         images = data
         self.seq_len, self.feat_dim = images.shape[1], images.shape[2]
@@ -353,11 +376,11 @@ class DDPM(keras.Model):
         """
         Generates new samples by running the reverse diffusion process.
 
-        Args:
-            n_samples: The number of samples to generate.
+        :param n_samples: The number of samples to generate.
+        :type n_samples: int
 
-        Returns:
-            Generated samples after running the reverse diffusion process.
+        :returns: Generated samples after running the reverse diffusion process.
+        :rtype: TensorLike
         """
 
         if self.seq_len is None or self.feat_dim is None:
@@ -399,11 +422,11 @@ class DDPM(keras.Model):
         """
         Calls the generate method to produce samples.
 
-        Args:
-            n_samples: The number of samples to generate or tensor for building.
+        :param n_samples: The number of samples to generate or tensor for building.
+        :type n_samples: int
 
-        Returns:
-            Generated samples or input tensor for building.
+        :returns: Generated samples or input tensor for building.
+        :rtype: TensorLike
         """
         # Handle Keras 3 model building - if n_samples is a tensor, return it
         if hasattr(n_samples, 'shape'):
