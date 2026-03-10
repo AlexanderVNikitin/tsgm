@@ -73,7 +73,7 @@ class BetaVAE(keras.Model):
             reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
             kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
             kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
-            total_loss = reconstruction_loss + kl_loss
+            total_loss = reconstruction_loss + self.beta * kl_loss
         grads = tape.gradient(total_loss, self.trainable_weights)
         #  I am not sure if this should be self.optimizer.apply(grads, model.trainable_weights)
         #  see https://keras.io/guides/writing_a_custom_training_loop_in_tensorflow/
@@ -93,7 +93,7 @@ class BetaVAE(keras.Model):
         reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
         kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
         kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
-        total_loss = reconstruction_loss + kl_loss
+        total_loss = reconstruction_loss + self.beta * kl_loss
         # Ensure total_loss is a scalar for PyTorch backward()
         if hasattr(total_loss, 'shape') and len(total_loss.shape) > 0:
             total_loss = ops.mean(total_loss)
@@ -122,7 +122,7 @@ class BetaVAE(keras.Model):
         reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
         kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
         kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
-        total_loss = reconstruction_loss + kl_loss
+        total_loss = reconstruction_loss + self.beta * kl_loss
 
         self.total_loss_tracker.update_state(total_loss)
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
