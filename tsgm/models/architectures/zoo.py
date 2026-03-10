@@ -497,7 +497,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         x = layers.Conv1D(1, 8, padding="same")(x)
         x = layers.LSTM(256, return_sequences=True)(x)
 
-        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+        pool_and_stride = math.ceil((x.shape[1] + 1) / (self._seq_len + 1))
 
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(x)
         g_output = layers.Conv1D(self._feat_dim, 1, activation="tanh")(x)
@@ -606,7 +606,7 @@ class ConvnLSTMnArchitecture(BaseClassificationArchitecture):
         for _ in range(self._n_conv_lstm_blocks):
             x = layers.Conv1D(filters=64, kernel_size=3, activation="relu")(x)
             x = layers.Dropout(0.2)(x)
-            x = layers.LSTM(128, activation="relu", return_sequences=True)(x)
+            x = layers.LSTM(128, activation="tanh", return_sequences=True)(x)
             x = layers.Dropout(0.2)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation="relu")(x)
