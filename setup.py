@@ -71,6 +71,7 @@ setup(name='tsgm',
       install_requires=[
           "scipy>=1.9.0",
           "numpy>=2.0",
+          "pandas<3",
           "networkx>=3.1,<3.3",
           "seaborn>=0.13.2",
           "scikit-learn>=1.6.1",
