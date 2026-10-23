@@ -89,6 +89,23 @@ def test_window_warping():
     assert np.allclose(ys_gen, np.ones((17, 1)))
 
 
+def test_window_warping_can_select_last_valid_window(monkeypatch):
+    xs = np.array([[[0], [10], [20], [30], [40]]])
+    calls = []
+
+    def select_last_window(low, high, size):
+        calls.append((low, high, size))
+        return np.full(size, high - 1)
+
+    monkeypatch.setattr(np.random, "randint", select_last_window)
+    xs_gen = tsgm.models.augmentations.WindowWarping().generate(
+        X=xs, window_ratio=0.4, scales=(0.5,), n_samples=1
+    )
+
+    assert calls == [(0, 4, 1)]
+    np.testing.assert_allclose(xs_gen[0, :, 0], [0, 7.5, 15, 22.5, 30])
+
+
 @pytest.mark.parametrize("initial_labels", [[0] * 17, None])
 def test_dtw_ba(initial_labels):
     xs = np.array([[[1, 2, 3, 4], [1, 2, 3, 4]], [[1, 2, 3, 4], [1, 2, 3, 4]]])
