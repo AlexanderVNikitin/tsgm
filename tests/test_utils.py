@@ -355,6 +355,7 @@ def test_reconstruction_loss_by_axis():
     assert abs(loss_val - 0.00444442) < eps
 
 
+@skip_on(urllib.error.URLError, reason="Connection error while downloading PhysioNet 2012")
 def test_get_physionet2012(mocker):
     shutil.rmtree("./physionet2012", ignore_errors=True)
     train_X, train_y, test_X, test_y, val_X, val_y = tsgm.utils.get_physionet2012()

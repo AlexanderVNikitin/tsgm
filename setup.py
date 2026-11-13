@@ -80,7 +80,7 @@ setup(name='tsgm',
           "tqdm>=4.67.1",
           "dtaidistance==2.3.13",
           "keras>=3.10.0",
-          "statsmodels==0.14.5"
+          "statsmodels>=0.14.6"
       ],
       extras_require={
           "tensorflow": ["tensorflow>=2.19.0", "tensorflow-probability>=0.25.0", "tf-keras>=2.19.0"],
