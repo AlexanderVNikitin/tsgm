@@ -357,6 +357,9 @@ class ConditionalGAN(keras.Model):
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
         self._temporal = temporal
 
+        self.use_wgan = use_wgan
+        self.gp_weight = 10.0
+
     def call(self, inputs):
         """
         Forward pass for the ConditionalGAN model.
@@ -400,6 +403,58 @@ class ConditionalGAN(keras.Model):
 
         self.dp = generator_dp and discriminator_dp
 
+    def wgan_discriminator_loss(self, real_sample, fake_sample):
+        #KERAS 3
+        real_loss = ops.mean(real_sample)
+        fake_loss = ops.mean(fake_sample)
+        return fake_loss - real_loss
+        #KERAS 2
+        #return tf.reduce_mean(fake_sample) - tf.reduce_mean(real_sample)
+
+    # Define the loss functions to be used for generator
+    def wgan_generator_loss(self, fake_sample):
+        #KERAS 3
+        return -ops.mean(fake_sample)
+        #KERAS 2
+        #return -tf.reduce_mean(fake_sample)
+
+    def gradient_penalty_tf(self, tf, interpolated):
+    
+        with tf.GradientTape() as gp_tape:
+            gp_tape.watch(interpolated)
+            # 1. Get the discriminator output for this interpolated sample.
+            pred = self.discriminator(interpolated, training=True)
+
+        # 2. Calculate the gradients w.r.t to this interpolated sample.
+        grads = gp_tape.gradient(pred, [interpolated])[0]
+        return grads
+
+    def gradient_penalty_torch(self, torch, interpolated):
+        # Create a new tensor that requires grad instead of modifying existing one
+        interpolated = interpolated.detach().requires_grad_(True)
+        pred = self.discriminator(interpolated, training=True)
+        grads = torch.autograd.grad(outputs=pred, inputs=interpolated,
+                                    grad_outputs=ops.ones_like(pred),
+                                    create_graph=True, retain_graph=True, only_inputs=True)[0]
+        return grads
+
+    def gradient_penalty(self, batch_size, real_samples, fake_samples):
+        # get the interpolated samples
+        alpha_shape = [batch_size, 1, 1]
+        # Create alpha on the same device as real_samples
+        alpha = ops.ones_like(real_samples[:, :1, :1]) * keras.random.normal(alpha_shape, 0.0, 1.0)
+        diff = fake_samples - real_samples
+        interpolated = real_samples + alpha * diff
+        backend = get_backend()
+        if os.environ.get("KERAS_BACKEND") == "tensorflow":
+            grads = self.gradient_penalty_tf(backend, interpolated)
+        elif os.environ.get("KERAS_BACKEND") == "torch":
+            grads = self.gradient_penalty_torch(backend, interpolated)
+        # 3. Calcuate the norm of the gradients
+        norm = ops.sqrt(ops.sum(ops.square(grads), axis=[1, 2]))
+        gp = ops.mean((norm - 1.0) ** 2)
+        return gp
+
     def _get_random_vector_labels(self, batch_size: int, labels: tsgm.types.Tensor) -> None:
         if self._temporal:
             random_latent_vectors = keras.random.normal(shape=(batch_size, self._seq_len, self.latent_dim))
@@ -427,63 +482,70 @@ class ConditionalGAN(keras.Model):
         labels = data[1]
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
+        
+        # Prepare labels
         if not self._temporal:
             rep_labels = labels[:, :, None]
-            rep_labels = ops.repeat(
-                rep_labels, repeats=[self._seq_len]
-            )
+            rep_labels = ops.repeat(rep_labels, repeats=[self._seq_len])
         else:
             rep_labels = labels
 
-        rep_labels = ops.reshape(
-            rep_labels, (-1, self._seq_len, output_dim)
-        )
+        rep_labels = ops.reshape(rep_labels, (-1, self._seq_len, output_dim))
+    
+        # n_critic is typically 5 for WGAN
+        n_critic = 5 if self.use_wgan else 1
+        
+        for _ in range(n_critic):
+            
+            # 1. Train Discriminator
+            
+            # Generate Fake Data
+            random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
+            generated_ts = self.generator(random_vector_labels)
 
-        # Generate ts
+            # Concatenate TS with Labels for the Discriminator
+            fake_data = ops.concatenate([generated_ts, rep_labels], -1)
+            real_data = ops.concatenate([real_ts, rep_labels], -1)
+            
+            # Combined data (used for standard GAN only)
+            combined_data = ops.concatenate([fake_data, real_data], axis=0)
+            
+            
+            with tf.GradientTape() as tape:
+                if self.use_wgan:
+                    fake_logits = self.discriminator(fake_data, training=True)
+                    real_logits = self.discriminator(real_data, training=True)
+                    d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
+                    
+                    # GP is calculated on the CONCATENATED data (ts + labels)
+                    gp = self.gradient_penalty(batch_size, real_data, fake_data)
+                    d_loss = d_cost + gp * self.gp_weight
+                else:
+                    desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
+                    predictions = self.discriminator(combined_data)
+                    d_loss = self.loss_fn(desc_labels, predictions)
+
+            if self.dp:
+                self.d_optimizer.minimize(d_loss, self.discriminator.trainable_weights, tape=tape)
+            else:
+                grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+                self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
+
+        # 2. Train Generator
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
-
-        fake_data = ops.concatenate([generated_ts, rep_labels], -1)
-        real_data = ops.concatenate([real_ts, rep_labels], -1)
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
-
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
-
-        with tf.GradientTape() as tape:
-            predictions = self.discriminator(combined_data)
-            d_loss = self.loss_fn(desc_labels, predictions)
-
-        if self.dp:
-            # For DP optimizers from `tensorflow.privacy`
-            self.d_optimizer.minimize(d_loss, self.discriminator.trainable_weights, tape=tape)
-        else:
-            grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-
-            self.d_optimizer.apply_gradients(
-                zip(grads, self.discriminator.trainable_weights)
-            )
-
-        random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-
-        # Pretend that all samples are real
         misleading_labels = ops.zeros((batch_size, 1))
 
-        # Train generator (with updating the discriminator)
         with tf.GradientTape() as tape:
             fake_samples = self.generator(random_vector_labels)
             fake_data = ops.concatenate([fake_samples, rep_labels], -1)
             predictions = self.discriminator(fake_data)
-            g_loss = self.loss_fn(misleading_labels, predictions)
+            
+            if self.use_wgan:
+                g_loss = self.wgan_generator_loss(predictions)
+            else:
+                g_loss = self.loss_fn(misleading_labels, predictions)
 
         if self.dp:
-            # For DP optimizers from `tensorflow.privacy`
             self.g_optimizer.minimize(g_loss, self.generator.trainable_weights, tape=tape)
         else:
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
@@ -503,58 +565,67 @@ class ConditionalGAN(keras.Model):
         else:
             # Fallback for single input
             real_ts, labels = data, None
+            
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
+        
+        # Prepare labels
         if not self._temporal:
             rep_labels = labels[:, :, None]
-            rep_labels = ops.repeat(
-                rep_labels, repeats=[self._seq_len]
-            )
+            rep_labels = ops.repeat(rep_labels, repeats=[self._seq_len])
         else:
             rep_labels = labels
 
-        rep_labels = ops.reshape(
-            rep_labels, (-1, self._seq_len, output_dim)
-        )
+        rep_labels = ops.reshape(rep_labels, (-1, self._seq_len, output_dim))
 
-        # Generate ts
+        n_critic = 5 if self.use_wgan else 1
+        for _ in range(n_critic):        
+            # Generate Fake Data
+            random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
+            generated_ts = self.generator(random_vector_labels)
+            # Concatenate TS with Labels
+            fake_data = ops.concatenate([generated_ts, rep_labels], -1)
+            real_data = ops.concatenate([real_ts, rep_labels], -1)
+            combined_data = ops.concatenate([fake_data, real_data], axis=0)
+
+
+            # 1. Train Discriminator
+            if self.use_wgan:
+                fake_logits = self.discriminator(fake_data, training=True)
+                real_logits = self.discriminator(real_data, training=True)
+                d_cost = self.wgan_discriminator_loss(real_logits, fake_logits)
+                gp = self.gradient_penalty(batch_size, real_data, fake_data)
+                d_loss = d_cost + gp * self.gp_weight
+            else:
+                desc_labels = ops.concatenate([ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0)
+                predictions = self.discriminator(combined_data)
+                d_loss = self.loss_fn(desc_labels, predictions)
+                
+            self.discriminator.zero_grad()
+            d_loss.backward()
+
+            d_trainable_weights = [v for v in self.discriminator.trainable_weights]
+            d_gradients = [v.value.grad for v in d_trainable_weights]
+
+            with torch.no_grad():
+                grads_and_vars = list(zip(d_gradients, d_trainable_weights))
+                self.d_optimizer.apply_gradients(grads_and_vars)
+                
+        
+
+        # 2. Train Generator
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
-
-        fake_data = ops.concatenate([generated_ts, rep_labels], -1)
-        real_data = ops.concatenate([real_ts, rep_labels], -1)
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
-
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
-        predictions = self.discriminator(combined_data)
-        d_loss = self.loss_fn(desc_labels, predictions)
-        self.discriminator.zero_grad()
-        d_loss.backward()
-
-        d_trainable_weights = [v for v in self.discriminator.trainable_weights]
-        d_gradients = [v.value.grad for v in d_trainable_weights]
-
-        with torch.no_grad():
-            # Keras 3 expects (gradient, variable) pairs
-            grads_and_vars = list(zip(d_gradients, d_trainable_weights))
-            self.d_optimizer.apply_gradients(grads_and_vars)
-        random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-
-        # Pretend that all samples are real
         misleading_labels = ops.zeros((batch_size, 1))
 
-        # Train generator (with updating the discriminator)
+        # Re-generate to keep computational graph valid for generator
         fake_samples = self.generator(random_vector_labels)
         fake_data = ops.concatenate([fake_samples, rep_labels], -1)
         predictions = self.discriminator(fake_data)
-        g_loss = self.loss_fn(misleading_labels, predictions)
+        
+        if self.use_wgan:
+            g_loss = self.wgan_generator_loss(predictions)
+        else:
+            g_loss = self.loss_fn(misleading_labels, predictions)
 
         self.generator.zero_grad()
         g_loss.backward()
@@ -563,7 +634,6 @@ class ConditionalGAN(keras.Model):
         g_gradients = [v.value.grad for v in g_trainable_weights]
 
         with torch.no_grad():
-            # Keras 3 expects (gradient, variable) pairs
             grads_and_vars = list(zip(g_gradients, g_trainable_weights))
             self.g_optimizer.apply_gradients(grads_and_vars)
 
