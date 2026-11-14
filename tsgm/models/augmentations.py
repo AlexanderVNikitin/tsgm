@@ -348,11 +348,11 @@ class WindowWarping(BaseAugmenter):
         result = np.zeros((n_samples, n_timesteps, n_features))
         result_y = np.zeros((n_samples, 1))
         has_labels = y is not None
+        window_starts = np.random.randint(
+            low=0, high=n_timesteps - warp_size + 1, size=n_samples
+        )
+        window_ends = window_starts + warp_size
         for i in range(n_samples):
-            window_starts = np.random.randint(
-                low=0, high=n_timesteps - warp_size,
-                size=(n_samples))
-            window_ends = window_starts + warp_size
             random_sample_id = random.randint(0, n_data - 1)
             random_sample = X[random_sample_id]
 
