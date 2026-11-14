@@ -268,7 +268,7 @@ class cBetaVAE(keras.Model):
             encoder_input = self._get_encoder_input(X, labels)
             z_mean, z_log_var, z = self.encoder(encoder_input)
 
-            decoder_input = self._get_decoder_input(z_mean, labels)
+            decoder_input = self._get_decoder_input(z, labels) #Fix
             reconstruction = self.decoder(decoder_input)
             reconstruction_loss = self._get_reconstruction_loss(X, reconstruction)
             kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
@@ -290,7 +290,7 @@ class cBetaVAE(keras.Model):
         encoder_input = self._get_encoder_input(X, labels)
         z_mean, z_log_var, z = self.encoder(encoder_input)
 
-        decoder_input = self._get_decoder_input(z_mean, labels)
+        decoder_input = self._get_decoder_input(z, labels) #Fix
         reconstruction = self.decoder(decoder_input)
         reconstruction_loss = self._get_reconstruction_loss(X, reconstruction)
         kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
