@@ -19,6 +19,17 @@ class Sampling(keras.layers.Layer):
     It takes as input the mean and log variance of the latent distribution and generates
     samples by adding random noise scaled by the standard deviation to the mean.
     """
+    def __init__(self, seed: T.Optional[int] = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.seed = seed
+        # A tracked seed generator is required for random ops under JAX (traced/stateless execution)
+        self.seed_generator = keras.random.SeedGenerator(seed)
+
+    def get_config(self) -> T.Dict:
+        config = super().get_config()
+        config.update({"seed": self.seed})
+        return config
+
     def call(self, inputs: T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor]) -> tsgm.types.Tensor:
         """
         Generates samples from a latent space.
@@ -31,7 +42,7 @@ class Sampling(keras.layers.Layer):
         """
         z_mean, z_log_var = inputs
         #  random noise for keras3.0
-        epsilon = keras.random.normal(shape=ops.shape(z_mean))
+        epsilon = keras.random.normal(shape=ops.shape(z_mean), seed=self.seed_generator)
         #  ops for keras3.0
         return z_mean + ops.exp(0.5 * z_log_var) * epsilon
 

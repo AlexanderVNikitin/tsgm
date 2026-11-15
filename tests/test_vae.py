@@ -93,3 +93,89 @@ def test_temp_cvae():
     vae.fit(X_train, y, epochs=1, batch_size=batch_size)
     x_decoded = vae.predict([X_train, y])
     assert x_decoded.shape == X.shape
+
+
+def _shifted_encoder(encoder: keras.Model, shift: float) -> keras.Model:
+    """Wraps an encoder so that the sampled z is deterministic and differs from z_mean."""
+    inputs = keras.Input(shape=encoder.input_shape[1:])
+    z_mean, z_log_var, _ = encoder(inputs)
+    z = keras.layers.Lambda(lambda t: t + shift)(z_mean)
+    return keras.Model(inputs, [z_mean, z_log_var, z])
+
+
+def _vae_and_data(conditional: bool):
+    seq_len, feat_dim, latent_dim, output_dim = 32, 1, 4, 2
+    if conditional:
+        architecture = tsgm.models.architectures.zoo["cvae_conv5"](
+            seq_len=seq_len, feat_dim=feat_dim, latent_dim=latent_dim, output_dim=output_dim)
+        X, y_i = tsgm.utils.gen_sine_vs_const_dataset(16, seq_len, feat_dim, max_value=20, const=10)
+        y = keras.utils.to_categorical(y_i, output_dim).astype(np.float32)
+    else:
+        architecture = tsgm.models.architectures.zoo["vae_conv5"](
+            seq_len=seq_len, feat_dim=feat_dim, latent_dim=latent_dim)
+        X = tsgm.utils.gen_sine_dataset(16, seq_len, feat_dim, max_value=20)
+        y = None
+    X = tsgm.utils.TSFeatureWiseScaler((0, 1)).fit_transform(X).astype(np.float32)
+    return architecture, X, y, latent_dim
+
+
+@pytest.mark.parametrize("conditional", [False, True])
+def test_vae_decodes_sampled_z(conditional):
+    # Regression test: the training loss must decode the sampled z, not z_mean
+    architecture, X, y, latent_dim = _vae_and_data(conditional)
+    shift = 5.0
+    encoder = _shifted_encoder(architecture.encoder, shift)
+    decoder = architecture.decoder
+    if conditional:
+        vae = tsgm.models.cvae.cBetaVAE(encoder, decoder, latent_dim=latent_dim, temporal=False)
+
+        def decode(z):
+            return decoder(vae._get_decoder_input(z, y))
+    else:
+        vae = tsgm.models.cvae.BetaVAE(encoder, decoder)
+        decode = decoder
+
+    X = keras.ops.convert_to_tensor(X)
+    if conditional:
+        y = keras.ops.convert_to_tensor(y)
+        data = (X, y)
+    else:
+        data = X
+    _, reconstruction_loss, _ = vae._compute_losses(data)
+    encoder_input = vae._get_encoder_input(X, y) if conditional else X
+    z_mean, _, z = encoder(encoder_input)
+
+    def to_np(t):
+        return keras.ops.convert_to_numpy(t)
+
+    expected = vae._get_reconstruction_loss(X, decode(z))
+    from_mean = vae._get_reconstruction_loss(X, decode(z_mean))
+    assert np.allclose(to_np(reconstruction_loss), to_np(expected), rtol=1e-5)
+    assert not np.allclose(to_np(reconstruction_loss), to_np(from_mean), rtol=1e-5)
+
+
+@pytest.mark.parametrize("conditional", [False, True])
+def test_vae_fit_updates_weights(conditional):
+    architecture, X, y, latent_dim = _vae_and_data(conditional)
+    encoder, decoder = architecture.encoder, architecture.decoder
+    if conditional:
+        vae = tsgm.models.cvae.cBetaVAE(encoder, decoder, latent_dim=latent_dim, temporal=False)
+    else:
+        vae = tsgm.models.cvae.BetaVAE(encoder, decoder)
+    vae.compile(optimizer=keras.optimizers.Adam(0.01))
+
+    def snapshot(model):
+        return [keras.ops.convert_to_numpy(w).copy() for w in model.trainable_weights]
+
+    encoder_before, decoder_before = snapshot(encoder), snapshot(decoder)
+    if conditional:
+        history = vae.fit(X, y, epochs=1, batch_size=8, verbose=0)
+    else:
+        history = vae.fit(X, epochs=1, batch_size=8, verbose=0)
+
+    def changed(before, model):
+        return any(not np.allclose(b, a) for b, a in zip(before, snapshot(model)))
+
+    assert changed(encoder_before, encoder)
+    assert changed(decoder_before, decoder)
+    assert np.isfinite(history.history["loss"][-1])
