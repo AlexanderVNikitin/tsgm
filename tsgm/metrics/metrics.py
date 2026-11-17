@@ -186,7 +186,8 @@ class PrivacyMembershipInferenceMetric(Metric):
         """
         :param attacker: An attacker, one class classifier (OCC) that implements methods `.fit` and `.predict`
         :type attacker: typing.Any
-        :param metric: Measures quality of attacker (precision by default)
+        :param metric: Measures quality of attacker (precision by default).
+            It is called as `metric(y_true, y_pred)`, where members of the training set are labeled as 1 and others as -1.
         :type metric: typing.Callable
         """
         self._attacker = attacker
@@ -204,9 +205,9 @@ class PrivacyMembershipInferenceMetric(Metric):
         :returns: how well the attacker can distinguish `d_tr` & `d_test` when it is trained on `d_syn`.
         """
         self._attacker.fit(d_syn.Xy_concat)
-        labels = self._attacker.predict((d_tr | d_test).Xy_concat)
+        predicted_labels = self._attacker.predict((d_tr | d_test).Xy_concat)
         correct_labels = [1] * len(d_tr) + [-1] * len(d_test)
-        return 1 - self._metric(labels, correct_labels)
+        return 1 - self._metric(correct_labels, predicted_labels)
 
 
 class MMDMetric(Metric):
@@ -280,10 +281,10 @@ class DiscriminativeMetric(Metric):
         X_all, y_all = np.concatenate([X_hist, X_syn]), np.concatenate([[1] * len(d_hist), [0] * len(d_syn)])
         X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_all, y_all, test_size=test_size, random_state=random_seed)
         model.fit(X_train, y_train, epochs=n_epochs)
-        pred = model.predict(X_test)
-        # check the shape, 1D array or N-D arrary
-        if len(pred.shape) == 1:  # binary classification with sigmoid activation
-            y_pred = (pred > 0.5).astype(int)
+        pred = np.asarray(model.predict(X_test))
+        # check the shape: a single output per sample, (n,) or (n, 1), or one output per class
+        if pred.ndim == 1 or (pred.ndim == 2 and pred.shape[1] == 1):  # binary classification with sigmoid activation
+            y_pred = (pred.reshape(-1) > 0.5).astype(int)
         else:  # multiple classification with softmax activation
             y_pred = np.argmax(pred, axis=-1).astype(int)
         if metric is None:
@@ -446,6 +447,9 @@ class DemographicParityMetric(Metric):
         if len(all_groups) > len(unique_groups_hist) or len(all_groups) > len(unique_groups_synth):
             logger.warning("Groups in historical and synthetic data are not entirely identical.")
 
+        # Elementwise masks require arrays: for a list, `groups == g` is a single bool
+        groups_hist, groups_synth = np.asarray(groups_hist), np.asarray(groups_synth)
+
         result = {}
         for g in all_groups:
             y_g_hist, y_g_synth = y_hist[groups_hist == g], y_synth[groups_synth == g]
@@ -510,8 +514,13 @@ class PredictiveParityMetric:
         assert len(y_true_hist) == len(y_pred_hist) == len(groups_hist) == len(y_true_synth) == len(y_pred_synth) == len(groups_synth)
         unique_groups_hist, unique_groups_synth = set(groups_hist), set(groups_synth)
         all_groups = unique_groups_hist | unique_groups_synth
-        if len(all_groups) - len(unique_groups_hist) - len(unique_groups_synth) != 0:
+        if unique_groups_hist != unique_groups_synth:
             logger.warning("Groups in historical and synthetic data are not entirely identical.")
+
+        # Elementwise masks require arrays: for a list, `groups == g` is a single bool
+        y_true_hist, y_pred_hist, groups_hist = np.asarray(y_true_hist), np.asarray(y_pred_hist), np.asarray(groups_hist)
+        y_true_synth, y_pred_synth, groups_synth = np.asarray(y_true_synth), np.asarray(y_pred_synth), np.asarray(groups_synth)
+
         result = {}
         for g in all_groups:
             y_true_g_hist, y_pred_g_hist = y_true_hist[groups_hist == g], y_pred_hist[groups_hist == g]

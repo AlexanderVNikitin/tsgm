@@ -1,3 +1,4 @@
+import logging
 import pytest
 
 import numpy as np
@@ -176,6 +177,43 @@ def test_privacy_inference_attack_metric():
     assert isinstance(privacy_metric(D_tr, D_test, D_sim), float)
 
 
+class MockAttacker:
+    """Flags a fixed set of samples as members (+1) and the rest as non-members (-1)."""
+    def __init__(self, member_idx):
+        self._member_idx = member_idx
+
+    def fit(self, X):
+        pass
+
+    def predict(self, X):
+        labels = -np.ones(X.shape[0], dtype=int)
+        labels[self._member_idx] = 1
+        return labels
+
+
+def test_privacy_inference_attack_metric_is_one_minus_precision():
+    n = 10
+    D_tr = tsgm.dataset.Dataset(np.zeros((n, 3, 2)), y=None)
+    D_test = tsgm.dataset.Dataset(np.ones((n, 3, 2)), y=None)
+    D_syn = tsgm.dataset.Dataset(np.zeros((n, 3, 2)), y=None)
+
+    # Two samples are flagged as members, both come from the training set: precision = 1.0, recall = 0.2
+    cautious_attacker = MockAttacker(member_idx=[0, 1])
+    privacy_metric = tsgm.metrics.PrivacyMembershipInferenceMetric(attacker=cautious_attacker)
+    assert privacy_metric(D_tr, D_syn, D_test) == pytest.approx(0.0)
+
+    # Every sample is flagged as a member: precision = 0.5, recall = 1.0
+    greedy_attacker = MockAttacker(member_idx=np.arange(2 * n))
+    privacy_metric = tsgm.metrics.PrivacyMembershipInferenceMetric(attacker=greedy_attacker)
+    assert privacy_metric(D_tr, D_syn, D_test) == pytest.approx(0.5)
+
+    # A custom metric is called with the scikit-learn convention, metric(y_true, y_pred)
+    privacy_metric = tsgm.metrics.PrivacyMembershipInferenceMetric(
+        attacker=cautious_attacker, metric=sklearn.metrics.recall_score
+    )
+    assert privacy_metric(D_tr, D_syn, D_test) == pytest.approx(0.8)
+
+
 def test_mmd_metric():
     ts = np.array([[[0, 2], [11, -11], [1, 2]], [[10, 21], [1, -1], [6, 8]]]).astype(np.float32)
     D1 = tsgm.dataset.Dataset(ts, y=None)
@@ -209,6 +247,58 @@ def test_discriminative_metric():
     assert score1 >= 0.5  # Should be better than random chance
     score2 = discr_metric(d_hist=D1, d_syn=D2, model=model, metric=sklearn.metrics.precision_score, test_size=0.2, random_seed=42, n_epochs=5)
     assert score2 >= 0.5  # Should be better than random chance
+
+
+class MockDiscriminator:
+    """Tells apart all-ones (real, label 1) and all-zeros (synthetic, label 0) samples, returning outputs of a given shape."""
+    def __init__(self, output, invert=False):
+        self._output = output
+        self._invert = invert
+
+    def fit(self, X, y, epochs=1):
+        pass
+
+    def predict(self, X):
+        p_real = (X.mean(axis=(1, 2)) > 0.5).astype(np.float32)
+        if self._invert:
+            p_real = 1 - p_real
+        if self._output == "sigmoid_flat":  # shape (n,)
+            return p_real
+        elif self._output == "sigmoid_column":  # shape (n, 1), as returned by a Dense(1, activation="sigmoid") head
+            return p_real[:, None]
+        else:  # shape (n, 2), as returned by a softmax head
+            return np.stack([1 - p_real, p_real], axis=1)
+
+
+@pytest.mark.parametrize("output", ["sigmoid_flat", "sigmoid_column", "softmax"])
+def test_discriminative_metric_output_shapes(output):
+    real, syn = np.ones((20, 6, 2)), np.zeros((20, 6, 2))
+    discr_metric = tsgm.metrics.DiscriminativeMetric()
+
+    score = discr_metric(d_hist=real, d_syn=syn, model=MockDiscriminator(output), test_size=0.5, n_epochs=1, random_seed=42)
+    assert score == 1.0
+
+    score = discr_metric(d_hist=real, d_syn=syn, model=MockDiscriminator(output, invert=True), test_size=0.5, n_epochs=1, random_seed=42)
+    assert score == 0.0
+
+
+def test_discriminative_metric_keras_sigmoid_output():
+    seq_len, feat_dim = 6, 2
+    real, syn = np.ones((20, seq_len, feat_dim), dtype=np.float32), np.zeros((20, seq_len, feat_dim), dtype=np.float32)
+
+    model = keras.Sequential([
+        keras.Input((seq_len, feat_dim)),
+        keras.layers.Flatten(),
+        keras.layers.Dense(1, activation="sigmoid"),
+    ])
+    # sigmoid(12 - 6) ~ 1 for real samples and sigmoid(-6) ~ 0 for synthetic ones
+    model.layers[-1].set_weights([np.ones((seq_len * feat_dim, 1), dtype=np.float32), np.full((1,), -6.0, dtype=np.float32)])
+    # zero learning rate keeps the hand-set weights, so that the test is deterministic
+    model.compile(keras.optimizers.SGD(learning_rate=0.0), keras.losses.BinaryCrossentropy())
+
+    discr_metric = tsgm.metrics.DiscriminativeMetric()
+    score = discr_metric(d_hist=real, d_syn=syn, model=model, test_size=0.5, n_epochs=1, random_seed=42)
+    assert score == 1.0
 
 
 def test_entropy_metric():
@@ -269,4 +359,57 @@ def test_predictive_parity():
     y_pred_synth = np.array([1, 0, 0, 0, 0, 1])
     groups_synth = np.array([0, 0, 0, 1, 1, 1])
     result = metric(y_true_hist, y_pred_hist, groups_hist, y_true_synth, y_pred_synth, groups_synth)
-    assert result[0] > result[1] and result[1] == 0    
+    assert result[0] > result[1] and result[1] == 0
+
+
+def test_demographic_parity_list_groups():
+    ts = np.zeros((6, 3, 2), dtype=np.float32)
+    D_hist = tsgm.dataset.Dataset(ts, y=np.array([0, 0, 0, 1, 1, 1]))
+    D_synth = tsgm.dataset.Dataset(ts, y=np.array([1, 1, 1, 1, 1, 1]))
+    groups_hist = [0, 1, 0, 1, 1, 0]
+    groups_synth = [0, 0, 1, 1, 0, 1]
+
+    demographic_parity_metric = tsgm.metrics.DemographicParityMetric()
+    result = demographic_parity_metric(D_hist, groups_hist, D_synth, groups_synth)
+
+    # group 0: historical labels are [0, 0, 1], synthetic labels are [1, 1, 1]
+    # group 1: historical labels are [0, 1, 1], synthetic labels are [1, 1, 1]
+    assert result == {0: pytest.approx(2 / 3), 1: pytest.approx(1 / 3)}
+    assert result == demographic_parity_metric(D_hist, np.array(groups_hist), D_synth, np.array(groups_synth))
+
+
+def test_predictive_parity_list_inputs():
+    # the example from the docstring of PredictiveParityMetric
+    y_true_hist = [0, 1, 0, 1, 1, 0]
+    y_pred_hist = [0, 1, 0, 0, 1, 1]
+    groups_hist = [0, 1, 0, 1, 1, 0]
+    y_true_synth = [1, 0, 1, 0, 0, 1]
+    y_pred_synth = [1, 0, 1, 1, 0, 0]
+    groups_synth = [1, 1, 0, 0, 0, 1]
+
+    metric = tsgm.metrics.PredictiveParityMetric()
+    result = metric(y_true_hist, y_pred_hist, groups_hist, y_true_synth, y_pred_synth, groups_synth)
+
+    # group 0: precision is 0 on historical data and 0.5 on synthetic data
+    # group 1: precision is 1 on both
+    assert result == {0: pytest.approx(-0.5), 1: pytest.approx(0.0)}
+    assert result == metric(
+        np.array(y_true_hist), np.array(y_pred_hist), np.array(groups_hist),
+        np.array(y_true_synth), np.array(y_pred_synth), np.array(groups_synth))
+
+
+def test_predictive_parity_groups_warning(caplog):
+    metric = tsgm.metrics.PredictiveParityMetric()
+    y_true, y_pred = np.array([0, 1, 0, 0, 0, 1]), np.array([0, 1, 1, 0, 0, 1])
+    groups = np.array([0, 0, 0, 1, 1, 1])
+    warning = "not entirely identical"
+
+    with caplog.at_level(logging.WARNING):
+        metric(y_true, y_pred, groups, y_true, y_pred, groups)
+    assert warning not in caplog.text
+
+    other_groups = np.array([0, 0, 0, 2, 2, 2])
+    with caplog.at_level(logging.WARNING):
+        result = metric(y_true, y_pred, groups, y_true, y_pred, other_groups)
+    assert warning in caplog.text
+    assert result[1] == np.inf and result[2] == -np.inf
