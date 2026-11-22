@@ -26,6 +26,32 @@ def _is_dp_optimizer(optimizer: keras.optimizers.Optimizer) -> bool:
              or isinstance(optimizer, tf_privacy.DPKerasSGDOptimizer))
 
 
+def _discriminator_loss(discriminator: keras.Model, loss_fn: T.Callable,
+                        fake_data: tsgm.types.Tensor, real_data: tsgm.types.Tensor) -> tsgm.types.Tensor:
+    """
+    Discriminator loss for a batch of generated samples (label 1) and a batch of real samples (label 0) of the same size.
+
+    The discriminator scores the two batches in separate forward passes. Layers that depend on the composition
+    of a batch (e.g., BatchNormalization) would otherwise normalize generated and real samples together in the
+    discriminator step, but generated samples alone in the generator step.
+
+    The two losses are combined after they are computed, and the predictions are never concatenated:
+    for a discriminator that ends with a sigmoid, Keras with the TensorFlow backend computes the crossentropy
+    from the logits (which keeps the gradients of a saturated discriminator) only if the loss receives
+    the output of the discriminator itself.
+    """
+    fake_predictions = discriminator(fake_data, training=True)
+    real_predictions = discriminator(real_data, training=True)
+    fake_loss = loss_fn(ops.ones_like(fake_predictions), fake_predictions)
+    real_loss = loss_fn(ops.zeros_like(real_predictions), real_predictions)
+    if len(fake_loss.shape) > 0:
+        # per-sample losses (a loss without reduction, e.g., for DP optimizers)
+        return ops.concatenate([fake_loss, real_loss], axis=0)
+    if getattr(loss_fn, "reduction", None) == "sum":
+        return fake_loss + real_loss
+    return 0.5 * (fake_loss + real_loss)
+
+
 class GAN(keras.Model):
     """
     GAN implementation for unlabeled time series.
@@ -149,20 +175,9 @@ class GAN(keras.Model):
         batch_size = ops.shape(real_data)[0]
         # Generate ts
         random_vector = self._get_random_vector_labels(batch_size)
-        fake_data = self.generator(random_vector)
+        fake_data = self.generator(random_vector, training=True)
 
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
-
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
         with tf.GradientTape() as tape:
-            predictions = self.discriminator(combined_data)
             if self.use_wgan:
                 fake_logits = self.discriminator(fake_data, training=True)
                 # Get the logits for the real samples
@@ -175,7 +190,7 @@ class GAN(keras.Model):
                 # Add the gradient penalty to the original discriminator loss
                 d_loss = d_cost + gp * self.gp_weight
             else:
-                d_loss = self.loss_fn(desc_labels, predictions)
+                d_loss = _discriminator_loss(self.discriminator, self.loss_fn, fake_data, real_data)
         grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
         self.d_optimizer.apply_gradients(
             zip(grads, self.discriminator.trainable_weights)
@@ -188,8 +203,8 @@ class GAN(keras.Model):
 
         # Train generator (with updating the discriminator)
         with tf.GradientTape() as tape:
-            fake_data = self.generator(random_vector)
-            predictions = self.discriminator(fake_data)
+            fake_data = self.generator(random_vector, training=True)
+            predictions = self.discriminator(fake_data, training=True)
             if self.use_wgan:
                 # uses logits
                 g_loss = self.wgan_generator_loss(predictions)
@@ -223,19 +238,8 @@ class GAN(keras.Model):
         batch_size = ops.shape(real_data)[0]
         # Generate ts
         random_vector = self._get_random_vector_labels(batch_size)
-        fake_data = self.generator(random_vector)
+        fake_data = self.generator(random_vector, training=True)
 
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
-
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
-        predictions = self.discriminator(combined_data)
         if self.use_wgan:
             fake_logits = self.discriminator(fake_data, training=True)
             # Get the logits for the real samples
@@ -248,7 +252,7 @@ class GAN(keras.Model):
             # Add the gradient penalty to the original discriminator loss
             d_loss = d_cost + gp * self.gp_weight
         else:
-            d_loss = self.loss_fn(desc_labels, predictions)
+            d_loss = _discriminator_loss(self.discriminator, self.loss_fn, fake_data, real_data)
         self.discriminator.zero_grad()
         d_loss.backward()
 
@@ -261,8 +265,8 @@ class GAN(keras.Model):
             self.d_optimizer.apply_gradients(grads_and_vars)
         random_vector = self._get_random_vector_labels(batch_size=batch_size)
         misleading_labels = ops.zeros((batch_size, 1))
-        fake_data = self.generator(random_vector)
-        predictions = self.discriminator(fake_data)
+        fake_data = self.generator(random_vector, training=True)
+        predictions = self.discriminator(fake_data, training=True)
         if self.use_wgan:
             # uses logits
             g_loss = self.wgan_generator_loss(predictions)
@@ -441,24 +445,13 @@ class ConditionalGAN(keras.Model):
 
         # Generate ts
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
+        generated_ts = self.generator(random_vector_labels, training=True)
 
         fake_data = ops.concatenate([generated_ts, rep_labels], -1)
         real_data = ops.concatenate([real_ts, rep_labels], -1)
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
-
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
 
         with tf.GradientTape() as tape:
-            predictions = self.discriminator(combined_data)
-            d_loss = self.loss_fn(desc_labels, predictions)
+            d_loss = _discriminator_loss(self.discriminator, self.loss_fn, fake_data, real_data)
 
         if self.dp:
             # For DP optimizers from `tensorflow.privacy`
@@ -477,9 +470,9 @@ class ConditionalGAN(keras.Model):
 
         # Train generator (with updating the discriminator)
         with tf.GradientTape() as tape:
-            fake_samples = self.generator(random_vector_labels)
+            fake_samples = self.generator(random_vector_labels, training=True)
             fake_data = ops.concatenate([fake_samples, rep_labels], -1)
-            predictions = self.discriminator(fake_data)
+            predictions = self.discriminator(fake_data, training=True)
             g_loss = self.loss_fn(misleading_labels, predictions)
 
         if self.dp:
@@ -519,22 +512,12 @@ class ConditionalGAN(keras.Model):
 
         # Generate ts
         random_vector_labels = self._get_random_vector_labels(batch_size=batch_size, labels=labels)
-        generated_ts = self.generator(random_vector_labels)
+        generated_ts = self.generator(random_vector_labels, training=True)
 
         fake_data = ops.concatenate([generated_ts, rep_labels], -1)
         real_data = ops.concatenate([real_ts, rep_labels], -1)
-        combined_data = ops.concatenate(
-            [fake_data, real_data], axis=0
-        )
 
-        # Labels for descriminator
-        # 1 == real data
-        # 0 == fake data
-        desc_labels = ops.concatenate(
-            [ops.ones((batch_size, 1)), ops.zeros((batch_size, 1))], axis=0
-        )
-        predictions = self.discriminator(combined_data)
-        d_loss = self.loss_fn(desc_labels, predictions)
+        d_loss = _discriminator_loss(self.discriminator, self.loss_fn, fake_data, real_data)
         self.discriminator.zero_grad()
         d_loss.backward()
 
@@ -551,9 +534,9 @@ class ConditionalGAN(keras.Model):
         misleading_labels = ops.zeros((batch_size, 1))
 
         # Train generator (with updating the discriminator)
-        fake_samples = self.generator(random_vector_labels)
+        fake_samples = self.generator(random_vector_labels, training=True)
         fake_data = ops.concatenate([fake_samples, rep_labels], -1)
-        predictions = self.discriminator(fake_data)
+        predictions = self.discriminator(fake_data, training=True)
         g_loss = self.loss_fn(misleading_labels, predictions)
 
         self.generator.zero_grad()

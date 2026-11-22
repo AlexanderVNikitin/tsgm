@@ -35,9 +35,12 @@ class _BaseVAE(keras.Model):
             self.kl_loss_tracker,
         ]
 
-    def _compute_losses(self, data: tsgm.types.Tensor) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
+    def _compute_losses(self, data: tsgm.types.Tensor, training: bool = False) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
         """
         Runs the forward pass on a batch and returns `(total_loss, reconstruction_loss, kl_loss)`.
+
+        `training` is passed to the encoder and the decoder: layers such as Dropout and
+        BatchNormalization behave differently in training and inference modes.
         """
         raise NotImplementedError
 
@@ -68,13 +71,13 @@ class _BaseVAE(keras.Model):
 
     def train_step_tf(self, tf, data: tsgm.types.Tensor) -> T.Dict:
         with tf.GradientTape() as tape:
-            total_loss, reconstruction_loss, kl_loss = self._compute_losses(data)
+            total_loss, reconstruction_loss, kl_loss = self._compute_losses(data, training=True)
         grads = tape.gradient(total_loss, self.trainable_weights)
         self._apply_gradients(grads, self.trainable_weights)
         return self._update_trackers(total_loss, reconstruction_loss, kl_loss)
 
     def train_step_torch(self, torch, data: tsgm.types.Tensor) -> T.Dict:
-        total_loss, reconstruction_loss, kl_loss = self._compute_losses(data)
+        total_loss, reconstruction_loss, kl_loss = self._compute_losses(data, training=True)
         self.zero_grad()
         total_loss.backward()
 
@@ -98,7 +101,7 @@ class _BaseVAE(keras.Model):
             state_mapping = list(zip(self.trainable_variables, trainable_values)) + \
                 list(zip(self.non_trainable_variables, non_trainable_values))
             with keras.StatelessScope(state_mapping=state_mapping) as scope:
-                total_loss, reconstruction_loss, kl_loss = self._compute_losses(data)
+                total_loss, reconstruction_loss, kl_loss = self._compute_losses(data, training=True)
             # Non-trainable state (e.g. seed generators, batch-norm statistics) may change in the forward pass
             new_non_trainable_values = [
                 scope.get_current_value(v) for v in self.non_trainable_variables
@@ -188,10 +191,10 @@ class BetaVAE(_BaseVAE):
             tsgm.utils.reconstruction_loss_by_axis(X, Xr, axis=2)
         return reconst_loss
 
-    def _compute_losses(self, data: tsgm.types.Tensor) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
-        z_mean, z_log_var, z = self.encoder(data)
+    def _compute_losses(self, data: tsgm.types.Tensor, training: bool = False) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
+        z_mean, z_log_var, z = self.encoder(data, training=training)
         # Decode the sampled z (reparameterization trick), not z_mean
-        reconstruction = self.decoder(z)
+        reconstruction = self.decoder(z, training=training)
         reconstruction_loss = self._get_reconstruction_loss(data, reconstruction)
         return self._total_loss(reconstruction_loss, z_mean, z_log_var)
 
@@ -288,12 +291,12 @@ class cBetaVAE(_BaseVAE):
         z = ops.reshape(z, [-1, self._seq_len, self.latent_dim])
         return ops.concatenate([z, rep_labels], axis=2)
 
-    def _compute_losses(self, data: tsgm.types.Tensor) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
+    def _compute_losses(self, data: tsgm.types.Tensor, training: bool = False) -> T.Tuple[tsgm.types.Tensor, tsgm.types.Tensor, tsgm.types.Tensor]:
         X, labels = data
         encoder_input = self._get_encoder_input(X, labels)
-        z_mean, z_log_var, z = self.encoder(encoder_input)
+        z_mean, z_log_var, z = self.encoder(encoder_input, training=training)
         # Decode the sampled z (reparameterization trick), not z_mean
         decoder_input = self._get_decoder_input(z, labels)
-        reconstruction = self.decoder(decoder_input)
+        reconstruction = self.decoder(decoder_input, training=training)
         reconstruction_loss = self._get_reconstruction_loss(X, reconstruction)
         return self._total_loss(reconstruction_loss, z_mean, z_log_var)

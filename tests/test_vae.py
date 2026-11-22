@@ -179,3 +179,58 @@ def test_vae_fit_updates_weights(conditional):
     assert changed(encoder_before, encoder)
     assert changed(decoder_before, decoder)
     assert np.isfinite(history.history["loss"][-1])
+
+
+class TrainingSpy(keras.layers.Layer):
+    """Identity layer that records the `training` argument of every call."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.calls = []
+
+    def call(self, inputs, training=None):
+        self.calls.append(training)
+        return inputs
+
+
+def _spied(model: keras.Model) -> tuple:
+    """Wraps a model so that the `training` argument it is called with is recorded."""
+    spy = TrainingSpy()
+    inputs = keras.Input(shape=model.input_shape[1:])
+    wrapped = keras.Model(inputs, model(spy(inputs)))
+    # forget the symbolic call made while the wrapper was built
+    spy.calls.clear()
+    return wrapped, spy
+
+
+@pytest.mark.parametrize("conditional", [False, True])
+def test_vae_trains_submodels_in_training_mode(conditional):
+    # Regression test: layers such as Dropout and BatchNormalization are active only when called with training=True
+    architecture, X, y, latent_dim = _vae_and_data(conditional)
+    encoder, encoder_spy = _spied(architecture.encoder)
+    decoder, decoder_spy = _spied(architecture.decoder)
+    if conditional:
+        vae = tsgm.models.cvae.cBetaVAE(encoder, decoder, latent_dim=latent_dim, temporal=False)
+    else:
+        vae = tsgm.models.cvae.BetaVAE(encoder, decoder)
+    vae.compile(optimizer=keras.optimizers.Adam(0.0003))
+
+    if conditional:
+        vae.fit(X, y, epochs=1, batch_size=8, verbose=0)
+    else:
+        vae.fit(X, epochs=1, batch_size=8, verbose=0)
+
+    # a training step runs the encoder and the decoder once each
+    assert True in encoder_spy.calls
+    assert True in decoder_spy.calls
+
+    # reconstruction and generation run in the inference mode
+    encoder_spy.calls.clear()
+    decoder_spy.calls.clear()
+    if conditional:
+        vae([X, y])
+        vae.generate(keras.ops.convert_to_tensor(y[:3]))
+    else:
+        vae(X)
+        vae.generate(3)
+    assert encoder_spy.calls and True not in encoder_spy.calls
+    assert decoder_spy.calls and True not in decoder_spy.calls

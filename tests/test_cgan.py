@@ -356,3 +356,230 @@ def test_wavegan():
     # Check generation
     generated_samples = gan.generate(10)
     assert generated_samples.shape == (10, seq_len, 1)
+
+
+class TrainingSpy(keras.layers.Layer):
+    """Identity layer that records the `training` argument of every call."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.calls = []
+
+    def call(self, inputs, training=None):
+        self.calls.append(training)
+        return inputs
+
+
+def _spied_gan_models(seq_len: int, feature_dim: int, generator_input_dim: int, discriminator_feature_dim: int):
+    generator_spy, discriminator_spy = TrainingSpy(), TrainingSpy()
+
+    g_input = keras.Input((generator_input_dim,))
+    x = keras.layers.Dense(seq_len * feature_dim, activation="tanh")(g_input)
+    x = keras.layers.Reshape((seq_len, feature_dim))(generator_spy(x))
+    generator = keras.Model(g_input, x)
+
+    d_input = keras.Input((seq_len, discriminator_feature_dim))
+    x = keras.layers.Flatten()(discriminator_spy(d_input))
+    discriminator = keras.Model(d_input, keras.layers.Dense(1)(x))
+
+    # forget the symbolic calls made while the models were built
+    generator_spy.calls.clear()
+    discriminator_spy.calls.clear()
+    return generator, discriminator, generator_spy, discriminator_spy
+
+
+@pytest.mark.parametrize("use_wgan", [False, True])
+def test_gan_trains_submodels_in_training_mode(use_wgan):
+    # Regression test: layers such as Dropout and BatchNormalization are active only when called with training=True
+    latent_dim = 4
+    feature_dim = 1
+    seq_len = 32
+    batch_size = 30
+
+    dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+    generator, discriminator, generator_spy, discriminator_spy = _spied_gan_models(
+        seq_len, feature_dim, generator_input_dim=latent_dim, discriminator_feature_dim=feature_dim)
+
+    gan = tsgm.models.cgan.GAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim, use_wgan=use_wgan
+    )
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    gan.fit(dataset, epochs=1, verbose=0)
+
+    assert generator_spy.calls and set(generator_spy.calls) == {True}
+    assert discriminator_spy.calls and set(discriminator_spy.calls) == {True}
+
+    # generation runs in the inference mode
+    generator_spy.calls.clear()
+    gan.generate(3)
+    assert generator_spy.calls and True not in generator_spy.calls
+
+
+def test_cgan_trains_submodels_in_training_mode():
+    latent_dim = 4
+    output_dim = 2
+    feature_dim = 1
+    seq_len = 32
+    batch_size = 30
+
+    dataset, labels = _gen_cond_dataset(seq_len, batch_size)
+    generator, discriminator, generator_spy, discriminator_spy = _spied_gan_models(
+        seq_len, feature_dim,
+        generator_input_dim=latent_dim + output_dim, discriminator_feature_dim=feature_dim + output_dim)
+
+    cond_gan = tsgm.models.cgan.ConditionalGAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim
+    )
+    cond_gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    cond_gan.fit(dataset, epochs=1, verbose=0)
+
+    assert generator_spy.calls and set(generator_spy.calls) == {True}
+    assert discriminator_spy.calls and set(discriminator_spy.calls) == {True}
+
+    # generation runs in the inference mode
+    generator_spy.calls.clear()
+    cond_gan.generate(labels[:3])
+    assert generator_spy.calls and True not in generator_spy.calls
+
+
+def test_gan_fit_updates_batchnorm_statistics():
+    # BatchNormalization updates its moving statistics only when it is called in the training mode
+    latent_dim = 4
+    feature_dim = 1
+    seq_len = 32
+    batch_size = 30
+
+    dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+
+    generator_bn, discriminator_bn = keras.layers.BatchNormalization(), keras.layers.BatchNormalization()
+    g_input = keras.Input((latent_dim,))
+    x = generator_bn(keras.layers.Dense(seq_len * feature_dim)(g_input))
+    generator = keras.Model(g_input, keras.layers.Reshape((seq_len, feature_dim))(x))
+
+    d_input = keras.Input((seq_len, feature_dim))
+    x = discriminator_bn(keras.layers.Flatten()(d_input))
+    discriminator = keras.Model(d_input, keras.layers.Dense(1)(x))
+
+    gan = tsgm.models.cgan.GAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim
+    )
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    gan.fit(dataset, epochs=1, verbose=0)
+
+    for batchnorm in (generator_bn, discriminator_bn):
+        moving_mean = keras.ops.convert_to_numpy(batchnorm.moving_mean)
+        assert not np.allclose(moving_mean, 0.0)
+
+
+class BatchSpy(keras.layers.Layer):
+    """Identity layer that records the values of every batch it is called with. Works only in the eager mode."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.batches = []
+
+    def compute_output_shape(self, input_shape):
+        # lets Keras build the functional model without tracing `call` with a symbolic tensor
+        return input_shape
+
+    def call(self, inputs):
+        self.batches.append(keras.ops.convert_to_numpy(inputs))
+        return inputs
+
+
+@pytest.mark.parametrize("conditional", [False, True])
+def test_gan_discriminator_sees_real_and_generated_batches_separately(conditional):
+    # BatchNormalization computes its statistics per batch. If the discriminator step used one batch that mixes real
+    # and generated samples, they would be normalized differently from the generated-only batch of the generator step.
+    latent_dim = 4
+    output_dim = 2 if conditional else 0
+    feature_dim = 1
+    seq_len = 32
+    batch_size = 10
+    real_value = 5.0  # outside of the range of the generator, which ends with tanh
+
+    X = np.full((30, seq_len, feature_dim), real_value, dtype=np.float32)
+    y = keras.utils.to_categorical(np.arange(len(X)) % 2, 2).astype(np.float32)
+    arrays = (X, y) if conditional else (X,)
+    backend = get_backend()
+    if os.environ.get("KERAS_BACKEND") == "tensorflow":
+        dataset = backend.data.Dataset.from_tensor_slices(arrays if conditional else X).batch(batch_size)
+    elif os.environ.get("KERAS_BACKEND") == "torch":
+        dataset = backend.utils.data.TensorDataset(*[backend.from_numpy(a) for a in arrays])
+        dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size)
+
+    g_input = keras.Input((latent_dim + output_dim,))
+    x = keras.layers.Dense(seq_len * feature_dim, activation="tanh")(g_input)
+    generator = keras.Model(g_input, keras.layers.Reshape((seq_len, feature_dim))(x))
+
+    discriminator_spy = BatchSpy()
+    d_input = keras.Input((seq_len, feature_dim + output_dim))
+    x = keras.layers.Flatten()(discriminator_spy(d_input))
+    discriminator = keras.Model(d_input, keras.layers.Dense(1)(x))
+
+    if conditional:
+        gan = tsgm.models.cgan.ConditionalGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dim)
+    else:
+        gan = tsgm.models.cgan.GAN(discriminator=discriminator, generator=generator, latent_dim=latent_dim)
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    gan.run_eagerly = True  # the spy needs concrete values
+    gan.fit(dataset, epochs=1, verbose=0)
+
+    is_real = [np.isclose(batch[..., :feature_dim], real_value) for batch in discriminator_spy.batches]
+    assert any(batch.all() for batch in is_real)
+    assert any(not batch.any() for batch in is_real)
+    assert all(batch.all() or not batch.any() for batch in is_real)
+
+
+@pytest.mark.skipif(os.environ.get("KERAS_BACKEND") != "tensorflow",
+                    reason="Keras computes the crossentropy of a sigmoid output from its logits only with the TensorFlow backend")
+@pytest.mark.parametrize("conditional", [False, True])
+def test_gan_saturated_discriminator_receives_gradients(conditional):
+    # A discriminator that is confidently wrong has to be able to recover. Keras computes the crossentropy of a
+    # sigmoid output from its logits, but only if the predictions reach the loss unchanged: after, e.g., a concatenation
+    # the probabilities are clipped instead, and a saturated discriminator stops receiving gradients.
+    latent_dim = 4
+    output_dim = 2 if conditional else 0
+    feature_dim = 1
+    seq_len = 32
+    batch_size = 30
+    saturated_logit = -30.0  # sigmoid(-30) ~ 1e-13: "certainly real", for generated samples as well
+
+    g_input = keras.Input((latent_dim + output_dim,))
+    x = keras.layers.Dense(seq_len * feature_dim, activation="tanh")(g_input)
+    generator = keras.Model(g_input, keras.layers.Reshape((seq_len, feature_dim))(x))
+
+    d_output_layer = keras.layers.Dense(
+        1, activation="sigmoid", bias_initializer=keras.initializers.Constant(saturated_logit))
+    d_input = keras.Input((seq_len, feature_dim + output_dim))
+    discriminator = keras.Model(d_input, d_output_layer(keras.layers.Flatten()(d_input)))
+
+    if conditional:
+        dataset, _ = _gen_cond_dataset(seq_len, batch_size)
+        gan = tsgm.models.cgan.ConditionalGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dim)
+    else:
+        dataset = _gen_dataset(seq_len, feature_dim, batch_size)
+        gan = tsgm.models.cgan.GAN(discriminator=discriminator, generator=generator, latent_dim=latent_dim)
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.01),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.01),
+        loss_fn=keras.losses.BinaryCrossentropy(),
+    )
+    gan.fit(dataset, epochs=1, verbose=0)
+
+    bias = float(keras.ops.convert_to_numpy(d_output_layer.bias)[0])
+    assert abs(bias - saturated_logit) > 1e-3

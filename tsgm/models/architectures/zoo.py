@@ -155,10 +155,12 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
     :type feat_dim: int
     :param latent_dim: Dimensionality of latent space.
     :type latent_dim: int
+    :param dropout_rate: Dropout rate in the encoder (the decoder does not use Dropout). Default is 0.0.
+    :type dropout_rate: float, optional
     """
     arch_type = "vae:unconditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int) -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, dropout_rate: float = 0.0) -> None:
         """
         Initializes the VAE_CONV5Architecture.
 
@@ -168,11 +170,14 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         :type feat_dim: int
         :param latent_dim: Dimensionality of latent space.
         :type latent_dim: int
+        :param dropout_rate: Dropout rate in the encoder (the decoder does not use Dropout). Default is 0.0.
+        :type dropout_rate: float, optional
         """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
+        self._dropout_rate = dropout_rate
         self._encoder = self._build_encoder()
         self._decoder = self._build_decoder()
 
@@ -181,15 +186,15 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(
             encoder_inputs
         )
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 4, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
@@ -214,15 +219,10 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Reshape((self._seq_len, dense_shape // self._seq_len))(x)
         # Use Conv1D layers instead of Conv1DTranspose to avoid PyTorch compatibility issues
         x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 2, activation="relu", padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1D(64, 10, activation="relu", padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
         decoder_outputs = layers.Conv1D(
             self._feat_dim, 3, activation="sigmoid", padding="same"
         )(x)
@@ -233,11 +233,26 @@ class VAE_CONV5Architecture(BaseVAEArchitecture):
 class cVAE_CONV5Architecture(BaseVAEArchitecture):
     arch_type = "vae:conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int = 2) -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int = 2, dropout_rate: float = 0.0) -> None:
+        """
+        Initializes the cVAE_CONV5Architecture.
+
+        :param seq_len: Length of input sequences.
+        :type seq_len: int
+        :param feat_dim: Dimensionality of input features.
+        :type feat_dim: int
+        :param latent_dim: Dimensionality of latent space.
+        :type latent_dim: int
+        :param output_dim: Dimensionality of the conditioning labels. Default is 2.
+        :type output_dim: int, optional
+        :param dropout_rate: Dropout rate in the encoder (the decoder does not use Dropout). Default is 0.0.
+        :type dropout_rate: float, optional
+        """
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
+        self._dropout_rate = dropout_rate
 
         self._encoder = self._build_encoder()
         self._decoder = self._build_decoder()
@@ -250,15 +265,15 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Conv1D(64, 10, activation="relu", strides=1, padding="same")(
             encoder_inputs
         )
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 2, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(64, 4, activation="relu", strides=1, padding="same")(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Flatten()(x)
         x = layers.Dense(512, activation="relu")(x)
         x = layers.Dense(64, activation="relu")(x)
@@ -277,13 +292,10 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         )
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(inputs)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
@@ -301,7 +313,7 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
     """
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, dropout_rate: float = 0.0) -> None:
         """
         Initializes the cGAN_Conv4Architecture.
 
@@ -313,12 +325,15 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         :type latent_dim: int
         :param output_dim: Dimensionality of output.
         :type output_dim: int
+        :param dropout_rate: Dropout rate in the discriminator. Default is 0.0.
+        :type dropout_rate: float, optional
         """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
+        self._dropout_rate = dropout_rate
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
 
@@ -329,16 +344,16 @@ class cGAN_Conv4Architecture(BaseGANArchitecture):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.Conv1D(64, 3, strides=2, padding="same")(d_input)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.GlobalAvgPool1D()(x)
         d_output = layers.Dense(1, activation="sigmoid")(x)
         discriminator = keras.Model(d_input, d_output, name="discriminator")
@@ -376,7 +391,7 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
     """
     arch_type = "gan:t-conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, dropout_rate: float = 0.0) -> None:
         """
         Initializes the tcGAN_Conv4Architecture.
 
@@ -388,12 +403,15 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         :type latent_dim: int
         :param output_dim: Dimensionality of output.
         :type output_dim: int
+        :param dropout_rate: Dropout rate in the generator and the discriminator. Default is 0.0.
+        :type dropout_rate: float, optional
         """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
+        self._dropout_rate = dropout_rate
 
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
@@ -405,16 +423,16 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.Conv1D(64, 3, strides=2, padding="same")(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.GlobalAvgPool1D()(x)
         d_output = layers.Dense(1, activation="sigmoid")(x)
         discriminator = keras.Model(d_input, d_output, name="discriminator")
@@ -424,13 +442,13 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         g_input = keras.Input((self._seq_len, self.generator_in_channels))
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(g_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
@@ -448,7 +466,7 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
     """
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int) -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, dropout_rate: float = 0.0) -> None:
         """
         Initializes the cGAN_LSTMConv3Architecture.
 
@@ -460,12 +478,15 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         :type latent_dim: int
         :param output_dim: Dimensionality of output.
         :type output_dim: int
+        :param dropout_rate: Dropout rate in the discriminator. Default is 0.0.
+        :type dropout_rate: float, optional
         """
         super().__init__()
         self._seq_len = seq_len
         self._feat_dim = feat_dim
         self._latent_dim = latent_dim
         self._output_dim = output_dim
+        self._dropout_rate = dropout_rate
 
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
@@ -477,16 +498,16 @@ class cGAN_LSTMConv3Architecture(BaseGANArchitecture):
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = layers.LSTM(64, return_sequences=True)(d_input)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.Conv1D(128, 3, strides=2, padding="same")(x)
         x = layers.LeakyReLU(alpha=0.2)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.GlobalAvgPool1D()(x)
         d_output = layers.Dense(1, activation="sigmoid")(x)
         discriminator = keras.Model(d_input, d_output, name="discriminator")
@@ -806,14 +827,15 @@ class TransformerClfArchitecture(BaseClassificationArchitecture):
 
 class cGAN_LSTMnArchitecture(BaseGANArchitecture):
     """
-    Conditional Generative Adversarial Network (cGAN) with LSTM-based architecture.
+    Conditional Generative Adversarial Network (cGAN) with an LSTM-based generator and a convolutional discriminator.
 
     Inherits from BaseGANArchitecture.
     """
 
     arch_type = "gan:conditional"
 
-    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, n_blocks: int = 1, output_activation: str = "tanh") -> None:
+    def __init__(self, seq_len: int, feat_dim: int, latent_dim: int, output_dim: int, n_blocks: int = 1, output_activation: str = "tanh",
+                 dropout_rate: float = 0.0) -> None:
         """
         Initializes the cGAN_LSTMnArchitecture.
 
@@ -825,10 +847,12 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         :type latent_dim: int
         :param output_dim: Dimensionality of the output.
         :type output_dim: int
-        :param n_blocks: Number of LSTM blocks in the architecture (default is 1).
+        :param n_blocks: Number of LSTM blocks in the generator (default is 1).
         :type n_blocks: int, optional
         :param output_activation: Activation function for the output layer (default is "tanh").
         :type output_activation: str, optional
+        :param dropout_rate: Dropout rate in the discriminator and between the LSTM blocks of the generator. Default is 0.0.
+        :type dropout_rate: float, optional
         """
         super().__init__()
         self._seq_len = seq_len
@@ -837,6 +861,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         self._output_dim = output_dim
         self._n_blocks = n_blocks
         self._output_activation = output_activation
+        self._dropout_rate = dropout_rate
 
         self.generator_in_channels = latent_dim + output_dim
         self.discriminator_in_channels = feat_dim + output_dim
@@ -845,14 +870,15 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
         self._generator = self._build_generator(output_activation=output_activation)
 
     def _build_discriminator(self) -> keras.Model:
+        # A convolutional discriminator, as in cGAN_Conv4Architecture. LSTM blocks followed by average pooling
+        # over time do not see fine temporal detail: such a discriminator stays at chance level,
+        # and the generator does not receive a useful training signal.
         d_input = keras.Input((self._seq_len, self.discriminator_in_channels))
         x = d_input
-        for i in range(self._n_blocks - 1):
-            x = layers.LSTM(64, return_sequences=True)(x)
-            x = layers.Dropout(rate=0.2)(x)
-
-        x = layers.LSTM(64, return_sequences=True)(x)
-        x = layers.Dropout(rate=0.2)(x)
+        for filters in (64, 128, 128, 128):
+            x = layers.Conv1D(filters, 3, strides=2, padding="same")(x)
+            x = layers.LeakyReLU(negative_slope=0.2)(x)
+            x = layers.Dropout(rate=self._dropout_rate)(x)
 
         x = layers.GlobalAvgPool1D()(x)
         d_output = layers.Dense(1, activation="sigmoid")(x)
@@ -868,7 +894,7 @@ class cGAN_LSTMnArchitecture(BaseGANArchitecture):
 
         for i in range(self._n_blocks - 1):
             x = layers.LSTM(64, return_sequences=True)(x)
-            x = layers.Dropout(rate=0.2)(x)
+            x = layers.Dropout(rate=self._dropout_rate)(x)
         x = layers.LSTM(256, return_sequences=True)(x)
 
         pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
