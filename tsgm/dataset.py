@@ -37,7 +37,7 @@ class Dataset(DatasetProperties):
     """
     def __init__(self, x: tsgm.types.Tensor, y: tsgm.types.Tensor, metadata: T.Optional[T.Dict] = None):
         """
-        :param x: The matrix of time series with dimensions NxDxT.
+        :param x: The matrix of time series with dimensions NxTxD.
         :type x: tsgm.types.Tensor
         :param y: The labels of a time series.
         :type y: tsgm.types.Tensor
@@ -50,7 +50,7 @@ class Dataset(DatasetProperties):
 
         self._metadata = metadata or {}
         self._graph = self._metadata.get("graph")
-        super().__init__(N=self._x.shape[0], D=self._x.shape[1], T=self._x.shape[2])
+        super().__init__(N=self._x.shape[0], D=self._x.shape[2], T=self._x.shape[1])
 
     @property
     def X(self) -> tsgm.types.Tensor:

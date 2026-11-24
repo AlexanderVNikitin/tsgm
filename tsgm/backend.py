@@ -1,4 +1,5 @@
 import os
+import random
 
 # Enable MPS fallback for unsupported operations early (like linalg_qr in LSTM)
 # This must be set before importing PyTorch for the first time
@@ -158,17 +159,54 @@ def get_backend():
         raise ValueError("No backend found. Please install jax, tensorflow, or torch.")
 
 
-class JAXUniform:
+class _JAXDistribution:
+    """Own an independent random stream for eager distribution sampling."""
+
+    def __init__(self, seed=None):
+        import jax
+        # Python's RNG is seeded by tsgm.utils.fix_seeds / Keras, so newly
+        # constructed distributions are reproducible without sharing a key.
+        self._key = jax.random.PRNGKey(random.randrange(2**32) if seed is None else seed)
+
+    def _next_key(self):
+        import jax
+        self._key, sample_key = jax.random.split(self._key)
+        return sample_key
+
+    @staticmethod
+    def _sample_shape(shape):
+        return (shape,) if isinstance(shape, int) else tuple(shape)
+
+
+class JAXUniform(_JAXDistribution):
     """JAX wrapper for uniform distribution to match TensorFlow Probability API."""
-    def __init__(self, low, high):
+    def __init__(self, low, high, seed=None):
+        super().__init__(seed=seed)
         self.low = low
         self.high = high
 
     def sample(self, shape=()):
         import jax
-        # Generate a new key each time (this is not ideal but works for testing)
-        key = jax.random.PRNGKey(hash((self.low, self.high)) % (2**32))
-        return jax.random.uniform(key, shape=shape, minval=self.low, maxval=self.high)
+        shape = self._sample_shape(shape) + jax.numpy.broadcast_shapes(
+            jax.numpy.shape(self.low), jax.numpy.shape(self.high)
+        )
+        return jax.random.uniform(self._next_key(), shape=shape, minval=self.low, maxval=self.high)
+
+
+class JAXNormal(_JAXDistribution):
+    """Normal prior used by approximate Bayesian computation on JAX."""
+
+    def __init__(self, loc, scale, seed=None):
+        super().__init__(seed=seed)
+        self.loc = loc
+        self.scale = scale
+
+    def sample(self, shape=()):
+        import jax
+        shape = self._sample_shape(shape) + jax.numpy.broadcast_shapes(
+            jax.numpy.shape(self.loc), jax.numpy.shape(self.scale)
+        )
+        return self.loc + self.scale * jax.random.normal(self._next_key(), shape=shape)
 
 
 class JAXDistributionsWrapper:
@@ -179,6 +217,10 @@ class JAXDistributionsWrapper:
     @property
     def Uniform(self):
         return JAXUniform
+
+    @property
+    def Normal(self):
+        return JAXNormal
 
 
 def get_distributions():

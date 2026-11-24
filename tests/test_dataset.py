@@ -48,3 +48,17 @@ def test_temporally_labeled_ds():
     assert ds.Xy_concat.shape == (10, 100, 3)
     assert np.array_equal(ds.Xy_concat[:, :, :2], X)
     assert np.array_equal(ds.Xy_concat[:, :, 2], y)
+
+
+def test_dataset_dimensions_preserved_by_simulator():
+    dataset = tsgm.dataset.Dataset(np.zeros((4, 20, 3)), np.zeros(4))
+
+    assert (dataset.N, dataset.T, dataset.D) == (4, 20, 3)
+    assert dataset.T == dataset.seq_len
+    assert dataset.D == dataset.feat_dim
+
+    generated = tsgm.simulator.SineConstSimulator(dataset).generate(2)
+
+    assert generated.shape == (2, 20, 3)
+    assert (generated.N, generated.T, generated.D) == (2, 20, 3)
+    assert (dataset | generated).shape == (6, 20, 3)

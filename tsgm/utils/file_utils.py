@@ -1,4 +1,5 @@
 import os
+import copy
 import zipfile
 import typing as T
 import hashlib
@@ -28,14 +29,32 @@ def _extract_zip(from_path: str, to_path: str, pwd: T.Optional[bytes]) -> None:
 
 
 def _extract_targz(from_path: str, to_path: str, pwd: T.Optional[bytes] = None) -> None:
-    try:
-        # Open the tar.gz file
-        with tarfile.open(from_path, "r:gz") as tar:
-            # Extract all the files in the archive
-            tar.extractall(to_path)
-            logger.info("Files extracted successfully.")
-    except tarfile.TarError as e:
-        logger.error(f"Failed to extract tar.gz file: {e}")
+    """Extract dataset files/directories, rejecting links and special files."""
+    destination = os.path.realpath(to_path)
+    source = os.path.realpath(from_path)
+    with tarfile.open(from_path, "r:gz") as tar:
+        members = [copy.copy(member) for member in tar.getmembers()]
+        for member in members:
+            # Dataset archives need only files and directories. Reject links as
+            # well as devices/FIFOs, including on Python without data_filter.
+            if not (member.isfile() or member.isdir()):
+                raise tarfile.ExtractError(f"Unsupported archive member: {member.name!r}")
+            target = os.path.realpath(os.path.join(destination, member.name))
+            if os.path.isabs(member.name) or os.path.commonpath((destination, target)) != destination:
+                raise tarfile.ExtractError(f"Archive member escapes destination: {member.name!r}")
+            if target == source or (os.path.exists(target) and os.path.samefile(target, source)):
+                raise tarfile.ExtractError(f"Archive member would overwrite its source: {member.name!r}")
+            # Use numeric values supported by older Python tarfile versions.
+            # Never restore archive ownership or setuid/setgid/sticky bits.
+            member.uid = member.gid = -1
+            member.uname = member.gname = ""
+            member.mode = (member.mode & 0o755) | (0o700 if member.isdir() else 0o600)
+
+        # Do not suppress extraction failures: extract_archive must retain the
+        # original archive unless extraction has completed successfully.
+        tar.errorlevel = 2
+        tar.extractall(to_path, members=members)
+    logger.info("Files extracted successfully.")
 
 
 EXTRACTORS = {

@@ -52,7 +52,140 @@ def _discriminator_loss(discriminator: keras.Model, loss_fn: T.Callable,
     return 0.5 * (fake_loss + real_loss)
 
 
-class GAN(keras.Model):
+class _GANOptimizers(keras.optimizers.Optimizer):
+    """Expose both optimizers' state to Keras' single-optimizer JAX trainer."""
+
+    def __init__(self, discriminator_optimizer, generator_optimizer, discriminator_variables, generator_variables):
+        super().__init__(learning_rate=0.0, name="gan_optimizers")
+        self.discriminator_optimizer = discriminator_optimizer
+        self.generator_optimizer = generator_optimizer
+        self.discriminator_variables = list(discriminator_variables)
+        self.generator_variables = list(generator_variables)
+        discriminator_optimizer.build(self.discriminator_variables)
+        generator_optimizer.build(self.generator_variables)
+        self.built = True
+
+    @property
+    def variables(self):
+        return self.discriminator_optimizer.variables + self.generator_optimizer.variables
+
+    @property
+    def iterations(self):
+        return self.discriminator_optimizer.iterations
+
+    def finalize_variable_values(self, variables):
+        self.discriminator_optimizer.finalize_variable_values(self.discriminator_variables)
+        self.generator_optimizer.finalize_variable_values(self.generator_variables)
+
+
+class _JAXGANTraining:
+    """Stateless alternating updates shared by unconditional and conditional GANs."""
+
+    def _jax_gradient_penalty(self, jax, real_data, fake_data):
+        alpha = keras.random.normal(
+            (real_data.shape[0], 1, 1), seed=self.seed_generator
+        )
+        interpolated = real_data + alpha * (fake_data - real_data)
+        trainable_values = [v.value for v in self.trainable_variables]
+        non_trainable_values = [v.value for v in self.non_trainable_variables]
+
+        def prediction_sum(inputs):
+            # The inner differentiation must own its state updates, so that
+            # batch-normalization values do not escape as JAX tracers.
+            mapping = list(zip(self.trainable_variables, trainable_values)) + list(
+                zip(self.non_trainable_variables, non_trainable_values)
+            )
+            with keras.StatelessScope(state_mapping=mapping) as scope:
+                prediction = self.discriminator(inputs, training=True)
+            updated_values = [scope.get_current_value(v) for v in self.non_trainable_variables]
+            return ops.sum(prediction), updated_values
+
+        (_, updated_values), gradients = jax.value_and_grad(prediction_sum, has_aux=True)(interpolated)
+        for variable, value in zip(self.non_trainable_variables, updated_values):
+            variable.assign(value)
+        norm = ops.sqrt(ops.sum(ops.square(gradients), axis=(1, 2)) + keras.backend.epsilon())
+        return ops.mean(ops.square(norm - 1.0))
+
+    def train_step_jax(self, jax, state, data):
+        trainable_values, non_trainable_values, optimizer_values, metrics_values = state
+        real_ts, labels, repeated_labels = self._prepare_jax_data(data)
+        variable_indices = {id(v): i for i, v in enumerate(self.trainable_variables)}
+        d_indices = [variable_indices[id(v)] for v in self.discriminator.trainable_variables]
+        g_indices = [variable_indices[id(v)] for v in self.generator.trainable_variables]
+        d_optimizer_size = len(self.d_optimizer.variables)
+
+        def discriminator_inputs(samples):
+            if repeated_labels is None:
+                return samples
+            return ops.concatenate([samples, repeated_labels], axis=-1)
+
+        def loss_fn(active_values, all_values, non_trainable, indices, discriminator_step):
+            all_values = list(all_values)
+            for index, value in zip(indices, active_values):
+                all_values[index] = value
+            mapping = list(zip(self.trainable_variables, all_values)) + list(
+                zip(self.non_trainable_variables, non_trainable)
+            )
+            with keras.StatelessScope(state_mapping=mapping) as scope:
+                noise = self._get_random_vector_labels(real_ts.shape[0], labels)
+                fake_data = discriminator_inputs(self.generator(noise, training=True))
+                if discriminator_step:
+                    real_data = discriminator_inputs(real_ts)
+                    if getattr(self, "use_wgan", False):
+                        fake_logits = self.discriminator(fake_data, training=True)
+                        real_logits = self.discriminator(real_data, training=True)
+                        loss = self.wgan_discriminator_loss(real_logits, fake_logits)
+                        loss += self.gp_weight * self._jax_gradient_penalty(jax, real_data, fake_data)
+                    else:
+                        loss = _discriminator_loss(self.discriminator, self.loss_fn, fake_data, real_data)
+                else:
+                    predictions = self.discriminator(fake_data, training=True)
+                    if getattr(self, "use_wgan", False):
+                        loss = self.wgan_generator_loss(predictions)
+                    else:
+                        loss = self.loss_fn(ops.zeros_like(predictions), predictions)
+                # JAX gradients require a scalar, including for unreduced losses.
+                loss = ops.mean(loss)
+            non_trainable = [scope.get_current_value(v) for v in self.non_trainable_variables]
+            return loss, non_trainable
+
+        def d_loss_fn(values, all_values, non_trainable):
+            return loss_fn(values, all_values, non_trainable, d_indices, True)
+
+        (d_loss, non_trainable_values), d_gradients = jax.value_and_grad(d_loss_fn, has_aux=True)(
+            [trainable_values[i] for i in d_indices], trainable_values, non_trainable_values
+        )
+        d_values, d_optimizer_values = self.d_optimizer.stateless_apply(
+            optimizer_values[:d_optimizer_size], d_gradients, [trainable_values[i] for i in d_indices]
+        )
+        trainable_values = list(trainable_values)
+        for index, value in zip(d_indices, d_values):
+            trainable_values[index] = value
+
+        def g_loss_fn(values, all_values, non_trainable):
+            return loss_fn(values, all_values, non_trainable, g_indices, False)
+
+        (g_loss, non_trainable_values), g_gradients = jax.value_and_grad(g_loss_fn, has_aux=True)(
+            [trainable_values[i] for i in g_indices], trainable_values, non_trainable_values
+        )
+        g_values, g_optimizer_values = self.g_optimizer.stateless_apply(
+            optimizer_values[d_optimizer_size:], g_gradients, [trainable_values[i] for i in g_indices]
+        )
+        for index, value in zip(g_indices, g_values):
+            trainable_values[index] = value
+
+        with keras.StatelessScope(state_mapping=list(zip(self.metrics_variables, metrics_values))) as scope:
+            self.gen_loss_tracker.update_state(g_loss)
+            self.disc_loss_tracker.update_state(d_loss)
+            logs = {"g_loss": self.gen_loss_tracker.result(), "d_loss": self.disc_loss_tracker.result()}
+        metrics_values = [scope.get_current_value(v) for v in self.metrics_variables]
+        return logs, (
+            trainable_values, non_trainable_values,
+            d_optimizer_values + g_optimizer_values, metrics_values,
+        )
+
+
+class GAN(_JAXGANTraining, keras.Model):
     """
     GAN implementation for unlabeled time series.
     """
@@ -76,6 +209,7 @@ class GAN(keras.Model):
         self._seq_len = self.generator.output_shape[1]
         self.use_wgan = use_wgan
         self.gp_weight = 10.0
+        self.seed_generator = keras.random.SeedGenerator() if keras.backend.backend() == "jax" else None
 
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
@@ -154,7 +288,12 @@ class GAN(keras.Model):
         :param loss_fn: Loss function.
         :type loss_fn: keras.losses.Loss
         """
-        super(GAN, self).compile()
+        if keras.backend.backend() == "jax":
+            super(GAN, self).compile(optimizer=_GANOptimizers(
+                d_optimizer, g_optimizer, self.discriminator.trainable_variables, self.generator.trainable_variables
+            ))
+        else:
+            super(GAN, self).compile()
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.loss_fn = loss_fn
@@ -168,7 +307,11 @@ class GAN(keras.Model):
         self.dp = generator_dp and discriminator_dp
 
     def _get_random_vector_labels(self, batch_size: int, labels=None) -> tsgm.types.Tensor:
-        return keras.random.normal(shape=(batch_size, self.latent_dim))
+        return keras.random.normal(shape=(batch_size, self.latent_dim), seed=self.seed_generator)
+
+    def _prepare_jax_data(self, data):
+        real_data, _, _ = keras.utils.unpack_x_y_sample_weight(data)
+        return real_data, None, None
 
     def train_step_tf(self, tf, data: tsgm.types.Tensor) -> T.Dict[str, float]:
         real_data = data
@@ -291,7 +434,7 @@ class GAN(keras.Model):
             "d_loss": self.disc_loss_tracker.result(),
         }
 
-    def train_step(self, data: tsgm.types.Tensor) -> T.Dict[str, float]:
+    def train_step(self, *args) -> T.Any:
         """
         Performs a training step using a batch of data, stored in data.
 
@@ -303,9 +446,12 @@ class GAN(keras.Model):
         """
         backend = get_backend()
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
-            return self.train_step_tf(backend, data)
+            return self.train_step_tf(backend, *args)
         elif os.environ.get("KERAS_BACKEND") == "torch":
-            return self.train_step_torch(backend, data)
+            return self.train_step_torch(backend, *args)
+        elif os.environ.get("KERAS_BACKEND") == "jax":
+            return self.train_step_jax(backend, *args)
+        raise ValueError(f"Unsupported backend: {os.environ.get('KERAS_BACKEND')}")
 
     def generate(self, num: int) -> tsgm.types.Tensor:
         """
@@ -332,7 +478,7 @@ class GAN(keras.Model):
         return copy_model
 
 
-class ConditionalGAN(keras.Model):
+class ConditionalGAN(_JAXGANTraining, keras.Model):
     """
     Conditional GAN implementation for labeled and temporally labeled time series.
     """
@@ -360,6 +506,7 @@ class ConditionalGAN(keras.Model):
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
         self._temporal = temporal
+        self.seed_generator = keras.random.SeedGenerator() if keras.backend.backend() == "jax" else None
 
     def call(self, inputs):
         """
@@ -391,7 +538,12 @@ class ConditionalGAN(keras.Model):
         :type loss_fn: keras.losses.Loss
         """
         # TODO: move `.compile logic to a base GAN class
-        super(ConditionalGAN, self).compile()
+        if keras.backend.backend() == "jax":
+            super(ConditionalGAN, self).compile(optimizer=_GANOptimizers(
+                d_optimizer, g_optimizer, self.discriminator.trainable_variables, self.generator.trainable_variables
+            ))
+        else:
+            super(ConditionalGAN, self).compile()
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.loss_fn = loss_fn
@@ -406,16 +558,30 @@ class ConditionalGAN(keras.Model):
 
     def _get_random_vector_labels(self, batch_size: int, labels: tsgm.types.Tensor) -> None:
         if self._temporal:
-            random_latent_vectors = keras.random.normal(shape=(batch_size, self._seq_len, self.latent_dim))
+            random_latent_vectors = keras.random.normal(
+                shape=(batch_size, self._seq_len, self.latent_dim), seed=self.seed_generator
+            )
             random_vector_labels = ops.concatenate(
                 [random_latent_vectors, labels[:, :, None]], axis=2
             )
         else:
-            random_latent_vectors = keras.random.normal(shape=(batch_size, self.latent_dim))
+            random_latent_vectors = keras.random.normal(
+                shape=(batch_size, self.latent_dim), seed=self.seed_generator
+            )
             random_vector_labels = ops.concatenate(
                 [random_latent_vectors, labels], axis=1
             )
         return random_vector_labels
+
+    def _prepare_jax_data(self, data):
+        real_ts, labels, _ = keras.utils.unpack_x_y_sample_weight(data)
+        output_dim = self._get_output_shape(labels)
+        if self._temporal:
+            repeated_labels = labels
+        else:
+            repeated_labels = ops.repeat(labels[:, :, None], repeats=self._seq_len)
+        repeated_labels = ops.reshape(repeated_labels, (-1, self._seq_len, output_dim))
+        return real_ts, labels, repeated_labels
 
     def _get_output_shape(self, labels: tsgm.types.Tensor) -> int:
         if self._temporal:
@@ -557,7 +723,7 @@ class ConditionalGAN(keras.Model):
             "d_loss": self.disc_loss_tracker.result(),
         }
 
-    def train_step(self, data: T.Tuple) -> T.Dict[str, float]:
+    def train_step(self, *args) -> T.Any:
         """
         Performs a training step using a batch of data, stored in data.
 
@@ -569,9 +735,11 @@ class ConditionalGAN(keras.Model):
         """
         backend = get_backend()
         if os.environ.get("KERAS_BACKEND") == "tensorflow":
-            return self.train_step_tf(backend, data)
+            return self.train_step_tf(backend, *args)
         elif os.environ.get("KERAS_BACKEND") == "torch":
-            return self.train_step_torch(backend, data)
+            return self.train_step_torch(backend, *args)
+        elif os.environ.get("KERAS_BACKEND") == "jax":
+            return self.train_step_jax(backend, *args)
         else:
             raise ValueError(f"Unsupported backend: {os.environ.get('KERAS_BACKEND')}")
 

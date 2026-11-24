@@ -28,13 +28,7 @@ def _to_numpy(ts: tsgm.types.Tensor) -> np.ndarray:
         except ImportError:
             pass
     elif os.environ.get("KERAS_BACKEND") == "jax":
-        try:
-            import jax.numpy as jnp
-            jnp.__version__
-            if hasattr(ts, '__array__'):
-                return np.array(ts)
-        except ImportError:
-            pass
+        return np.asarray(ts)
 
     # Fallback: assume it's already a numpy array or can be converted
     return np.asarray(ts)

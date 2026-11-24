@@ -116,6 +116,6 @@ def prior_samples(priors: T.Dict, params: T.List) -> T.Dict:
     """
     samples = {}
     for var in params:
-        distr = priors.get(var, _get_default_prior())
+        distr = priors[var] if var in priors else _get_default_prior()
         samples[var] = distr.sample()
     return samples
