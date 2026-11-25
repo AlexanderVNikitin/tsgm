@@ -4,6 +4,7 @@ import zipfile
 import typing as T
 import hashlib
 import logging
+import stat
 import tarfile
 import urllib
 
@@ -44,6 +45,11 @@ def _extract_targz(from_path: str, to_path: str, pwd: T.Optional[bytes] = None) 
                 raise tarfile.ExtractError(f"Archive member escapes destination: {member.name!r}")
             if target == source or (os.path.exists(target) and os.path.samefile(target, source)):
                 raise tarfile.ExtractError(f"Archive member would overwrite its source: {member.name!r}")
+            # Hardlinks can alias outside files without changing the real path.
+            if os.path.exists(target):
+                target_stat = os.stat(target)
+                if stat.S_ISREG(target_stat.st_mode) and target_stat.st_nlink > 1:
+                    raise tarfile.ExtractError(f"Archive member would overwrite a hardlinked file: {member.name!r}")
             # Use numeric values supported by older Python tarfile versions.
             # Never restore archive ownership or setuid/setgid/sticky bits.
             member.uid = member.gid = -1

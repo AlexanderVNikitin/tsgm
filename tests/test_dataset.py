@@ -50,15 +50,16 @@ def test_temporally_labeled_ds():
     assert np.array_equal(ds.Xy_concat[:, :, 2], y)
 
 
-def test_dataset_dimensions_preserved_by_simulator():
-    dataset = tsgm.dataset.Dataset(np.zeros((4, 20, 3)), np.zeros(4))
+@pytest.mark.parametrize("seq_len,feat_dim", [(20, 3), (3, 20), (10, 1)])
+def test_dataset_dimensions_preserved_by_simulator(seq_len, feat_dim):
+    dataset = tsgm.dataset.Dataset(np.zeros((4, seq_len, feat_dim)), np.zeros(4))
 
-    assert (dataset.N, dataset.T, dataset.D) == (4, 20, 3)
+    assert (dataset.N, dataset.T, dataset.D) == (4, seq_len, feat_dim)
     assert dataset.T == dataset.seq_len
     assert dataset.D == dataset.feat_dim
 
     generated = tsgm.simulator.SineConstSimulator(dataset).generate(2)
 
-    assert generated.shape == (2, 20, 3)
-    assert (generated.N, generated.T, generated.D) == (2, 20, 3)
-    assert (dataset | generated).shape == (6, 20, 3)
+    assert generated.shape == (2, seq_len, feat_dim)
+    assert (generated.N, generated.T, generated.D) == (2, seq_len, feat_dim)
+    assert (dataset | generated).shape == (6, seq_len, feat_dim)

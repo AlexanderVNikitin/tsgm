@@ -280,87 +280,34 @@ class DDPM(keras.Model):
         self.ema = ema
 
         self.ema_network.set_weights(network.get_weights())  # Initially the weights are the same
-        # EMA parameters are updated by averaging, never by the optimizer.
-        self.ema_network.trainable = False
-        self.seed_generator = keras.random.SeedGenerator()
-        self.loss_tracker = keras.metrics.Mean(name="loss")
 
         # Filled in during training
         self.seq_len = None
         self.feat_dim = None
 
-    @property
-    def metrics(self) -> T.List:
-        return [self.loss_tracker]
-
-    def _diffusion_loss(self, images: TensorLike) -> TensorLike:
-        batch_size = ops.shape(images)[0]
-        t = keras.random.randint(
-            minval=0, maxval=self.timesteps, shape=(batch_size, 1),
-            dtype="int32", seed=self.seed_generator,
-        )
-        noise = keras.random.normal(
-            shape=ops.shape(images), dtype=images.dtype, seed=self.seed_generator,
-        )
-        images_t = self.gdf_util.q_sample(images, t, noise)
-        pred_noise = self.network([images_t, t], training=True)
-        return ops.mean(ops.square(noise - pred_noise))
-
-    def _update_ema(self) -> None:
-        for weight, ema_weight in zip(self.network.weights, self.ema_network.weights):
-            ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
-
-    def train_step_jax(self, jax, state: T.Tuple, data: TensorLike) -> T.Tuple[T.Dict, T.Tuple]:
-        trainable_variables, non_trainable_variables, optimizer_variables, metrics_variables = state
-        images, _, _ = keras.utils.unpack_x_y_sample_weight(data)
-        self.seq_len, self.feat_dim = images.shape[1], images.shape[2]
-
-        def loss_fn(trainable_values, non_trainable_values):
-            state_mapping = list(zip(self.trainable_variables, trainable_values)) + \
-                list(zip(self.non_trainable_variables, non_trainable_values))
-            with keras.StatelessScope(state_mapping=state_mapping) as scope:
-                loss = self._diffusion_loss(images)
-            # Preserve random-generator state and updates such as batch-norm statistics.
-            new_non_trainable_values = [
-                scope.get_current_value(v) for v in self.non_trainable_variables
-            ]
-            return loss, new_non_trainable_values
-
-        (loss, non_trainable_variables), gradients = jax.value_and_grad(
-            loss_fn, has_aux=True,
-        )(trainable_variables, non_trainable_variables)
-        trainable_variables, optimizer_variables = self.optimizer.stateless_apply(
-            optimizer_variables, gradients, trainable_variables,
-        )
-
-        # Average the updated network weights, including non-trainable statistics,
-        # and return all changes through the JAX trainer's explicit state.
-        state_mapping = list(zip(self.trainable_variables, trainable_variables)) + \
-            list(zip(self.non_trainable_variables, non_trainable_variables)) + \
-            list(zip(self.metrics_variables, metrics_variables))
-        with keras.StatelessScope(state_mapping=state_mapping) as scope:
-            self._update_ema()
-            self.loss_tracker.update_state(loss)
-            logs = {"loss": self.loss_tracker.result()}
-        non_trainable_variables = [
-            scope.get_current_value(v) for v in self.non_trainable_variables
-        ]
-        metrics_variables = [scope.get_current_value(v) for v in self.metrics_variables]
-        return logs, (
-            trainable_variables, non_trainable_variables, optimizer_variables, metrics_variables,
-        )
-
-    def train_step(self, *args) -> T.Any:
+    def train_step(self, data: TensorLike) -> T.Dict:
         """
         Performs a single training step on a batch of time series data.
 
-        TensorFlow and PyTorch pass a batch of data. JAX passes ``(state, data)``
-        and expects ``(logs, state)`` instead of a dictionary of losses.
+        :param data: A batch of time series data to train on.
+        :type data: TensorLike
+
+        :returns: A dictionary containing the loss value for the training step.
+        :rtype: dict
         """
-        if os.environ.get("KERAS_BACKEND") == "jax":
-            return self.train_step_jax(get_backend(), *args)
-        images, _, _ = keras.utils.unpack_x_y_sample_weight(args[0])
+        images = data
         self.seq_len, self.feat_dim = images.shape[1], images.shape[2]
+
+        # 1. Get the batch size
+        batch_size = ops.shape(images)[0]
+
+        # 2. Sample timesteps uniformly
+        # Use int32 for MPS compatibility
+        t = keras.random.randint(
+            minval=0, maxval=self.timesteps, shape=(batch_size,), dtype="int32"
+        )
+        # Reshape to match expected input shape (batch_size, 1)
+        t = ops.expand_dims(t, axis=-1)
 
         # Standard Keras 3 gradient computation approach
         if os.environ.get("KERAS_BACKEND") == "torch":
@@ -370,35 +317,60 @@ class DDPM(keras.Model):
                 if hasattr(var.value, 'grad') and var.value.grad is not None:
                     var.value.grad.zero_()
 
-            loss = self._diffusion_loss(images)
+            # 3. Sample random noise to be added to the images in the batch
+            noise = keras.random.normal(shape=ops.shape(images), dtype=images.dtype)
 
-            # Backward pass
+            # 4. Diffuse the images with noise
+            images_t = self.gdf_util.q_sample(images, t, noise)
+
+            # 5. Pass the diffused images and time steps to the network
+            pred_noise = self.network([images_t, t], training=True)
+
+            # 6. Calculate the loss
+            # Manual MSE to avoid dtype issues with Keras loss
+            loss = ops.mean(ops.square(noise - pred_noise))
+
+            # 7. Backward pass
             loss.backward(retain_graph=False)
 
-            # Extract gradients
+            # 8. Extract gradients
             gradients = [v.value.grad for v in self.network.trainable_weights]
 
-            # Apply gradients using Keras optimizer
+            # 9. Apply gradients using Keras optimizer
             with get_backend().no_grad():
                 grads_and_vars = list(zip(gradients, self.network.trainable_weights))
                 self.optimizer.apply_gradients(grads_and_vars)
         else:
-            # TensorFlow backend approach
+            # TensorFlow/JAX backend approach
             backend = get_backend()
             with backend.GradientTape() as tape:
-                loss = self._diffusion_loss(images)
+                # 3. Sample random noise to be added to the images in the batch
+                noise = keras.random.normal(shape=ops.shape(images), dtype=images.dtype)
 
-            # Get the gradients
+                # 4. Diffuse the images with noise
+                images_t = self.gdf_util.q_sample(images, t, noise)
+
+                # 5. Pass the diffused images and time steps to the network
+                pred_noise = self.network([images_t, t], training=True)
+
+                # 6. Calculate the loss
+                # Manual MSE to avoid dtype issues with Keras loss
+                loss = ops.mean(ops.square(noise - pred_noise))
+
+            # 7. Get the gradients
             gradients = tape.gradient(loss, self.network.trainable_weights)
 
-            # Update the weights of the network
+            # 8. Update the weights of the network
             self.optimizer.apply_gradients(zip(gradients, self.network.trainable_weights))
 
-        # Update the EMA network after the optimizer step.
-        self._update_ema()
+        # 9. Updates the weight values for the network with EMA weights
+        for weight, ema_weight in zip(self.network.weights, self.ema_network.weights):
+            ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
 
-        self.loss_tracker.update_state(loss)
-        return {"loss": self.loss_tracker.result()}
+        # 10. Return loss values
+        # Ensure loss is a proper tensor with float32 dtype
+        loss_tensor = ops.convert_to_tensor(loss, dtype="float32")
+        return {"loss": loss_tensor}
 
     def generate(self, n_samples: int = 16) -> TensorLike:
         """

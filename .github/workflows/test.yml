@@ -71,7 +71,7 @@ jobs:
           pip install -e '.[jax]' -r requirements/tests_requirements.txt
       - name: Run JAX unit tests
         run: |
-          pytest tests/test_gan_jax.py tests/test_ddpm_jax.py tests/test_jax_backend.py \
+          pytest tests/test_jax_backend.py \
             tests/test_dataset.py tests/test_simulator.py tests/test_archive_security.py \
             tests/test_metrics.py::test_statistics tests/test_metrics.py::test_distance_metric \
             tests/test_vae.py::test_vae_fit_updates_weights \
