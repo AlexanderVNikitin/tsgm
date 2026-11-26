@@ -8,21 +8,29 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm, trange
 from collections import OrderedDict
+from contextlib import nullcontext
+from functools import wraps
 import typing as T
 
 import logging
 
 from tsgm.models.architectures.zoo import BasicRecurrentArchitecture
 
-# For PyTorch device handling
-try:
-    import torch
-    _has_torch = True
-except ImportError:
-    _has_torch = False
-
 logger = logging.getLogger("models")
 logger.setLevel(logging.DEBUG)
+
+
+def _torch_device_scope(method):
+    """Keep Keras ops and optimizer state on this model's PyTorch device."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        device = None
+        if keras.backend.backend() == "torch":
+            variables = self.embedder.trainable_variables
+            device = str(variables[0].value.device) if variables else self._device
+        with keras.device(device) if device is not None else nullcontext():
+            return method(self, *args, **kwargs)
+    return wrapped
 
 
 class LossTracker(OrderedDict):
@@ -67,6 +75,9 @@ class TimeGAN(keras.Model):
     Neural Information Processing Systems (NeurIPS), 2019.
 
     Paper link: https://papers.nips.cc/paper/8789-time-series-generative-adversarial-networks
+
+    :param device: Optional PyTorch device, such as "cpu" or "cuda".
+        Defaults to the device selected by Keras.
     """
 
     def __init__(
@@ -78,6 +89,7 @@ class TimeGAN(keras.Model):
         n_layers: int = 3,
         batch_size: int = 256,
         gamma: float = 1.0,
+        device: T.Optional[str] = None,
     ) -> None:
         super().__init__()
         self.seq_len = seq_len
@@ -93,16 +105,9 @@ class TimeGAN(keras.Model):
 
         self.gamma = gamma
 
-        # Configure device for PyTorch backend to avoid MPS broadcasting issues
-        self._device = "cpu"  # Force CPU for stable training
-        if _has_torch and os.environ.get("KERAS_BACKEND") == "torch":
-            if torch.backends.mps.is_available():
-                # Completely disable MPS for TimeGAN as it has severe compatibility issues
-                os.environ["DISABLE_MPS_FOR_TIMEGAN"] = "1"
-                torch.set_default_device("cpu")
-                # Force all tensors to CPU
-                torch.set_default_tensor_type(torch.FloatTensor)
-                print("TimeGAN: Using CPU device to avoid MPS broadcasting issues")
+        # An explicit PyTorch device is local to this model. By default, retain
+        # the device selected by Keras rather than changing Torch global state.
+        self._device = device
 
         # ----------------------------
         # Basic Architectures
@@ -164,7 +169,10 @@ class TimeGAN(keras.Model):
         # --------------------------
         # All losses: will be populated in .fit()
         # --------------------------
-        self.training_losses_history = LossTracker()
+        # Keras wraps assigned dicts as TrackedDict, which would discard the
+        # append semantics and methods of LossTracker. This stores only Python
+        # loss values, so it does not need layer/variable tracking.
+        object.__setattr__(self, "training_losses_history", LossTracker())
 
         # --------------------------
         # Synthetic data generation during training: will be populated in .fit()
@@ -214,32 +222,50 @@ class TimeGAN(keras.Model):
         self._bce = clf_loss if clf_loss is not None else keras.losses.BinaryCrossentropy()
 
     def _move_models_to_device(self) -> None:
-        """Move all models to the configured device (CPU for MPS compatibility)."""
-        if self._device == "cpu" and _has_torch and os.environ.get("KERAS_BACKEND") == "torch":
-            models_to_move = [
-                self.embedder, self.recovery, self.generator_aux, self.supervisor,
-                self.discriminator, self.autoencoder, self.adversarial_supervised,
-                self.adversarial_embedded, self.generator, self.discriminator_model
-            ]
-            for model in models_to_move:
-                if hasattr(model, 'to'):
-                    try:
-                        model.to("cpu")
-                    except Exception:
-                        # Some models might not support .to() method
-                        pass
+        """Apply an explicitly requested PyTorch device to the built networks."""
+        if keras.backend.backend() == "torch" and self._device is not None:
+            for model in (self.embedder, self.recovery, self.generator_aux,
+                          self.supervisor, self.discriminator):
+                model.to(self._device)
 
+    def _torch_batch(self, data: TensorLike) -> TensorLike:
+        """Unwrap a single-input DataLoader batch and match model dtype/device."""
+        if isinstance(data, (tuple, list)) and len(data) == 1:
+            data = data[0]
+        variable = self.embedder.trainable_variables[0].value
+        torch = get_backend()
+        return torch.as_tensor(data, dtype=variable.dtype, device=variable.device)
+
+    @staticmethod
+    def _apply_torch_gradients(torch, loss, variables, optimizer) -> None:
+        # autograd.grad only returns this phase's gradients. In particular, it
+        # neither reads stale .grad buffers nor accumulates into frozen networks.
+        gradients = torch.autograd.grad(loss, [variable.value for variable in variables])
+        with torch.no_grad():
+            if not optimizer.built:
+                optimizer.build(variables)
+            # Optimizers may have been constructed outside the model device
+            # scope. Keras does not relocate their learning rate, iteration
+            # counter or existing slots when a model changes devices.
+            device = variables[0].value.device
+            for state in optimizer.variables:
+                if state.value.device != device:
+                    state.value.data = state.value.data.to(device)
+            optimizer.apply_gradients(zip(gradients, variables))
+
+    @_torch_device_scope
     def _define_timegan(self) -> None:
+        if hasattr(self, "autoencoder"):
+            return
         # --------------------------------
         # Data and Noise Inputs
         # --------------------------------
         X = keras.layers.Input(
-            shape=[self.seq_len, self.dim], batch_size=self.batch_size, name="RealData"
+            shape=[self.seq_len, self.dim], name="RealData"
         )
 
         Z = keras.layers.Input(
             shape=[self.seq_len, self.dim],
-            batch_size=self.batch_size,
             name="RandomNoise",
         )
 
@@ -293,6 +319,7 @@ class TimeGAN(keras.Model):
             inputs=X, outputs=Y_real, name="FinalDiscriminator"
         )
         self.discriminator_model.summary()
+        self._move_models_to_device()
 
     @tf_function_decorator
     def _train_autoencoder_tf(
@@ -314,49 +341,16 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(zip(gradients, all_trainable))
         return E_loss0
 
+    @_torch_device_scope
     def _train_autoencoder_torch(
         self, torch, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
-        # Handle PyTorch DataLoader list wrapper
-        if isinstance(X, (list, tuple)) and len(X) == 1:
-            X = X[0]
-
-        # Ensure tensor is on the correct device
-        if hasattr(X, 'to') and self._device == "cpu":
-            X = X.to("cpu")
-
-        X_tilde = self.autoencoder(X)
-
-        # Ensure both tensors are on the same device for operations
-        if hasattr(X_tilde, 'to') and self._device == "cpu":
-            X_tilde = X_tilde.to("cpu")
-
-        # For PyTorch backend, compute MSE manually to avoid structure mismatch
-        E_loss_T0 = ops.mean(ops.square(X - X_tilde))
+        X = self._torch_batch(X)
+        X_tilde = self.autoencoder(X, training=True)
+        E_loss_T0 = self._mse(X, X_tilde)
         E_loss0 = 10.0 * ops.sqrt(E_loss_T0)
-        self.embedder.zero_grad()
-        self.recovery.zero_grad()
-
-        # Add error handling for backward pass
-        try:
-            E_loss0.backward()
-        except (RuntimeError, Exception) as e:
-            # Handle MPS broadcasting issues and other errors
-            error_msg = str(e)
-            if "broadcast" in error_msg.lower() or "mps" in error_msg.lower():
-                print(f"Warning: MPS broadcasting error in autoencoder training: {e}")
-                return ops.convert_to_tensor(0.0, dtype="float32")
-            else:
-                print(f"Warning: Skipping autoencoder batch due to error: {e}")
-                return ops.convert_to_tensor(0.0, dtype="float32")
-
-        e_vars = self.embedder.trainable_variables
-        r_vars = self.recovery.trainable_variables
-        all_trainable = e_vars + r_vars
-        gradients = [v.value.grad for v in all_trainable]
-
-        with torch.no_grad():
-            optimizer.apply_gradients(list(zip(gradients, all_trainable)))
+        variables = self.embedder.trainable_variables + self.recovery.trainable_variables
+        self._apply_torch_gradients(torch, E_loss0, variables, optimizer)
         return E_loss0
 
     def _train_autoencoder(
@@ -380,9 +374,7 @@ class TimeGAN(keras.Model):
             H_hat_supervised = self.supervisor(H)
             G_loss_S = self._mse(H[:, 1:, :], H_hat_supervised[:, :-1, :])
 
-        g_vars = self.generator.trainable_variables
-        s_vars = self.supervisor.trainable_variables
-        all_trainable = g_vars + s_vars
+        all_trainable = self.supervisor.trainable_variables
         gradients = tape.gradient(G_loss_S, all_trainable)
         apply_grads = [
             (grad, var)
@@ -392,37 +384,18 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(apply_grads)
         return G_loss_S
 
+    @_torch_device_scope
     def _train_supervisor_torch(
         self, torch, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
-        # Handle PyTorch DataLoader list wrapper
-        if isinstance(X, (list, tuple)) and len(X) == 1:
-            X = X[0]
-        H = self.embedder(X)
-        H_hat_supervised = self.supervisor(H)
-        G_loss_S = ops.mean(ops.square(H[:, 1:, :] - H_hat_supervised[:, :-1, :]))
-        self.generator.zero_grad()
-        self.supervisor.zero_grad()
-
-        # Add error handling for backward pass
-        try:
-            G_loss_S.backward()
-        except RuntimeError as e:
-            print(f"Warning: Skipping supervisor batch due to backward pass error: {e}")
-            return ops.convert_to_tensor(0.0, dtype="float32")
-
-        g_vars = self.generator.trainable_variables
-        s_vars = self.supervisor.trainable_variables
-        all_trainable = g_vars + s_vars
-        gradients = [v.value.grad for v in all_trainable]
-        apply_grads = [
-            (grad, var)
-            for (grad, var) in zip(gradients, all_trainable)
-            if grad is not None
-        ]
-
+        X = self._torch_batch(X)
         with torch.no_grad():
-            optimizer.apply_gradients(apply_grads)
+            H = self.embedder(X, training=False)
+        H_hat_supervised = self.supervisor(H, training=True)
+        G_loss_S = self._mse(H[:, 1:, :], H_hat_supervised[:, :-1, :])
+        self._apply_torch_gradients(
+            torch, G_loss_S, self.supervisor.trainable_variables, optimizer
+        )
         return G_loss_S
 
     def _train_supervisor(
@@ -480,88 +453,34 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(apply_grads)
         return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
 
+    @_torch_device_scope
     def _train_generator_torch(
         self, torch, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float, float, float, float]:
-        # Handle PyTorch DataLoader list wrapper
-        if isinstance(X, (list, tuple)) and len(X) == 1:
-            X = X[0]
-        if isinstance(Z, (list, tuple)) and len(Z) == 1:
-            Z = Z[0]
-        Y_fake = self.adversarial_supervised(Z)
-        # Use manual BCE computation to avoid structure mismatch in PyTorch
-        ones_fake = ops.ones_like(Y_fake)
-        G_loss_U = -ops.mean(ones_fake * ops.log(Y_fake + 1e-12) + (1 - ones_fake) * ops.log(1 - Y_fake + 1e-12))
+        X, Z = self._torch_batch(X), self._torch_batch(Z)
+        E_hat = self.generator_aux(Z, training=True)
+        H_hat = self.supervisor(E_hat, training=True)
+        # Discriminator/recovery are frozen for this update, but their forward
+        # computations must remain differentiable with respect to G and S.
+        Y_fake = self.discriminator(H_hat, training=False)
+        G_loss_U = self._bce(y_true=ops.ones_like(Y_fake), y_pred=Y_fake)
+        Y_fake_e = self.discriminator(E_hat, training=False)
+        G_loss_U_e = self._bce(y_true=ops.ones_like(Y_fake_e), y_pred=Y_fake_e)
 
-        Y_fake_e = self.adversarial_embedded(Z)
-        ones_fake_e = ops.ones_like(Y_fake_e)
-        G_loss_U_e = -ops.mean(ones_fake_e * ops.log(Y_fake_e + 1e-12) + (1 - ones_fake_e) * ops.log(1 - Y_fake_e + 1e-12))
-
-        H = self.embedder(X)
-        H_hat_supervised = self.supervisor(H)
-        G_loss_S = ops.mean(ops.square(H[:, 1:, :] - H_hat_supervised[:, :-1, :]))
-
-        X_hat = self.generator(Z)
+        with torch.no_grad():
+            H = self.embedder(X, training=False)
+        H_hat_supervised = self.supervisor(H, training=True)
+        G_loss_S = self._mse(H[:, 1:, :], H_hat_supervised[:, :-1, :])
+        X_hat = self.recovery(H_hat, training=False)
         G_loss_V = self._compute_generator_moments_loss(X, X_hat)
-
         G_loss = (
             G_loss_U
             + self.gamma * G_loss_U_e
             + 100 * ops.sqrt(G_loss_S)
             + 100 * G_loss_V
         )
-
-        # Zero gradients
-        for vars_list in [self.generator_aux.trainable_variables, self.supervisor.trainable_variables]:
-            for v in vars_list:
-                if hasattr(v, 'value') and v.value.grad is not None:
-                    v.value.grad.zero_()
-
-        # Backward pass with error handling
-        try:
-            G_loss.backward()
-        except (RuntimeError, Exception) as e:
-            # Handle MPS broadcasting issues and other errors
-            error_msg = str(e)
-            if "broadcast" in error_msg.lower() or "mps" in error_msg.lower():
-                print(f"Warning: MPS broadcasting error in generator training: {e}")
-                return (
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32")
-                )
-            else:
-                print(f"Warning: Skipping generator batch due to error: {e}")
-                return (
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32")
-                )
-
-        g_vars = self.generator_aux.trainable_variables
-        s_vars = self.supervisor.trainable_variables
-        all_trainable = g_vars + s_vars
-        gradients = [v.value.grad for v in all_trainable if v.value.grad is not None]
-        filtered_vars = [v for v in all_trainable if v.value.grad is not None]
-
-        # Check if we have valid gradients
-        if not gradients:
-            return (
-                ops.convert_to_tensor(0.0, dtype="float32"),
-                ops.convert_to_tensor(0.0, dtype="float32"),
-                ops.convert_to_tensor(0.0, dtype="float32"),
-                ops.convert_to_tensor(0.0, dtype="float32"),
-                ops.convert_to_tensor(0.0, dtype="float32")
-            )
-
-        apply_grads = list(zip(gradients, filtered_vars))
-
-        with torch.no_grad():
-            optimizer.apply_gradients(apply_grads)
+        variables = self.generator_aux.trainable_variables + self.supervisor.trainable_variables
+        self._apply_torch_gradients(torch, G_loss, variables, optimizer)
         return G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss
 
     def _train_generator(
@@ -603,64 +522,19 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(zip(gradients, all_trainable))
         return E_loss, E_loss_T0
 
+    @_torch_device_scope
     def _train_embedder_torch(
         self, torch, X: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> T.Tuple[float, float]:
-        # Handle PyTorch DataLoader list wrapper
-        if isinstance(X, (list, tuple)) and len(X) == 1:
-            X = X[0]
-        H = self.embedder(X)
-        H_hat_supervised = self.supervisor(H)
-        G_loss_S = ops.mean(ops.square(H[:, 1:, :] - H_hat_supervised[:, :-1, :]))
-
-        X_tilde = self.autoencoder(X)
-        E_loss_T0 = ops.mean(ops.square(X - X_tilde))
-        E_loss0 = 10 * ops.sqrt(E_loss_T0)
-
-        E_loss = E_loss0 + 0.1 * G_loss_S
-
-        # Zero gradients
-        for vars_list in [self.embedder.trainable_variables, self.recovery.trainable_variables]:
-            for v in vars_list:
-                if hasattr(v, 'value') and v.value.grad is not None:
-                    v.value.grad.zero_()
-
-        # Backward pass with error handling
-        try:
-            E_loss.backward()
-        except (RuntimeError, Exception) as e:
-            # Handle MPS broadcasting issues and other errors
-            error_msg = str(e)
-            if "broadcast" in error_msg.lower() or "mps" in error_msg.lower():
-                print(f"Warning: MPS broadcasting error in embedder training: {e}")
-                return (
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32")
-                )
-            else:
-                print(f"Warning: Skipping embedder batch due to error: {e}")
-                return (
-                    ops.convert_to_tensor(0.0, dtype="float32"),
-                    ops.convert_to_tensor(0.0, dtype="float32")
-                )
-
-        e_vars = self.embedder.trainable_variables
-        r_vars = self.recovery.trainable_variables
-        all_trainable = e_vars + r_vars
-        gradients = [v.value.grad for v in all_trainable if v.value.grad is not None]
-        filtered_vars = [v for v in all_trainable if v.value.grad is not None]
-
-        # Check if we have valid gradients
-        if not gradients:
-            return (
-                ops.convert_to_tensor(0.0, dtype="float32"),
-                ops.convert_to_tensor(0.0, dtype="float32")
-            )
-
-        apply_grads = list(zip(gradients, filtered_vars))
-
-        with torch.no_grad():
-            optimizer.apply_gradients(apply_grads)
+        X = self._torch_batch(X)
+        H = self.embedder(X, training=True)
+        H_hat_supervised = self.supervisor(H, training=False)
+        G_loss_S = self._mse(H[:, 1:, :], H_hat_supervised[:, :-1, :])
+        X_tilde = self.recovery(H, training=True)
+        E_loss_T0 = self._mse(X, X_tilde)
+        E_loss = 10 * ops.sqrt(E_loss_T0) + 0.1 * G_loss_S
+        variables = self.embedder.trainable_variables + self.recovery.trainable_variables
+        self._apply_torch_gradients(torch, E_loss, variables, optimizer)
         return E_loss, E_loss_T0
 
     def _train_embedder(
@@ -690,42 +564,14 @@ class TimeGAN(keras.Model):
         optimizer.apply_gradients(zip(gradients, d_vars))
         return D_loss
 
+    @_torch_device_scope
     def _train_discriminator_torch(
         self, torch, X: TensorLike, Z: TensorLike, optimizer: keras.optimizers.Optimizer
     ) -> float:
-        # Handle PyTorch DataLoader list wrapper
-        if isinstance(X, (list, tuple)) and len(X) == 1:
-            X = X[0]
-        if isinstance(Z, (list, tuple)) and len(Z) == 1:
-            Z = Z[0]
         D_loss = self._check_discriminator_loss(X, Z)
-        self.discriminator.zero_grad()
-
-        # Add error handling for backward pass
-        try:
-            D_loss.backward()
-        except (RuntimeError, Exception) as e:
-            # Handle MPS broadcasting issues and other errors
-            error_msg = str(e)
-            if "broadcast" in error_msg.lower() or "mps" in error_msg.lower():
-                print(f"Warning: MPS broadcasting error detected, falling back to safer computation: {e}")
-                # Clear gradients and return zero loss to skip this problematic batch
-                self.discriminator.zero_grad()
-                return ops.convert_to_tensor(0.0, dtype="float32")
-            else:
-                # Memory or threading issue - skip this batch
-                print(f"Warning: Skipping batch due to backward pass error: {e}")
-                return ops.convert_to_tensor(0.0, dtype="float32")
-
-        d_vars = [v for v in self.discriminator.trainable_variables]
-        gradients = [v.value.grad for v in d_vars if v.value.grad is not None]
-
-        # Check if we have valid gradients
-        if not gradients:
-            return ops.convert_to_tensor(0.0, dtype="float32")
-
-        with torch.no_grad():
-            optimizer.apply_gradients(list(zip(gradients, d_vars)))
+        self._apply_torch_gradients(
+            torch, D_loss, self.discriminator.trainable_variables, optimizer
+        )
         return D_loss
 
     def _train_discriminator(
@@ -765,39 +611,27 @@ class TimeGAN(keras.Model):
         # G_loss_V = G_loss_V1 + G_loss_V2
         return g_loss_mean + g_loss_var
 
+    @_torch_device_scope
     def _check_discriminator_loss(self, X: TensorLike, Z: TensorLike) -> float:
-        """
-        :param X: Real data tensor.
-        :type X: TensorLike
-        :param Z: Random noise tensor.
-        :type Z: TensorLike
-
-        :returns: Discriminator loss.
-        :rtype: float
-        """
-        try:
-            # Loss on false negatives
+        """Compute discriminator loss without updating any network."""
+        if keras.backend.backend() == "torch":
+            torch = get_backend()
+            X, Z = self._torch_batch(X), self._torch_batch(Z)
+            with torch.no_grad():
+                H = self.embedder(X, training=False)
+                E_hat = self.generator_aux(Z, training=False)
+                H_hat = self.supervisor(E_hat, training=False)
+            Y_real = self.discriminator(H, training=True)
+            Y_fake = self.discriminator(H_hat, training=True)
+            Y_fake_e = self.discriminator(E_hat, training=True)
+        else:
             Y_real = self.discriminator_model(X)
-            D_loss_real = self._bce(y_true=ops.ones_like(Y_real), y_pred=Y_real)
-
-            # Loss on false positives
             Y_fake = self.adversarial_supervised(Z)
-            D_loss_fake = self._bce(y_true=ops.zeros_like(Y_fake), y_pred=Y_fake)
-
             Y_fake_e = self.adversarial_embedded(Z)
-            D_loss_fake_e = self._bce(y_true=ops.zeros_like(Y_fake_e), y_pred=Y_fake_e)
-
-            D_loss = D_loss_real + D_loss_fake + self.gamma * D_loss_fake_e
-            return D_loss
-        except Exception as e:
-            # Handle MPS broadcasting issues during forward pass
-            error_msg = str(e)
-            if "broadcast" in error_msg.lower() or "mps" in error_msg.lower():
-                print(f"Warning: MPS broadcasting error in discriminator loss computation: {e}")
-                return ops.convert_to_tensor(0.0, dtype="float32")
-            else:
-                print(f"Warning: Error in discriminator loss computation: {e}")
-                return ops.convert_to_tensor(0.0, dtype="float32")
+        D_loss_real = self._bce(y_true=ops.ones_like(Y_real), y_pred=Y_real)
+        D_loss_fake = self._bce(y_true=ops.zeros_like(Y_fake), y_pred=Y_fake)
+        D_loss_fake_e = self._bce(y_true=ops.zeros_like(Y_fake_e), y_pred=Y_fake_e)
+        return D_loss_real + D_loss_fake + self.gamma * D_loss_fake_e
 
     def _generate_noise(self) -> TensorLike:
         """
@@ -807,10 +641,11 @@ class TimeGAN(keras.Model):
         while True:
             yield np.random.uniform(low=0, high=1, size=(self.seq_len, self.dim))
 
-    def get_noise_batch(self) -> T.Iterator:
+    def get_noise_batch(self, batch_size: T.Optional[int] = None) -> T.Iterator:
         """
         Return an iterator of random noise vectors
         """
+        batch_size = self.batch_size if batch_size is None else batch_size
         backend = get_backend()
         if os.environ["KERAS_BACKEND"] == "tensorflow":
             tf = backend
@@ -818,7 +653,7 @@ class TimeGAN(keras.Model):
                 tf.data.Dataset.from_generator(
                     self._generate_noise, output_types=tf.float32
                 )
-                .batch(self.batch_size)
+                .batch(batch_size)
                 .repeat()
             )
         elif os.environ["KERAS_BACKEND"] == "torch":
@@ -826,30 +661,23 @@ class TimeGAN(keras.Model):
 
             def noise_generator():
                 while True:
-                    yield torch.tensor(
-                        np.random.uniform(low=0, high=1, size=(self.seq_len, self.dim)),
-                        dtype=torch.float32
+                    variables = self.embedder.trainable_variables
+                    device = variables[0].value.device if variables else self._device
+                    yield torch.rand(
+                        batch_size, self.seq_len, self.dim,
+                        dtype=torch.float32, device=device,
                     )
 
-            # Create a custom iterable dataset for noise
-            class NoiseDataset(torch.utils.data.IterableDataset):
-                def __init__(self, generator_fn):
-                    self.generator_fn = generator_fn
-
-                def __iter__(self):
-                    return self.generator_fn()
-
-            noise_dataset = NoiseDataset(noise_generator)
-            return iter(torch.utils.data.DataLoader(noise_dataset, batch_size=self.batch_size))
+            return noise_generator()
 
     def _get_data_batch(self, data: TensorLike, n_windows: int) -> T.Iterator:
         """
         Return an iterator of shuffled input data
         """
-        data = ops.convert_to_tensor(data, dtype="float32")
         backend = get_backend()
         if os.environ["KERAS_BACKEND"] == "tensorflow":
             tf = backend
+            data = ops.convert_to_tensor(data, dtype="float32")
             return iter(
                 tf.data.Dataset.from_tensor_slices(data)
                 .shuffle(buffer_size=n_windows)
@@ -858,7 +686,7 @@ class TimeGAN(keras.Model):
             )
         elif os.environ["KERAS_BACKEND"] == "torch":
             torch = backend
-            data = torch.tensor(data, dtype=torch.float32)
+            data = torch.as_tensor(data, dtype=torch.float32, device="cpu").detach()
             dataset = torch.utils.data.TensorDataset(data)
             return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
@@ -920,9 +748,6 @@ class TimeGAN(keras.Model):
         # Define the model
         self._define_timegan()
 
-        # Move models to CPU if configured for MPS compatibility
-        self._move_models_to_device()
-
         # 1. Embedding network training
         logger.info("Start Embedding Network Training")
 
@@ -933,9 +758,7 @@ class TimeGAN(keras.Model):
             # Checkpoint
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
                 logger.info(f"step: {epoch}/{epochs}, e_loss: {step_e_loss_0}")
-            # Convert tensor to float for MPS compatibility
-            loss_val = step_e_loss_0.detach().cpu() if hasattr(step_e_loss_0, 'detach') else step_e_loss_0
-            self.training_losses_history["autoencoder"] = float(loss_val)
+            self.training_losses_history["autoencoder"] = float(ops.convert_to_numpy(step_e_loss_0))
 
         logger.info("Finished Embedding Network Training")
 
@@ -947,17 +770,13 @@ class TimeGAN(keras.Model):
             X_ = next(batches)
             step_g_loss_s = self._train_supervisor(X_, self.adversarialsup_opt)
 
+            step_g_loss_s = float(ops.convert_to_numpy(step_g_loss_s))
             # Checkpoint
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
-                loss_val = step_g_loss_s.detach().cpu().numpy() if hasattr(step_g_loss_s, 'detach') else step_g_loss_s
                 logger.info(
-                    f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(loss_val), 4)}"
+                    f"step: {epoch}/{epochs}, s_loss: {np.round(np.sqrt(step_g_loss_s), 4)}"
                 )
-            # Convert tensor to numpy for MPS compatibility
-            loss_val = step_g_loss_s.detach().cpu().numpy() if hasattr(step_g_loss_s, 'detach') else step_g_loss_s
-            self.training_losses_history["adversarial_supervised"] = float(
-                np.sqrt(loss_val)
-            )
+            self.training_losses_history["adversarial_supervised"] = float(np.sqrt(step_g_loss_s))
 
         logger.info("Finished Training with Supervised Loss Only")
 
@@ -969,7 +788,9 @@ class TimeGAN(keras.Model):
             # Generator training (twice more than discriminator training)
             for kk in range(2):
                 X_ = next(batches)
-                Z_ = next(self.get_noise_batch())
+                if keras.backend.backend() == "torch":
+                    X_ = self._torch_batch(X_)
+                Z_ = next(self.get_noise_batch(batch_size=int(ops.shape(X_)[0])))
                 # --------------------------
                 # Train the generator
                 # --------------------------
@@ -987,13 +808,22 @@ class TimeGAN(keras.Model):
                 _, step_e_loss_t0 = self._train_embedder(X_, self.embedder_opt)
 
             X_ = next(batches)
-            Z_ = next(self.get_noise_batch())
+            if keras.backend.backend() == "torch":
+                X_ = self._torch_batch(X_)
+            Z_ = next(self.get_noise_batch(batch_size=int(ops.shape(X_)[0])))
             step_d_loss = self._check_discriminator_loss(X_, Z_)
             if step_d_loss > 0.15:
                 logger.info(
                     "Train Discriminator (discriminator does not work well yet)"
                 )
                 step_d_loss = self._train_discriminator(X_, Z_, self.discriminator_opt)
+
+            (step_d_loss, step_g_loss_u, step_g_loss_u_e, step_g_loss_s,
+             step_g_loss_v, step_g_loss, step_e_loss_t0) = (
+                float(ops.convert_to_numpy(loss))
+                for loss in (step_d_loss, step_g_loss_u, step_g_loss_u_e,
+                             step_g_loss_s, step_g_loss_v, step_g_loss, step_e_loss_t0)
+            )
 
             # Print multiple checkpoints
             if checkpoints_interval is not None and epoch % checkpoints_interval == 0:
@@ -1004,7 +834,7 @@ class TimeGAN(keras.Model):
                     g_loss_u_e: {np.round(step_g_loss_u_e, 4)},
                     g_loss_s: {np.round(np.sqrt(step_g_loss_s), 4)},
                     g_loss_v: {np.round(step_g_loss_v, 4)},
-                    g_loss_v: {np.round(step_g_loss, 4)},
+                    g_loss: {np.round(step_g_loss, 4)},
                     e_loss_t0: {np.round(np.sqrt(step_e_loss_t0), 4)}"""
                 )
             self.training_losses_history["discriminator"] = float(step_d_loss)
@@ -1017,19 +847,28 @@ class TimeGAN(keras.Model):
 
             # Synthetic data generation
             if epoch in generate_synthetic:
-                _sample = self.generate(n_samples=len(data))
+                n_samples = (len(data.dataset)
+                             if keras.backend.backend() == "torch"
+                             and Keras_Dataset is not None
+                             and isinstance(data, Keras_Dataset) else len(data))
+                _sample = self.generate(n_samples=n_samples)
                 self.synthetic_data_generated_in_training[epoch] = _sample
 
         logger.info("Finished Joint Training")
 
+    @_torch_device_scope
     def generate(self, n_samples: int) -> TensorLike:
-        """
-        Generate synthetic time series
-        """
-        steps = n_samples // self.batch_size + 1
+        """Generate synthetic time series as a NumPy array."""
+        if n_samples < 0:
+            raise ValueError("n_samples must be non-negative")
+        if n_samples == 0:
+            return np.empty((0, self.seq_len, self.dim), dtype="float32")
+        steps = (n_samples + self.batch_size - 1) // self.batch_size
         data = []
-        for _ in trange(steps, desc="Synthetic data generation"):
-            Z_ = next(self.get_noise_batch())
-            records = self.generator(Z_)
-            data.append(records)
-        return np.array(np.vstack(data))[:n_samples]
+        context = get_backend().no_grad() if keras.backend.backend() == "torch" else nullcontext()
+        with context:
+            for _ in trange(steps, desc="Synthetic data generation"):
+                Z_ = next(self.get_noise_batch())
+                records = self.generator(Z_, training=False)
+                data.append(ops.convert_to_numpy(records))
+        return np.concatenate(data, axis=0)[:n_samples]

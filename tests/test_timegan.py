@@ -9,29 +9,24 @@ from keras import ops
 import os
 from tsgm.backend import get_backend
 
-# Skip TimeGAN tests on PyTorch with MPS due to device compatibility issues
-try:
-    import torch
-    _pytorch_skip = pytest.mark.skipif(
-        os.environ.get("KERAS_BACKEND") == "torch",
-        reason="TimeGAN not compatible with PyTorch backend"
-    )
-except ImportError:
-    _pytorch_skip = lambda x: x
-    
+# Internal helper regressions below use TensorFlow-specific APIs.
+_tensorflow_only = pytest.mark.skipif(
+    keras.backend.backend() != "tensorflow",
+    reason="TensorFlow-specific regression coverage",
+)
+
 
 def set_experimental_run_functions_eagerly(value):
     if os.environ.get("KERAS_BACKEND") == "tensorflow":
         tf = get_backend()
         tf.config.experimental_run_functions_eagerly(value)
     # no-op for PyTorch, which is always eager
-    
+
 
 FLOAT_32 = ops.convert_to_tensor(32, dtype="float32").dtype
 # Use float32 instead of float64 for MPS compatibility
 FLOAT_64 = ops.convert_to_tensor(64, dtype="float32").dtype
 
-@_pytorch_skip
 def test_timegan():
     latent_dim = 4
     feature_dim = 3
@@ -61,7 +56,6 @@ def test_timegan():
     assert generated_samples.shape == (1, seq_len, feature_dim)
 
 
-@_pytorch_skip
 def test_timegan_fit():
     latent_dim = 4
     feature_dim = 3
@@ -91,7 +85,6 @@ def test_timegan_fit():
     assert len(timegan.synthetic_data_generated_in_training[1].shape) == 3
 
 
-@_pytorch_skip
 def test_timegan_on_dataset():
     latent_dim = 4
     feature_dim = 3
@@ -203,7 +196,7 @@ def mocked_gradienttape(mocker):
     return mock
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_train_timegan(mocked_gradienttape):
     latent_dim = 4
     feature_dim = 3
@@ -270,7 +263,7 @@ def mocked_timegan(mocked_data):
     yield timegan
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -286,7 +279,7 @@ def test_timegan_train_autoencoder(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -301,7 +294,7 @@ def test_timegan_train_supervisor(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_train_embedder(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -316,7 +309,7 @@ def test_timegan_train_embedder(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_train_generator(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -346,7 +339,7 @@ def test_timegan_train_generator(mocked_data, mocked_timegan):
         assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
 
@@ -363,7 +356,7 @@ def test_timegan_check_discriminator_loss(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_timegan_train_discriminator(mocked_data, mocked_timegan):
     batches = iter(mocked_data.repeat())
     mocked_timegan._define_timegan()
@@ -378,7 +371,7 @@ def test_timegan_train_discriminator(mocked_data, mocked_timegan):
     assert loss.dtype in [FLOAT_32, FLOAT_64]
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_generate_noise(mocked_timegan):
     # Set finite values for sequence length and dimension for testing
     mocked_timegan.seq_len = 10
@@ -396,7 +389,7 @@ def test_generate_noise(mocked_timegan):
         assert np.all(generated_noise >= 0) and np.all(generated_noise <= 1)
 
 
-@_pytorch_skip
+@_tensorflow_only
 def test_compute_generator_moments_loss(mocked_timegan):
     # Generate some test data
     y_true_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -424,3 +417,43 @@ def test_compute_generator_moments_loss(mocked_timegan):
 
     # Assert that the computed loss matches the expected loss
     np.testing.assert_almost_equal(computed_loss, expected_loss, decimal=5)
+
+
+@_tensorflow_only
+@pytest.mark.parametrize("run_eagerly", [False, True])
+def test_timegan_tensorflow_supervisor_applies_one_gradient_update(run_eagerly):
+    """Shared supervisor weights must receive exactly one update per step."""
+    tf = get_backend()
+    keras.utils.set_random_seed(42)
+    model = tsgm.models.timeGAN.TimeGAN(
+        seq_len=4, hidden_dim=3, n_features=1, n_layers=1, batch_size=2,
+    )
+    model._define_timegan()
+    samples = tf.constant(np.random.default_rng(9).uniform(0.2, 0.8, (2, 4, 1)).astype("float32"))
+    variables = model.supervisor.trainable_variables
+    before = [variable.numpy().copy() for variable in variables]
+    frozen = (model.embedder.trainable_variables + model.recovery.trainable_variables
+              + model.generator_aux.trainable_variables + model.discriminator.trainable_variables)
+    frozen_before = [variable.numpy().copy() for variable in frozen]
+    # Derive the objective and gradients directly with TensorFlow, without
+    # invoking TimeGAN's loss or training helpers.
+    with tf.GradientTape() as tape:
+        encoded = model.embedder(samples)
+        predicted = model.supervisor(encoded)
+        expected_loss = tf.reduce_mean(tf.square(encoded[:, 1:] - predicted[:, :-1]))
+    gradients = tape.gradient(expected_loss, variables)
+    assert all(gradient is not None for gradient in gradients)
+    optimizer = keras.optimizers.SGD(0.1)
+    previous_eager_setting = tf.config.functions_run_eagerly()
+    try:
+        tf.config.run_functions_eagerly(run_eagerly)
+        actual_loss = model._train_supervisor(samples, optimizer)
+    finally:
+        tf.config.run_functions_eagerly(previous_eager_setting)
+    np.testing.assert_allclose(actual_loss.numpy(), expected_loss.numpy(), rtol=1e-5, atol=1e-7)
+    for old, gradient, variable in zip(before, gradients, variables):
+        np.testing.assert_allclose(variable.numpy(), old - 0.1 * gradient.numpy(), rtol=1e-5, atol=1e-7)
+    assert any(not np.array_equal(old, variable.numpy()) for old, variable in zip(before, variables))
+    for old, variable in zip(frozen_before, frozen):
+        np.testing.assert_array_equal(variable.numpy(), old)
+    assert int(optimizer.iterations) == 1
