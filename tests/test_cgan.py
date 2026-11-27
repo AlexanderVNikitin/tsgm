@@ -545,6 +545,48 @@ def test_gan_discriminator_sees_real_and_generated_batches_separately(conditiona
     assert all(batch.all() or not batch.any() for batch in is_real)
 
 
+def test_cgan_discriminator_sees_constant_labels_across_time():
+    latent_dim = 4
+    output_dim = 3
+    feature_dim = 1
+    seq_len = 8
+    batch_size = 4
+
+    X = np.zeros((batch_size, seq_len, feature_dim), dtype=np.float32)
+    y = np.eye(output_dim, dtype=np.float32)[np.arange(batch_size) % output_dim]
+    backend = get_backend()
+    if os.environ.get("KERAS_BACKEND") == "tensorflow":
+        dataset = backend.data.Dataset.from_tensor_slices((X, y)).batch(batch_size)
+    elif os.environ.get("KERAS_BACKEND") == "torch":
+        dataset = backend.utils.data.TensorDataset(backend.from_numpy(X), backend.from_numpy(y))
+        dataset = backend.utils.data.DataLoader(dataset, batch_size=batch_size)
+
+    g_input = keras.Input((latent_dim + output_dim,))
+    x = keras.layers.Dense(seq_len * feature_dim, activation="tanh")(g_input)
+    generator = keras.Model(g_input, keras.layers.Reshape((seq_len, feature_dim))(x))
+
+    discriminator_spy = BatchSpy()
+    d_input = keras.Input((seq_len, feature_dim + output_dim))
+    x = keras.layers.Flatten()(discriminator_spy(d_input))
+    discriminator = keras.Model(d_input, keras.layers.Dense(1)(x))
+
+    cond_gan = tsgm.models.cgan.ConditionalGAN(
+        discriminator=discriminator, generator=generator, latent_dim=latent_dim
+    )
+    cond_gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+    )
+    cond_gan.run_eagerly = True
+    cond_gan.fit(dataset, epochs=1, verbose=0)
+
+    expected_labels = np.repeat(y[:, None, :], seq_len, axis=1)
+    assert discriminator_spy.batches
+    for batch in discriminator_spy.batches:
+        np.testing.assert_array_equal(batch[..., feature_dim:], expected_labels)
+
+
 @pytest.mark.skipif(os.environ.get("KERAS_BACKEND") != "tensorflow",
                     reason="Keras computes the crossentropy of a sigmoid output from its logits only with the TensorFlow backend")
 @pytest.mark.parametrize("conditional", [False, True])
