@@ -297,7 +297,8 @@ class cVAE_CONV5Architecture(BaseVAEArchitecture):
         x = layers.Conv1DTranspose(64, 2, strides=2, padding="same")(x)
         x = layers.LeakyReLU(negative_slope=0.2)(x)
 
-        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+        # The three stride-2 transpose convolutions expand time by exactly 8.
+        pool_and_stride = 8
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
@@ -450,7 +451,8 @@ class tcGAN_Conv4Architecture(BaseGANArchitecture):
         x = layers.LeakyReLU(alpha=0.2)(x)
         x = layers.Dropout(rate=self._dropout_rate)(x)
 
-        pool_and_stride = round((x.shape[1] + 1) / (self._seq_len + 1))
+        # The three stride-2 transpose convolutions expand time by exactly 8.
+        pool_and_stride = 8
         x = layers.AveragePooling1D(pool_size=pool_and_stride, strides=pool_and_stride)(
             x
         )
@@ -731,9 +733,10 @@ class BasicRecurrentArchitecture(Architecture):
         return cell
 
     def _make_network(self, model: keras.models.Model, activation: str, return_sequences: bool) -> keras.models.Model:
-        _cells = keras.layers.StackedRNNCells(
-            [self._rnn_cell() for _ in range(self.n_layers)],
-            name=f"{self.network_type}_x{self.n_layers}",
+        cells = [self._rnn_cell() for _ in range(self.n_layers)]
+        # A one-cell stack adds state nesting that JAX's recurrent scan cannot preserve.
+        _cells = cells[0] if len(cells) == 1 else keras.layers.StackedRNNCells(
+            cells, name=f"{self.network_type}_x{self.n_layers}"
         )
         model.add(keras.layers.RNN(_cells, return_sequences=return_sequences))
         model.add(

@@ -72,7 +72,22 @@ jobs:
       - name: Run JAX unit tests
         run: |
           pytest tests/test_gan_jax.py tests/test_ddpm_jax.py tests/test_jax_backend.py \
+            tests/test_timegan_jax.py tests/test_architecture_lengths.py tests/test_backend_selection.py \
             tests/test_dataset.py tests/test_simulator.py tests/test_archive_security.py \
             tests/test_metrics.py::test_statistics tests/test_metrics.py::test_distance_metric \
             tests/test_vae.py::test_vae_fit_updates_weights \
             tests/test_abc.py::test_abc_rejection_sampler_model_based_simulator
+
+  backend-selection:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install TensorFlow and JAX together
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[tensorflow,jax]' -r requirements/tests_requirements.txt
+      - name: Check backend selection in fresh processes
+        run: pytest tests/test_backend_selection.py

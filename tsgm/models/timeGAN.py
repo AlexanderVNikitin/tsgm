@@ -108,6 +108,8 @@ class TimeGAN(keras.Model):
         # An explicit PyTorch device is local to this model. By default, retain
         # the device selected by Keras rather than changing Torch global state.
         self._device = device
+        if keras.backend.backend() == "jax":
+            self.seed_generator = keras.random.SeedGenerator()
 
         # ----------------------------
         # Basic Architectures
@@ -253,6 +255,32 @@ class TimeGAN(keras.Model):
                     state.value.data = state.value.data.to(device)
             optimizer.apply_gradients(zip(gradients, variables))
 
+    def _apply_jax_gradients(self, jax, loss_fn, variables, optimizer):
+        """Update one phase without mutating Keras state inside JAX autodiff."""
+        if not optimizer.built:
+            optimizer.build(variables)
+        non_trainable = self.non_trainable_variables
+
+        def stateless_loss(values, non_trainable_values):
+            mapping = list(zip(variables, values)) + list(zip(non_trainable, non_trainable_values))
+            with keras.StatelessScope(state_mapping=mapping) as scope:
+                loss, outputs = loss_fn()
+            return loss, (outputs, [scope.get_current_value(v) for v in non_trainable])
+
+        (_, (outputs, non_trainable_values)), gradients = jax.value_and_grad(
+            stateless_loss, has_aux=True
+        )([v.value for v in variables], [v.value for v in non_trainable])
+        values, optimizer_values = optimizer.stateless_apply(
+            [v.value for v in optimizer.variables], gradients, [v.value for v in variables]
+        )
+        for variable, value in zip(variables, values):
+            variable.assign(value)
+        for variable, value in zip(non_trainable, non_trainable_values):
+            variable.assign(value)
+        for variable, value in zip(optimizer.variables, optimizer_values):
+            variable.assign(value)
+        return outputs
+
     @_torch_device_scope
     def _define_timegan(self) -> None:
         if hasattr(self, "autoencoder"):
@@ -361,6 +389,13 @@ class TimeGAN(keras.Model):
             return self._train_autoencoder_tf(backend, X, optimizer)
         elif os.environ["KERAS_BACKEND"] == "torch":
             return self._train_autoencoder_torch(backend, X, optimizer)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            def loss_fn():
+                loss = 10.0 * ops.sqrt(self._mse(X, self.autoencoder(X, training=True)))
+                return loss, loss
+
+            variables = self.embedder.trainable_variables + self.recovery.trainable_variables
+            return self._apply_jax_gradients(backend, loss_fn, variables, optimizer)
 
     @tf_function_decorator
     def _train_supervisor_tf(
@@ -409,6 +444,17 @@ class TimeGAN(keras.Model):
             return self._train_supervisor_tf(backend, X, optimizer)
         elif os.environ["KERAS_BACKEND"] == "torch":
             return self._train_supervisor_torch(backend, X, optimizer)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            H = self.embedder(X, training=False)
+
+            def loss_fn():
+                H_hat = self.supervisor(H, training=True)
+                loss = self._mse(H[:, 1:, :], H_hat[:, :-1, :])
+                return loss, loss
+
+            return self._apply_jax_gradients(
+                backend, loss_fn, self.supervisor.trainable_variables, optimizer
+            )
 
     @tf_function_decorator
     def _train_generator_tf(
@@ -494,6 +540,26 @@ class TimeGAN(keras.Model):
             return self._train_generator_tf(backend, X, Z, optimizer)
         elif os.environ["KERAS_BACKEND"] == "torch":
             return self._train_generator_torch(backend, X, Z, optimizer)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            H = self.embedder(X, training=False)
+
+            def loss_fn():
+                E_hat = self.generator_aux(Z, training=True)
+                H_hat = self.supervisor(E_hat, training=True)
+                Y_fake = self.discriminator(H_hat, training=False)
+                G_loss_U = self._bce(ops.ones_like(Y_fake), Y_fake)
+                Y_fake_e = self.discriminator(E_hat, training=False)
+                G_loss_U_e = self._bce(ops.ones_like(Y_fake_e), Y_fake_e)
+                H_hat_supervised = self.supervisor(H, training=True)
+                G_loss_S = self._mse(H[:, 1:, :], H_hat_supervised[:, :-1, :])
+                X_hat = self.recovery(H_hat, training=False)
+                G_loss_V = self._compute_generator_moments_loss(X, X_hat)
+                G_loss = (G_loss_U + self.gamma * G_loss_U_e
+                          + 100 * ops.sqrt(G_loss_S) + 100 * G_loss_V)
+                return G_loss, (G_loss_U, G_loss_U_e, G_loss_S, G_loss_V, G_loss)
+
+            variables = self.generator_aux.trainable_variables + self.supervisor.trainable_variables
+            return self._apply_jax_gradients(backend, loss_fn, variables, optimizer)
 
     @tf_function_decorator
     def _train_embedder_tf(
@@ -548,6 +614,18 @@ class TimeGAN(keras.Model):
             return self._train_embedder_tf(backend, X, optimizer)
         elif os.environ["KERAS_BACKEND"] == "torch":
             return self._train_embedder_torch(backend, X, optimizer)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            def loss_fn():
+                H = self.embedder(X, training=True)
+                H_hat = self.supervisor(H, training=False)
+                G_loss_S = self._mse(H[:, 1:, :], H_hat[:, :-1, :])
+                X_tilde = self.recovery(H, training=True)
+                E_loss_T0 = self._mse(X, X_tilde)
+                E_loss = 10 * ops.sqrt(E_loss_T0) + 0.1 * G_loss_S
+                return E_loss, (E_loss, E_loss_T0)
+
+            variables = self.embedder.trainable_variables + self.recovery.trainable_variables
+            return self._apply_jax_gradients(backend, loss_fn, variables, optimizer)
 
     @tf_function_decorator
     def _train_discriminator_tf(
@@ -585,6 +663,14 @@ class TimeGAN(keras.Model):
             return self._train_discriminator_tf(backend, X, Z, optimizer)
         elif os.environ["KERAS_BACKEND"] == "torch":
             return self._train_discriminator_torch(backend, X, Z, optimizer)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            def loss_fn():
+                loss = self._check_discriminator_loss(X, Z)
+                return loss, loss
+
+            return self._apply_jax_gradients(
+                backend, loss_fn, self.discriminator.trainable_variables, optimizer
+            )
 
     @staticmethod
     def _compute_generator_moments_loss(
@@ -669,6 +755,14 @@ class TimeGAN(keras.Model):
                     )
 
             return noise_generator()
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            def noise_generator():
+                while True:
+                    yield keras.random.uniform(
+                        (batch_size, self.seq_len, self.dim), seed=self.seed_generator
+                    )
+
+            return noise_generator()
 
     def _get_data_batch(self, data: TensorLike, n_windows: int) -> T.Iterator:
         """
@@ -689,6 +783,18 @@ class TimeGAN(keras.Model):
             data = torch.as_tensor(data, dtype=torch.float32, device="cpu").detach()
             dataset = torch.utils.data.TensorDataset(data)
             return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        elif os.environ["KERAS_BACKEND"] == "jax":
+            if n_windows == 0 or self.batch_size <= 0:
+                raise ValueError("Training data and batch_size must be non-empty and positive")
+            data = ops.convert_to_tensor(data, dtype="float32")
+
+            def repeating_batches():
+                while True:
+                    indices = np.random.permutation(n_windows)
+                    for start in range(0, n_windows, self.batch_size):
+                        yield data[indices[start:start + self.batch_size]]
+
+            return repeating_batches()
 
     def fit(  # noqa: C901 - suppress cyclomatic complexity warning for this function
         self,

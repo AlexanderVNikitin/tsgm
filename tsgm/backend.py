@@ -1,5 +1,7 @@
 import os
 import random
+import sys
+import warnings
 
 # Enable MPS fallback for unsupported operations early (like linalg_qr in LSTM)
 # This must be set before importing PyTorch for the first time
@@ -39,11 +41,30 @@ def _is_backend_available(backend_name):
 
 
 def _set_keras_backend():
-    """Set the Keras backend based on available libraries."""
-    # Check if KERAS_BACKEND is already set and respect it
+    """Reuse initialized Keras, or select a backend before its first import."""
     current_backend = os.environ.get("KERAS_BACKEND", "").lower()
 
+    # An environment change cannot switch an already initialized Keras. Inspect
+    # only the loaded module: importing it here would prevent autodetection.
+    keras_module = sys.modules.get("keras")
+    keras_backend = getattr(getattr(keras_module, "backend", None), "backend", None)
+    if callable(keras_backend):
+        active_backend = keras_backend()
+        if active_backend not in ["jax", "tensorflow", "torch"]:
+            raise ValueError(f"Unsupported initialized Keras backend: {active_backend!r}")
+        if current_backend and current_backend != active_backend:
+            warnings.warn(
+                f"Keras is already initialized with backend '{active_backend}'; "
+                f"ignoring KERAS_BACKEND='{current_backend}'. Set KERAS_BACKEND "
+                "before importing Keras to change backends.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        os.environ["KERAS_BACKEND"] = active_backend
+        return active_backend
+
     if current_backend in ["jax", "tensorflow", "torch"]:
+        os.environ["KERAS_BACKEND"] = current_backend
         if _is_backend_available(current_backend):
             return current_backend
         else:
@@ -130,9 +151,9 @@ except (ImportError, AttributeError):
 if not _has_jax and not _has_tensorflow and not _has_torch:
     # No backend available — skip Keras_Dataset setup (e.g. doc builds)
     pass
-elif os.environ.get("KERAS_BACKEND") == "tensorflow" and _has_tensorflow:
+elif _backend_name == "tensorflow" and _has_tensorflow:
     Keras_Dataset = tf.data.Dataset
-elif os.environ.get("KERAS_BACKEND") == "torch" and _has_torch:
+elif _backend_name == "torch" and _has_torch:
     Keras_Dataset = torch.utils.data.DataLoader
 else:
     # For JAX backend or when no backend is available, keep Keras_Dataset as None
@@ -142,7 +163,7 @@ else:
 
 def get_backend():
     """Get the current backend module."""
-    backend = os.environ.get("KERAS_BACKEND", "")
+    backend = _backend_name
     if backend == "jax":
         if jax is None:
             raise ImportError("JAX backend requested but not available.")
@@ -225,7 +246,7 @@ class JAXDistributionsWrapper:
 
 def get_distributions():
     """Get the distributions module for the current backend."""
-    backend = os.environ.get("KERAS_BACKEND", "")
+    backend = _backend_name
     if backend == "jax":
         try:
             import jax.scipy.stats as jax_distributions  # noqa: F401
@@ -248,7 +269,7 @@ def get_distributions():
 
 def tf_function_decorator(func):
     """Decorator that applies tf.function for TensorFlow, jax.jit for JAX, or no-op for PyTorch backend."""
-    backend = os.environ.get("KERAS_BACKEND", "")
+    backend = _backend_name
     if backend == "tensorflow" and tf is not None:
         return tf.function(func)
     elif backend == "jax" and jax is not None:
