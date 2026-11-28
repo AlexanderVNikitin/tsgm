@@ -597,10 +597,7 @@ class ConditionalGAN(_JAXGANTraining, keras.Model):
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:
-            rep_labels = labels[:, :, None]
-            rep_labels = ops.repeat(
-                rep_labels, repeats=[self._seq_len]
-            )
+            rep_labels = ops.repeat(labels[:, None, :], repeats=self._seq_len, axis=1)
         else:
             rep_labels = labels
 
@@ -664,10 +661,7 @@ class ConditionalGAN(_JAXGANTraining, keras.Model):
         output_dim = self._get_output_shape(labels)
         batch_size = ops.shape(real_ts)[0]
         if not self._temporal:
-            rep_labels = labels[:, :, None]
-            rep_labels = ops.repeat(
-                rep_labels, repeats=[self._seq_len]
-            )
+            rep_labels = ops.repeat(labels[:, None, :], repeats=self._seq_len, axis=1)
         else:
             rep_labels = labels
 
